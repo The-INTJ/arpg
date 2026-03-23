@@ -18,6 +18,7 @@ public partial class GameManager : Node3D
     private Camera3D _camera;
     private ModifyStatsSimple _modifyScreen;
     private PauseScreen _pauseScreen;
+    private RoomMonsterEffectProfile _monsterEffectProfile;
 
     private ProgressBar _enemyHpBar;
     private Label _enemyHpLabel;
@@ -47,6 +48,7 @@ public partial class GameManager : Node3D
         _killLabel = GetNode<Label>("CanvasLayer/HUD/KillLabel");
         _statusLabel = GetNode<Label>("CanvasLayer/HUD/StatusLabel");
         _camera = _player.GetNode<Camera3D>("CameraRig/Camera3D");
+        _monsterEffectProfile = MonsterEffectRoomProfiles.ForRoom(_room);
 
         _turnManager = new TurnManager();
         AddChild(_turnManager);
@@ -56,6 +58,7 @@ public partial class GameManager : Node3D
         AddChild(_combatManager);
         _combatManager.Init(_player, _turnManager, _camera);
         _combatManager.CombatEnded += OnCombatEnded;
+        _combatManager.CombatFeedback += OnCombatFeedback;
 
         _attackButton.Pressed += OnAttackPressed;
         _attackButton.Visible = false;
@@ -283,6 +286,12 @@ public partial class GameManager : Node3D
         enemy.AddChild(shape);
 
         container.AddChild(enemy);
+
+        var effectPlan = MonsterEffectGenerator.Generate(new MonsterEffectRollContext(
+            _room,
+            _monsterEffectProfile,
+            enemy.IsBoss));
+        enemy.SetMonsterEffects(effectPlan);
     }
 
     public override void _UnhandledInput(InputEvent @event)
@@ -702,5 +711,10 @@ public partial class GameManager : Node3D
     private void OnViewStatsRequested()
     {
         _modifyScreen.Open(_player.Stats);
+    }
+
+    private void OnCombatFeedback(string text)
+    {
+        _statusLabel.Text = text;
     }
 }
