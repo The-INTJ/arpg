@@ -106,17 +106,24 @@ shape = SubResource("BoxShape3D_trigger")
 [node name="CanvasLayer" type="CanvasLayer" parent="."]
 
 [node name="HUD" type="VBoxContainer" parent="CanvasLayer"]
-anchors_preset = 1
-anchor_left = 1.0
-anchor_right = 1.0
-offset_left = -300.0
-offset_top = 10.0
-offset_bottom = 200.0
-grow_horizontal = 0
+anchors_preset = 0
+anchor_left = 0.01
+anchor_top = 0.02
+anchor_right = 0.25
+anchor_bottom = 0.35
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 0.0
+offset_bottom = 0.0
+grow_horizontal = 1
 
 [node name="HpLabel" type="Label" parent="CanvasLayer/HUD"]
 layout_mode = 2
-text = "HP: 15"
+text = "HP: 15 / 15"
+
+[node name="StatsLabel" type="Label" parent="CanvasLayer/HUD"]
+layout_mode = 2
+text = "ATK: 5  |  SPD: 5.0  |  Range: 3.5"
 
 [node name="KillLabel" type="Label" parent="CanvasLayer/HUD"]
 layout_mode = 2

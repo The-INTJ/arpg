@@ -4,17 +4,20 @@ namespace ARPG;
 
 public partial class Enemy : StaticBody3D
 {
-    public int Hp = 5;
+    public int MaxHp = 10;
+    public int Hp = 10;
     public int AttackDamage = 2;
+
+    public float HpPercent => MaxHp > 0 ? (float)Hp / MaxHp : 0f;
 
     public void TakeDamage(int amount)
     {
-        Hp -= amount;
-        if (Hp <= 0)
-            Die();
+        Hp = Mathf.Max(0, Hp - amount);
     }
 
-    private void Die()
+    public bool IsDead => Hp <= 0;
+
+    public void Die()
     {
         QueueFree();
     }
