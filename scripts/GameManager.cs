@@ -55,36 +55,36 @@ public partial class GameManager : Node3D
         enemy.Position = position;
         enemy.AddToGroup("enemies");
 
-        // Body: red sphere on top of dark red box (little golem look)
+        // Body: dark red box
         var bodyMesh = new MeshInstance3D();
         var box = new BoxMesh();
-        box.Size = new Vector3(0.8f, 0.8f, 0.8f);
+        box.Size = new Vector3(0.45f, 0.45f, 0.45f);
         var bodyMat = new StandardMaterial3D();
         bodyMat.AlbedoColor = new Color(0.7f, 0.1f, 0.1f);
         box.Material = bodyMat;
         bodyMesh.Mesh = box;
-        bodyMesh.Position = new Vector3(0, 0, 0);
+        bodyMesh.Position = new Vector3(0, 0.22f, 0);
         enemy.AddChild(bodyMesh);
 
-        // Head: bright red sphere
+        // Head: bright red glowing sphere
         var headMesh = new MeshInstance3D();
         var sphere = new SphereMesh();
-        sphere.Radius = 0.35f;
-        sphere.Height = 0.7f;
+        sphere.Radius = 0.2f;
+        sphere.Height = 0.4f;
         var headMat = new StandardMaterial3D();
         headMat.AlbedoColor = new Color(1.0f, 0.2f, 0.2f);
-        headMat.Emission = new Color(0.4f, 0.0f, 0.0f);
+        headMat.Emission = new Color(0.5f, 0.0f, 0.0f);
         headMat.EmissionEnabled = true;
         sphere.Material = headMat;
         headMesh.Mesh = sphere;
-        headMesh.Position = new Vector3(0, 0.65f, 0);
+        headMesh.Position = new Vector3(0, 0.57f, 0);
         enemy.AddChild(headMesh);
 
         var shape = new CollisionShape3D();
         var boxShape = new BoxShape3D();
-        boxShape.Size = new Vector3(0.8f, 1.4f, 0.8f);
+        boxShape.Size = new Vector3(0.45f, 0.75f, 0.45f);
         shape.Shape = boxShape;
-        shape.Position = new Vector3(0, 0.3f, 0);
+        shape.Position = new Vector3(0, 0.37f, 0);
         enemy.AddChild(shape);
 
         container.AddChild(enemy);
