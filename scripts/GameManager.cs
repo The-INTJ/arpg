@@ -22,6 +22,7 @@ public partial class GameManager : Node3D
 
     private ProgressBar _enemyHpBar;
     private Label _enemyHpLabel;
+    private Label _enemyEffectInfoLabel;
     private Label[] _itemSlotLabels = System.Array.Empty<Label>();
     private StyleBoxFlat[] _itemSlotStyles = System.Array.Empty<StyleBoxFlat>();
 
@@ -169,6 +170,14 @@ public partial class GameManager : Node3D
         _enemyHpBar.AddThemeStyleboxOverride("background", bgStyle);
 
         container.AddChild(_enemyHpBar);
+
+        _enemyEffectInfoLabel = new Label();
+        _enemyEffectInfoLabel.CustomMinimumSize = new Vector2(220, 0);
+        _enemyEffectInfoLabel.HorizontalAlignment = HorizontalAlignment.Center;
+        _enemyEffectInfoLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        _enemyEffectInfoLabel.AddThemeColorOverride("font_color", Palette.TextLight);
+        _enemyEffectInfoLabel.AddThemeFontSizeOverride("font_size", 12);
+        container.AddChild(_enemyEffectInfoLabel);
     }
 
     private void BuildRoomLabel()
@@ -387,19 +396,21 @@ public partial class GameManager : Node3D
                 _attackButton.Visible = true;
                 _attackButton.Disabled = false;
                 _attackButton.Position = screenPos - _attackButton.Size / 2;
+                UpdateEnemyDisplay(nearest, nearest.GlobalPosition + Vector3.Up * 1.8f);
             }
             else
             {
                 _attackButton.Visible = false;
+                GetNode<VBoxContainer>("CanvasLayer/EnemyHpDisplay").Visible = false;
             }
         }
         else
         {
             _attackButton.Visible = false;
+            GetNode<VBoxContainer>("CanvasLayer/EnemyHpDisplay").Visible = false;
         }
 
         _abilityButton.Visible = false;
-        GetNode<VBoxContainer>("CanvasLayer/EnemyHpDisplay").Visible = false;
     }
 
     private void UpdateCombatUI()
@@ -444,24 +455,13 @@ public partial class GameManager : Node3D
 
         // Enemy HP bar
         var target = _combatManager.Target;
-        var display = GetNode<VBoxContainer>("CanvasLayer/EnemyHpDisplay");
         if (target != null && IsInstanceValid(target))
         {
-            display.Visible = true;
-            _enemyHpBar.Value = target.HpPercent;
-            string label = target.IsBoss ? "BOSS" : "Enemy";
-            _enemyHpLabel.Text = $"{label}  {target.Hp}/{target.MaxHp}";
-
-            var worldPos = target.GlobalPosition + Vector3.Up * 1.8f;
-            if (!_camera.IsPositionBehind(worldPos))
-            {
-                var screenPos = _camera.UnprojectPosition(worldPos);
-                display.Position = screenPos - display.Size / 2;
-            }
+            UpdateEnemyDisplay(target, target.GlobalPosition + Vector3.Up * 1.8f);
         }
         else
         {
-            display.Visible = false;
+            GetNode<VBoxContainer>("CanvasLayer/EnemyHpDisplay").Visible = false;
         }
     }
 
@@ -716,5 +716,24 @@ public partial class GameManager : Node3D
     private void OnCombatFeedback(string text)
     {
         _statusLabel.Text = text;
+    }
+
+    private void UpdateEnemyDisplay(Enemy enemy, Vector3 worldPos)
+    {
+        var display = GetNode<VBoxContainer>("CanvasLayer/EnemyHpDisplay");
+        if (enemy == null || !IsInstanceValid(enemy) || _camera.IsPositionBehind(worldPos))
+        {
+            display.Visible = false;
+            return;
+        }
+
+        display.Visible = true;
+        _enemyHpBar.Value = enemy.HpPercent;
+        string label = enemy.IsBoss ? "BOSS" : "Enemy";
+        _enemyHpLabel.Text = $"{label}  {enemy.Hp}/{enemy.MaxHp}";
+        _enemyEffectInfoLabel.Text = enemy.GetEffectInfoText();
+
+        var screenPos = _camera.UnprojectPosition(worldPos);
+        display.Position = screenPos - display.Size / 2;
     }
 }

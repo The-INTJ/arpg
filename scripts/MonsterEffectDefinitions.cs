@@ -15,7 +15,9 @@ public static partial class MonsterEffectDefinitions
             badgeColor: Palette.EffectInvulnerable,
             baseWeight: 1.0f,
             tags: MonsterEffectTag.Defense | MonsterEffectTag.Opener | MonsterEffectTag.PunishesBurst | MonsterEffectTag.BossSafe,
+            resolutionPriority: 10,
             threatByTier: new[] { 4 },
+            descriptionFormatter: DescribeInvulnerable,
             onIncomingDamage: OnInvulnerableIncomingDamage),
         new MonsterEffectDefinition(
             id: "bulwark",
@@ -24,7 +26,9 @@ public static partial class MonsterEffectDefinitions
             badgeColor: Palette.EffectBulwark,
             baseWeight: 1.0f,
             tags: MonsterEffectTag.Defense | MonsterEffectTag.Attrition | MonsterEffectTag.BossSafe,
+            resolutionPriority: 20,
             threatByTier: new[] { 2 },
+            descriptionFormatter: DescribeBulwark,
             onOwnerTurnEnded: OnBulwarkTurnEnded,
             onIncomingDamage: OnBulwarkIncomingDamage),
         new MonsterEffectDefinition(
@@ -34,7 +38,9 @@ public static partial class MonsterEffectDefinitions
             badgeColor: Palette.EffectThorns,
             baseWeight: 1.0f,
             tags: MonsterEffectTag.Retaliation | MonsterEffectTag.PunishesBurst,
+            resolutionPriority: 100,
             threatByTier: new[] { 2 },
+            descriptionFormatter: DescribeThorns,
             onIncomingDamage: OnThornsIncomingDamage),
     };
 
@@ -68,10 +74,7 @@ public static partial class MonsterEffectDefinitions
         if (instance.OwnerTurnsEnded >= 1 || context.Damage <= 0)
             return;
 
-        int absorbed = Mathf.Min(1, context.Damage);
-        if (absorbed <= 0)
-            return;
-
+        int absorbed = 1;
         context.Damage -= absorbed;
         context.Trigger(instance, $"Bulwark absorbed {absorbed} damage.");
     }
@@ -84,10 +87,28 @@ public static partial class MonsterEffectDefinitions
 
     private static void OnThornsIncomingDamage(MonsterEffectInstance instance, MonsterIncomingDamageContext context)
     {
-        if (context.BaseDamage <= 0 || context.Attacker == null)
+        if (context.Damage <= 0 || context.Attacker == null)
             return;
 
         context.AddRetaliationDamage(1);
         context.Trigger(instance, "Thorns dealt 1 back.");
+    }
+
+    private static string DescribeInvulnerable(int tier)
+    {
+        _ = tier;
+        return "Negates the first damaging hit in combat.";
+    }
+
+    private static string DescribeBulwark(int tier)
+    {
+        _ = tier;
+        return "Absorbs 1 damage until the enemy finishes its first turn.";
+    }
+
+    private static string DescribeThorns(int tier)
+    {
+        _ = tier;
+        return "Deals 1 retaliation damage back when this enemy is hit.";
     }
 }

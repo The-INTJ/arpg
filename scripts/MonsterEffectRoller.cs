@@ -9,7 +9,7 @@ public static partial class MonsterEffectRoller
     public static int RollWeightedInt(IEnumerable<WeightedIntOption> options, int fallback = 0)
     {
         var validOptions = options?
-            .Where(option => option != null && option.Weight > 0.0f)
+            .Where(option => option.Weight > 0.0f)
             .ToArray() ?? System.Array.Empty<WeightedIntOption>();
 
         if (validOptions.Length == 0)

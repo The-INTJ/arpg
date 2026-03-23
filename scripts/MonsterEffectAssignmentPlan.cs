@@ -1,9 +1,11 @@
 using System.Collections.Generic;
+using System.Linq;
 
 namespace ARPG;
 
 public enum MonsterEffectSource
 {
+    Innate,
     Granted,
     Optional,
 }
@@ -59,9 +61,12 @@ public partial class MonsterEffectAssignmentPlan
 
     public MonsterEffectInstance[] CreateInstances(Enemy owner)
     {
-        var instances = new MonsterEffectInstance[_assignments.Count];
-        for (int i = 0; i < _assignments.Count; i++)
-            instances[i] = new MonsterEffectInstance(owner, _assignments[i].Definition, _assignments[i].Tier);
+        var orderedAssignments = _assignments
+            .OrderBy(assignment => assignment.Definition.ResolutionPriority)
+            .ToArray();
+        var instances = new MonsterEffectInstance[orderedAssignments.Length];
+        for (int i = 0; i < orderedAssignments.Length; i++)
+            instances[i] = new MonsterEffectInstance(owner, orderedAssignments[i].Definition, orderedAssignments[i].Tier);
 
         return instances;
     }
