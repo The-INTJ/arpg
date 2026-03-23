@@ -12,9 +12,9 @@ public partial class DamageNumber : Node3D
         _label.Billboard = BaseMaterial3D.BillboardModeEnum.Enabled;
         _label.NoDepthTest = true;
         _label.FixedSize = true;
-        _label.PixelSize = 0.01f;
-        _label.FontSize = 32;
-        _label.OutlineSize = 8;
+        _label.PixelSize = 0.006f;
+        _label.FontSize = 24;
+        _label.OutlineSize = 6;
         AddChild(_label);
     }
 
@@ -35,7 +35,7 @@ public partial class DamageNumber : Node3D
         tween.SetParallel(true);
 
         // Float upward
-        var endPos = GlobalPosition + Vector3.Up * 1.5f;
+        var endPos = GlobalPosition + Vector3.Up * 1.0f;
         tween.TweenProperty(this, "global_position", endPos, 0.8f)
             .SetTrans(Tween.TransitionType.Quad)
             .SetEase(Tween.EaseType.Out);

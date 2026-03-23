@@ -6,6 +6,7 @@ public static class GameKeys
 {
     public const string Attack = "attack";
     public const string Ability = "ability";
+    public const string Pause = "pause";
 
     public static string DisplayName(string action)
     {
