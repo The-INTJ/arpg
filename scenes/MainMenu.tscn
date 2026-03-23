@@ -33,11 +33,9 @@ offset_bottom = 35.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="RichTextLabel" type="RichTextLabel" parent="Background/GridContainer2" unique_id=371950174]
+[node name="MainTitle" type="RichTextLabel" parent="Background/GridContainer2" unique_id=592808937]
 layout_mode = 2
 text = "Hero of the Ages"
-fit_content = true
-autowrap_mode = 0
 
 [node name="GridContainer" type="GridContainer" parent="Background/GridContainer2" unique_id=1802881582]
 layout_mode = 2

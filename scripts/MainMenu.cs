@@ -8,6 +8,9 @@ public partial class MainMenu : Control
 	{
 		Input.MouseMode = Input.MouseModeEnum.Visible;
 		GetNode<ColorRect>("Background").Color = Palette.BgDark;
+		
+		var RTE_mainTitle = GetNode<RichTextLabel>("Background/GridContainer2/MainTitle");
+		RTE_mainTitle.AddThemeColorOverride("font_color", Palette.TextLight);
 
 		var playButton = GetNode<Button>("Background/GridContainer2/GridContainer/PlayButton");
 		Palette.StyleButton(playButton, 28);
