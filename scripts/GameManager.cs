@@ -284,8 +284,8 @@ public partial class GameManager : Node3D
         if (isBoss)
         {
             enemy.MakeBoss();
-            var sprite = SpriteFactory.CreateSprite(SpriteFactory.CreateBossTexture(), 0.14f);
-            sprite.Position = new Vector3(0, 0.7f, 0);
+            var sprite = SpriteFactory.CreateSprite(SpriteFactory.CreateBossTexture(), 0.07f);
+            sprite.Position = new Vector3(0, 0.35f, 0);
             enemy.AddChild(sprite);
 
             // Boss name label
@@ -299,19 +299,19 @@ public partial class GameManager : Node3D
             nameLabel.Modulate = new Color(1.0f, 0.2f, 0.15f);
             nameLabel.OutlineSize = 8;
             nameLabel.OutlineModulate = new Color(0, 0, 0);
-            nameLabel.Position = new Vector3(0, 1.8f, 0);
+            nameLabel.Position = new Vector3(0, 0.9f, 0);
             enemy.AddChild(nameLabel);
         }
         else
         {
-            var sprite = SpriteFactory.CreateSprite(SpriteFactory.CreateEnemyTexture());
-            sprite.Position = new Vector3(0, 0.5f, 0);
+            var sprite = SpriteFactory.CreateSprite(SpriteFactory.CreateEnemyTexture(), 0.05f);
+            sprite.Position = new Vector3(0, 0.25f, 0);
             enemy.AddChild(sprite);
         }
 
         var shape = new CollisionShape3D();
-        shape.Shape = new BoxShape3D { Size = new Vector3(0.6f, 0.9f, 0.6f) };
-        shape.Position = new Vector3(0, 0.45f, 0);
+        shape.Shape = new BoxShape3D { Size = new Vector3(0.3f, 0.5f, 0.3f) };
+        shape.Position = new Vector3(0, 0.25f, 0);
         enemy.AddChild(shape);
 
         container.AddChild(enemy);
@@ -408,7 +408,7 @@ public partial class GameManager : Node3D
 
         if (canAttack)
         {
-            var worldPos = nearest.GlobalPosition + Vector3.Up * 1.5f;
+            var worldPos = nearest.GlobalPosition + Vector3.Up * 0.8f;
             if (!_camera.IsPositionBehind(worldPos))
             {
                 var screenPos = _camera.UnprojectPosition(worldPos);
@@ -416,7 +416,7 @@ public partial class GameManager : Node3D
                 _attackButton.Visible = true;
                 _attackButton.Disabled = false;
                 _attackButton.Position = screenPos - _attackButton.Size / 2;
-                UpdateEnemyDisplay(nearest, nearest.GlobalPosition + Vector3.Up * 1.8f);
+                UpdateEnemyDisplay(nearest, nearest.GlobalPosition + Vector3.Up * 0.9f);
             }
             else
             {
@@ -477,7 +477,7 @@ public partial class GameManager : Node3D
         var target = _combatManager.Target;
         if (target != null && IsInstanceValid(target))
         {
-            UpdateEnemyDisplay(target, target.GlobalPosition + Vector3.Up * 1.8f);
+            UpdateEnemyDisplay(target, target.GlobalPosition + Vector3.Up * 0.9f);
         }
         else
         {

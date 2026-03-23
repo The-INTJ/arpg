@@ -8,6 +8,7 @@ public partial class CombatManager : Node
     private TurnManager _turnManager;
     private Camera3D _camera;
     private Node3D _cameraRig;
+    private CameraController _cameraController;
     private PackedScene _damageNumberScene;
 
     private Enemy _target;
@@ -34,7 +35,7 @@ public partial class CombatManager : Node
         _turnManager = turnManager;
         _camera = camera;
         _cameraRig = camera.GetParent<Node3D>();
-        _cameraRestPosition = _camera.Position;
+        _cameraController = _cameraRig as CameraController;
         _damageNumberScene = GD.Load<PackedScene>("res://scenes/DamageNumber.tscn");
     }
 
@@ -44,6 +45,10 @@ public partial class CombatManager : Node
         _target.OnCombatStarted();
         _turnManager.SetState(TurnState.Busy);
         _player.SetPhysicsProcess(false);
+
+        // Snapshot current camera position before zoom (dynamic with orbit camera)
+        _cameraRestPosition = _camera.Position;
+        _cameraController?.SetCombatMode(true);
 
         var tween = CreateTween();
         var zoomedPos = _cameraRestPosition * 0.75f;
@@ -98,10 +103,10 @@ public partial class CombatManager : Node
 
         var result = _target.ResolveIncomingDamage(damage, _player);
         GameState.RecordDamageDone(result.Damage);
-        SpawnDamageNumber(_target.GlobalPosition + Vector3.Up * 1.2f, result.Damage, false);
+        SpawnDamageNumber(_target.GlobalPosition + Vector3.Up * 0.6f, result.Damage, false);
 
         if (result.RetaliationDamage > 0)
-            SpawnDamageNumber(_player.GlobalPosition + Vector3.Up * 1.5f, result.RetaliationDamage, true);
+            SpawnDamageNumber(_player.GlobalPosition + Vector3.Up * 0.7f, result.RetaliationDamage, true);
 
         EmitCombatFeedback(result.BuildFeedbackText());
         _shakeTimeLeft = result.Damage > 0 || result.RetaliationDamage > 0 ? 0.15f : 0.08f;
@@ -148,9 +153,9 @@ public partial class CombatManager : Node
         _target.OnOwnerTurnStarted();
 
         var result = _target.ResolveOutgoingDamage(_player);
-        SpawnDamageNumber(_player.GlobalPosition + Vector3.Up * 1.5f, result.Damage, true);
+        SpawnDamageNumber(_player.GlobalPosition + Vector3.Up * 0.7f, result.Damage, true);
         if (result.HealingAmount > 0)
-            SpawnFloatingText(_target.GlobalPosition + Vector3.Up * 1.2f, $"+{result.HealingAmount}", Palette.HealText);
+            SpawnFloatingText(_target.GlobalPosition + Vector3.Up * 0.6f, $"+{result.HealingAmount}", Palette.HealText);
         EmitCombatFeedback(result.BuildFeedbackText());
         _shakeTimeLeft = result.Damage > 0 ? 0.12f : 0.08f;
         _target.OnOwnerTurnEnded();
@@ -176,6 +181,8 @@ public partial class CombatManager : Node
             .SetEase(Tween.EaseType.Out);
         tween.TweenCallback(Callable.From(() =>
         {
+            _cameraController?.SetCombatMode(false);
+            _cameraController?.RestoreCameraTransform();
             _turnManager.SetState(TurnState.Exploring);
             _player.SetPhysicsProcess(true);
         }));
