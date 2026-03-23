@@ -4,8 +4,8 @@ namespace ARPG;
 
 public partial class MapGenerator : Node3D
 {
-    // Scale factor applied to all positions and sizes to fill a 200x200 map
-    private const float S = 4.0f;
+    // Scale factor applied to all positions and sizes to fill a 100x100 map
+    private const float S = 2.0f;
 
     private static readonly Vector4[][] Layouts =
     {
