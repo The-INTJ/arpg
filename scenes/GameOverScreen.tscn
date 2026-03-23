@@ -1,6 +1,6 @@
 [gd_scene load_steps=3 format=3 uid="uid://c4p8m3m3j6snl"]
 
-[ext_resource type="Script" path="res://scripts/GameOverScreen.cs" id="1_game_over"]
+[ext_resource type="Script" path="res://scripts/ui/GameOverScreen.cs" id="1_game_over"]
 [ext_resource type="PackedScene" path="res://scenes/RunHistorySnippet.tscn" id="2_history"]
 
 [node name="GameOverScreen" type="Control"]

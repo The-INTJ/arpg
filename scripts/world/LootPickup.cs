@@ -50,7 +50,7 @@ public partial class LootPickup : Area3D
         _nameLabel.PixelSize = 0.004f;
         _nameLabel.Modulate = Palette.Accent;
         _nameLabel.OutlineSize = 4;
-        _nameLabel.OutlineModulate = new Color(0, 0, 0);
+        _nameLabel.OutlineModulate = Palette.OutlineBlack;
         _nameLabel.Position = new Vector3(0, 0.7f, 0);
         AddChild(_nameLabel);
 
@@ -64,7 +64,7 @@ public partial class LootPickup : Area3D
         _promptLabel.PixelSize = 0.004f;
         _promptLabel.Modulate = Palette.TextLight;
         _promptLabel.OutlineSize = 3;
-        _promptLabel.OutlineModulate = new Color(0, 0, 0);
+        _promptLabel.OutlineModulate = Palette.OutlineBlack;
         _promptLabel.Position = new Vector3(0, 1.0f, 0);
         _promptLabel.Visible = false;
         AddChild(_promptLabel);

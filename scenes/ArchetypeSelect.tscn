@@ -1,6 +1,6 @@
 [gd_scene load_steps=2 format=3 uid="uid://bdj4qlw0qayh7"]
 
-[ext_resource type="Script" path="res://scripts/ArchetypeSelect.cs" id="1_as"]
+[ext_resource type="Script" path="res://scripts/ui/ArchetypeSelect.cs" id="1_as"]
 
 [node name="ArchetypeSelect" type="Control"]
 layout_mode = 3

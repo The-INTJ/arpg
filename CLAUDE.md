@@ -27,7 +27,7 @@ Multiplayer is a core consideration from day one. This doesn't mean every featur
 ## Technical Rules
 
 - **Engine**: Godot 4.6, C# (.NET 8.0)
-- **All C# classes must be `partial`** (Godot 4.x requirement)
+- **All C# classes that extend Godot types (Node, Resource, etc.) must be `partial`** (Godot 4.x requirement). Pure data classes don't require `partial`.
 - **Project must be runnable after every change** — don't leave it broken between commits
 - **Primitive meshes + procedural sprites** — characters use `SpriteFactory` pixel art; environment uses primitive meshes
 - **Hardcode gameplay values** in scripts for now — data-driven content comes later when we have enough systems to justify it
@@ -44,23 +44,31 @@ Multiplayer is a core consideration from day one. This doesn't mean every featur
 
 ## Shared Systems
 
-- **Palette** (`scripts/Palette.cs`): All colors and UI button styling. Vibrant earth-tone palette. Every material/color in the game should reference Palette — don't hardcode color values elsewhere.
-- **GameKeys** (`scripts/GameKeys.cs`): Key binding display names. Actions defined in `project.godot` InputMap; `GameKeys.DisplayName(action)` reads the actual bound key at runtime. Change a key binding in one place (`project.godot`) and the UI updates everywhere.
-- **GameState** (`scripts/GameState.cs`): Static state passed between scenes (e.g., selected archetype).
-- **SpriteFactory** (`scripts/SpriteFactory.cs`): Generates procedural pixel-art textures for characters at runtime.
-- **PlayerStats** (`scripts/PlayerStats.cs`): Base stats + modifier stack. Effective stats computed on the fly. Archetype sets base values; modifiers layer with `+N → +N% → ×M → −N%` ordering.
-- **CombatManager** (`scripts/CombatManager.cs`): Handles combat flow — zoom in/out, attack/ability/retaliate exchange, damage numbers, camera shake.
-- **ModifierGenerator** (`scripts/ModifierGenerator.cs`): Random modifier creation for loot drops.
+- **Palette** (`scripts/core/Palette.cs`): All colors and UI button styling. Vibrant earth-tone palette. Every material/color in the game should reference Palette — don't hardcode color values elsewhere.
+- **GameKeys** (`scripts/core/GameKeys.cs`): Key binding display names. Actions defined in `project.godot` InputMap; `GameKeys.DisplayName(action)` reads the actual bound key at runtime. Change a key binding in one place (`project.godot`) and the UI updates everywhere.
+- **GameState** (`scripts/core/GameState.cs`): Static state passed between scenes (e.g., selected archetype).
+- **SpriteFactory** (`scripts/core/SpriteFactory.cs`): Generates procedural pixel-art textures for characters at runtime.
+- **PlayerStats** (`scripts/player/PlayerStats.cs`): Base stats + modifier stack. Effective stats computed on the fly. Archetype sets base values; modifiers layer with `+N → +N% → ×M → −N%` ordering.
+- **CombatManager** (`scripts/combat/CombatManager.cs`): Handles combat flow — zoom in/out, attack/ability/retaliate exchange, damage numbers, camera shake.
+- **ModifierGenerator** (`scripts/modifiers/ModifierGenerator.cs`): Random modifier creation for loot drops.
 
 ## File Layout
 
 ```
-scenes/          — .tscn scene files (MainMenu, ArchetypeSelect, Game, VictoryScreen, DamageNumber, etc.)
-scripts/         — .cs script files
-plans/           — development roadmap docs
+scenes/                    — .tscn scene files (MainMenu, ArchetypeSelect, Game, VictoryScreen, DamageNumber, etc.)
+scripts/
+  core/                    — Shared utilities, singletons, global state (Palette, GameKeys, GameState, SpriteFactory, AudioManager, TurnManager)
+  player/                  — Player character, stats, inventory, weapons, archetypes
+  combat/                  — Combat system, enemies, abilities, damage numbers
+  modifiers/               — Player modifier/stat math (Modifier, ModifierEffect, ModifierGenerator, etc.)
+  monster_effects/         — Enemy effect system (definitions, generator, instances, tags, roll contexts)
+  world/                   — Game scene controller, map generation, pickups, camera, room profiles
+  ui/                      — All screen-level UI scripts (menus, overlays, history)
+plans/                     — development roadmap docs
+docs/ai/                   — architecture and design documentation
 ```
 
-Scene files reference scripts via `res://scripts/ScriptName.cs`.
+Scene files reference scripts via `res://scripts/<subfolder>/ScriptName.cs`.
 
 ## Build & Run
 

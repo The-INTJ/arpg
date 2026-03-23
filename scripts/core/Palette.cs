@@ -29,6 +29,9 @@ public static class Palette
 	public static readonly Color EffectEnraged = new(0.96f, 0.44f, 0.23f);
 	public static readonly Color EffectLeech = new(0.41f, 0.92f, 0.56f);
 	public static readonly Color HealText = new(0.45f, 1.0f, 0.62f);
+	public static readonly Color DamagePlayer = new(1.0f, 0.3f, 0.3f);
+	public static readonly Color DamageEnemy = new(1.0f, 0.95f, 0.4f);
+	public static readonly Color OutlineBlack = new(0f, 0f, 0f);
 
 	public static void StyleButton(Button btn, int fontSize = 20)
 	{

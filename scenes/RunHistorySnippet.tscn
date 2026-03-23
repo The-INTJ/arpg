@@ -1,6 +1,6 @@
 [gd_scene load_steps=2 format=3]
 
-[ext_resource type="Script" path="res://scripts/RunHistorySnippet.cs" id="1_history_script"]
+[ext_resource type="Script" path="res://scripts/ui/RunHistorySnippet.cs" id="1_history_script"]
 
 [node name="RunHistorySnippet" type="VBoxContainer"]
 script = ExtResource("1_history_script")

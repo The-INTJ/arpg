@@ -1,6 +1,6 @@
 [gd_scene load_steps=2 format=3 uid="uid://8xhkehkpijak"]
 
-[ext_resource type="Script" path="res://scripts/ModifyStatsSimple.cs" id="1_script"]
+[ext_resource type="Script" path="res://scripts/ui/ModifyStatsSimple.cs" id="1_script"]
 
 [node name="ModifyStatsSimple" type="Control"]
 layout_mode = 3
