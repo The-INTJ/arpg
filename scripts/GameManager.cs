@@ -12,20 +12,22 @@ public partial class GameManager : Node3D
     private Label _statusLabel;
     private TurnManager _turnManager;
     private Timer _enemyTurnTimer;
+    private Camera3D _camera;
 
     private int _killCount;
     private const int KillsToWin = 3;
-    private const float AttackRange = 3.0f;
+    private const float AttackRange = 3.5f;
     private const float EnemyTurnDelay = 0.6f;
 
     public override void _Ready()
     {
         _player = GetNode<PlayerController>("World/Player");
         _exitDoor = GetNode<ExitDoor>("World/ExitDoor");
-        _attackButton = GetNode<Button>("CanvasLayer/HUD/AttackButton");
+        _attackButton = GetNode<Button>("CanvasLayer/AttackButton");
         _hpLabel = GetNode<Label>("CanvasLayer/HUD/HpLabel");
         _killLabel = GetNode<Label>("CanvasLayer/HUD/KillLabel");
         _statusLabel = GetNode<Label>("CanvasLayer/HUD/StatusLabel");
+        _camera = _player.GetNode<Camera3D>("CameraRig/Camera3D");
 
         _turnManager = new TurnManager();
         AddChild(_turnManager);
@@ -37,6 +39,23 @@ public partial class GameManager : Node3D
         AddChild(_enemyTurnTimer);
 
         _attackButton.Pressed += OnAttackPressed;
+        _attackButton.Visible = false;
+        Palette.StyleButton(_attackButton, 18);
+
+        // Style HUD labels
+        foreach (var label in new[] { _hpLabel, _killLabel, _statusLabel })
+        {
+            label.AddThemeColorOverride("font_color", Palette.TextLight);
+            label.AddThemeFontSizeOverride("font_size", 22);
+            label.AddThemeConstantOverride("shadow_offset_x", 2);
+            label.AddThemeConstantOverride("shadow_offset_y", 2);
+            label.AddThemeColorOverride("font_shadow_color", new Color(0, 0, 0, 0.8f));
+        }
+
+        // Floor color
+        var floorMesh = GetNode<MeshInstance3D>("World/Floor/FloorMesh");
+        var floorMat = new StandardMaterial3D { AlbedoColor = Palette.Floor };
+        floorMesh.MaterialOverride = floorMat;
 
         // Generate map and spawn enemies
         var mapGen = GetNode<MapGenerator>("World/MapGenerator");
@@ -50,41 +69,32 @@ public partial class GameManager : Node3D
 
     private void SpawnEnemy(Node3D container, Vector3 position)
     {
-        // Use `new Enemy()` directly so the C# type is correct
         var enemy = new Enemy();
         enemy.Position = position;
         enemy.AddToGroup("enemies");
 
-        // Body: dark red box
         var bodyMesh = new MeshInstance3D();
-        var box = new BoxMesh();
-        box.Size = new Vector3(0.45f, 0.45f, 0.45f);
-        var bodyMat = new StandardMaterial3D();
-        bodyMat.AlbedoColor = new Color(0.7f, 0.1f, 0.1f);
-        box.Material = bodyMat;
+        var box = new BoxMesh { Size = new Vector3(0.6f, 0.6f, 0.6f) };
+        box.Material = new StandardMaterial3D { AlbedoColor = Palette.EnemyBody };
         bodyMesh.Mesh = box;
-        bodyMesh.Position = new Vector3(0, 0.22f, 0);
+        bodyMesh.Position = new Vector3(0, 0.3f, 0);
         enemy.AddChild(bodyMesh);
 
-        // Head: bright red glowing sphere
         var headMesh = new MeshInstance3D();
-        var sphere = new SphereMesh();
-        sphere.Radius = 0.2f;
-        sphere.Height = 0.4f;
-        var headMat = new StandardMaterial3D();
-        headMat.AlbedoColor = new Color(1.0f, 0.2f, 0.2f);
-        headMat.Emission = new Color(0.5f, 0.0f, 0.0f);
-        headMat.EmissionEnabled = true;
-        sphere.Material = headMat;
+        var sphere = new SphereMesh { Radius = 0.25f, Height = 0.5f };
+        sphere.Material = new StandardMaterial3D
+        {
+            AlbedoColor = Palette.EnemyHead,
+            EmissionEnabled = true,
+            Emission = Palette.EnemyGlow,
+        };
         headMesh.Mesh = sphere;
-        headMesh.Position = new Vector3(0, 0.57f, 0);
+        headMesh.Position = new Vector3(0, 0.75f, 0);
         enemy.AddChild(headMesh);
 
         var shape = new CollisionShape3D();
-        var boxShape = new BoxShape3D();
-        boxShape.Size = new Vector3(0.45f, 0.75f, 0.45f);
-        shape.Shape = boxShape;
-        shape.Position = new Vector3(0, 0.37f, 0);
+        shape.Shape = new BoxShape3D { Size = new Vector3(0.6f, 0.9f, 0.6f) };
+        shape.Position = new Vector3(0, 0.45f, 0);
         enemy.AddChild(shape);
 
         container.AddChild(enemy);
@@ -93,8 +103,29 @@ public partial class GameManager : Node3D
     public override void _Process(double delta)
     {
         UpdateHud();
-        var canAttack = _turnManager.IsPlayerTurn && FindNearestEnemy() != null;
-        _attackButton.Disabled = !canAttack;
+        var nearest = FindNearestEnemy();
+        bool canAttack = _turnManager.IsPlayerTurn && nearest != null;
+
+        if (canAttack)
+        {
+            var worldPos = nearest.GlobalPosition + Vector3.Up * 1.5f;
+            if (!_camera.IsPositionBehind(worldPos))
+            {
+                var screenPos = _camera.UnprojectPosition(worldPos);
+                _attackButton.Text = $"Attack ({GameKeys.DisplayName(GameKeys.Attack)})";
+                _attackButton.Visible = true;
+                _attackButton.Disabled = false;
+                _attackButton.Position = screenPos - _attackButton.Size / 2;
+            }
+            else
+            {
+                _attackButton.Visible = false;
+            }
+        }
+        else
+        {
+            _attackButton.Visible = false;
+        }
     }
 
     private void UpdateHud()
@@ -120,6 +151,7 @@ public partial class GameManager : Node3D
                 }
             }
         }
+
         return nearest;
     }
 
@@ -133,7 +165,6 @@ public partial class GameManager : Node3D
         enemy.TakeDamage(_player.AttackDamage);
         _statusLabel.Text = $"You hit the enemy for {_player.AttackDamage}!";
 
-        // Check if enemy died
         if (!IsInstanceValid(enemy) || enemy.Hp <= 0)
         {
             _killCount++;
@@ -145,7 +176,6 @@ public partial class GameManager : Node3D
             }
         }
 
-        // Start enemy turn
         _turnManager.SetState(TurnState.EnemyTurn);
         _enemyTurnTimer.Start();
     }
@@ -169,7 +199,7 @@ public partial class GameManager : Node3D
         {
             _turnManager.SetState(TurnState.Defeat);
             _statusLabel.Text = "Defeated!";
-            _attackButton.Disabled = true;
+            _attackButton.Visible = false;
             _player.SetPhysicsProcess(false);
             return;
         }

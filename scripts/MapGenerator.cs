@@ -4,49 +4,43 @@ namespace ARPG;
 
 public partial class MapGenerator : Node3D
 {
-    // Hardcoded layouts: each is a list of wall positions (x, z) and sizes (w, d)
     private static readonly Vector4[][] Layouts =
     {
-        // Layout 0: L-shaped walls
-        new[]
+        new[] // L-shaped walls
         {
-            new Vector4(-4, -3, 6, 0.3f),
-            new Vector4(-4, -3, 0.3f, 4),
-            new Vector4(3, 2, 4, 0.3f),
+            new Vector4(-10, -7.5f, 15, 0.5f),
+            new Vector4(-10, -7.5f, 0.5f, 10),
+            new Vector4(7.5f, 5, 10, 0.5f),
         },
-        // Layout 1: Central pillar + side walls
-        new[]
+        new[] // Central pillar + side walls
         {
-            new Vector4(0, 0, 1.5f, 1.5f),
-            new Vector4(-6, -2, 0.3f, 6),
-            new Vector4(6, 1, 0.3f, 5),
+            new Vector4(0, 0, 4, 4),
+            new Vector4(-15, -5, 0.5f, 15),
+            new Vector4(15, 2.5f, 0.5f, 12.5f),
         },
-        // Layout 2: Corridors
-        new[]
+        new[] // Corridors
         {
-            new Vector4(-2, -4, 0.3f, 5),
-            new Vector4(2, 0, 0.3f, 5),
-            new Vector4(-5, 3, 4, 0.3f),
-            new Vector4(4, -2, 3, 0.3f),
+            new Vector4(-5, -10, 0.5f, 12.5f),
+            new Vector4(5, 0, 0.5f, 12.5f),
+            new Vector4(-12.5f, 7.5f, 10, 0.5f),
+            new Vector4(10, -5, 7.5f, 0.5f),
         },
-        // Layout 3: Scattered pillars
-        new[]
+        new[] // Scattered pillars
         {
-            new Vector4(-3, -4, 1, 1),
-            new Vector4(4, -2, 1, 1),
-            new Vector4(-5, 3, 1, 1),
-            new Vector4(2, 5, 1, 1),
-            new Vector4(0, -1, 1, 1),
+            new Vector4(-7.5f, -10, 2.5f, 2.5f),
+            new Vector4(10, -5, 2.5f, 2.5f),
+            new Vector4(-12.5f, 7.5f, 2.5f, 2.5f),
+            new Vector4(5, 12.5f, 2.5f, 2.5f),
+            new Vector4(0, -2.5f, 2.5f, 2.5f),
         },
     };
 
-    // Valid spawn positions per layout (open areas)
     private static readonly Vector3[][] SpawnSets =
     {
-        new[] { new Vector3(5, 0.5f, -5), new Vector3(-6, 0.5f, 3), new Vector3(3, 0.5f, 5), new Vector3(-2, 0.5f, -6), new Vector3(6, 0.5f, 1) },
-        new[] { new Vector3(-3, 0.5f, -5), new Vector3(4, 0.5f, -4), new Vector3(-4, 0.5f, 4), new Vector3(3, 0.5f, 5), new Vector3(5, 0.5f, -1) },
-        new[] { new Vector3(-5, 0.5f, -2), new Vector3(5, 0.5f, 3), new Vector3(0, 0.5f, -6), new Vector3(-4, 0.5f, 5), new Vector3(5, 0.5f, -5) },
-        new[] { new Vector3(6, 0.5f, -5), new Vector3(-6, 0.5f, -3), new Vector3(5, 0.5f, 4), new Vector3(-4, 0.5f, 6), new Vector3(-1, 0.5f, 3) },
+        new[] { new Vector3(12.5f, 0.5f, -12.5f), new Vector3(-15, 0.5f, 7.5f), new Vector3(7.5f, 0.5f, 12.5f), new Vector3(-5, 0.5f, -15), new Vector3(15, 0.5f, 2.5f) },
+        new[] { new Vector3(-7.5f, 0.5f, -12.5f), new Vector3(10, 0.5f, -10), new Vector3(-10, 0.5f, 10), new Vector3(7.5f, 0.5f, 12.5f), new Vector3(12.5f, 0.5f, -2.5f) },
+        new[] { new Vector3(-12.5f, 0.5f, -5), new Vector3(12.5f, 0.5f, 7.5f), new Vector3(0, 0.5f, -15), new Vector3(-10, 0.5f, 12.5f), new Vector3(12.5f, 0.5f, -12.5f) },
+        new[] { new Vector3(15, 0.5f, -12.5f), new Vector3(-15, 0.5f, -7.5f), new Vector3(12.5f, 0.5f, 10), new Vector3(-10, 0.5f, 15), new Vector3(-2.5f, 0.5f, 7.5f) },
     };
 
     public Vector3[] Generate()
@@ -55,30 +49,17 @@ public partial class MapGenerator : Node3D
         var layout = Layouts[idx];
         var spawns = SpawnSets[idx];
 
-        // Place walls
+        // Boundary walls
+        PlaceWall(0, -25, 52, 1, 3, Palette.BoundaryWall);
+        PlaceWall(0, 25, 52, 1, 3, Palette.BoundaryWall);
+        PlaceWall(-25, 0, 1, 52, 3, Palette.BoundaryWall);
+        PlaceWall(25, 0, 1, 52, 3, Palette.BoundaryWall);
+
+        // Interior walls
         foreach (var wall in layout)
-        {
-            var body = new StaticBody3D();
-            AddChild(body);
-            body.Position = new Vector3(wall.X, 1, wall.Y);
+            PlaceWall(wall.X, wall.Y, wall.Z, wall.W, 2.5f, Palette.Wall);
 
-            var mesh = new MeshInstance3D();
-            var box = new BoxMesh();
-            box.Size = new Vector3(wall.Z, 2, wall.W);
-            var wallMat = new StandardMaterial3D();
-            wallMat.AlbedoColor = new Color(0.4f, 0.35f, 0.3f);
-            box.Material = wallMat;
-            mesh.Mesh = box;
-            body.AddChild(mesh);
-
-            var shape = new CollisionShape3D();
-            var boxShape = new BoxShape3D();
-            boxShape.Size = new Vector3(wall.Z, 2, wall.W);
-            shape.Shape = boxShape;
-            body.AddChild(shape);
-        }
-
-        // Shuffle spawns and return 4-5 positions for enemies
+        // Shuffle and return spawn positions
         var shuffled = (Vector3[])spawns.Clone();
         for (int i = shuffled.Length - 1; i > 0; i--)
         {
@@ -86,11 +67,30 @@ public partial class MapGenerator : Node3D
             (shuffled[i], shuffled[j]) = (shuffled[j], shuffled[i]);
         }
 
-        int enemyCount = 4 + (int)(GD.Randi() % 2); // 4 or 5
+        int enemyCount = 4 + (int)(GD.Randi() % 2);
         var result = new Vector3[enemyCount];
         for (int i = 0; i < enemyCount && i < shuffled.Length; i++)
             result[i] = shuffled[i];
 
         return result;
+    }
+
+    private void PlaceWall(float x, float z, float w, float d, float h, Color color)
+    {
+        var body = new StaticBody3D();
+        AddChild(body);
+        body.Position = new Vector3(x, h / 2, z);
+
+        var mesh = new MeshInstance3D();
+        var box = new BoxMesh { Size = new Vector3(w, h, d) };
+        var mat = new StandardMaterial3D { AlbedoColor = color };
+        box.Material = mat;
+        mesh.Mesh = box;
+        body.AddChild(mesh);
+
+        var shape = new CollisionShape3D();
+        var boxShape = new BoxShape3D { Size = new Vector3(w, h, d) };
+        shape.Shape = boxShape;
+        body.AddChild(shape);
     }
 }

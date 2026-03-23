@@ -9,6 +9,12 @@ public partial class PlayerController : CharacterBody3D
     public int Hp = 15;
     public int AttackDamage = 5;
 
+    public override void _Ready()
+    {
+        var mesh = GetNode<MeshInstance3D>("PlayerMesh");
+        mesh.MaterialOverride = new StandardMaterial3D { AlbedoColor = Palette.PlayerBody };
+    }
+
     public override void _PhysicsProcess(double delta)
     {
         var input = Vector3.Zero;
