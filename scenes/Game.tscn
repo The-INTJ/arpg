@@ -1,3 +1,102 @@
-[gd_scene format=3 uid="uid://b8ru378ifyyhi"]
+[gd_scene load_steps=11 format=3 uid="uid://b8ru378ifyyhi"]
 
-[node name="Game" type="Node3D" unique_id=1025440369]
+[ext_resource type="Script" path="res://scripts/GameManager.cs" id="1_gm"]
+[ext_resource type="Script" path="res://scripts/PlayerController.cs" id="2_pc"]
+[ext_resource type="Script" path="res://scripts/ExitDoor.cs" id="4_ed"]
+[ext_resource type="Script" path="res://scripts/MapGenerator.cs" id="5_mg"]
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_floor"]
+size = Vector2(20, 20)
+
+[sub_resource type="WorldBoundaryShape3D" id="WorldBoundaryShape3D_floor"]
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_player"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_player"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_barrier"]
+size = Vector3(3, 2, 0.3)
+
+[sub_resource type="StandardMaterial3D" id="Material_barrier"]
+albedo_color = Color(0.8, 0.2, 0.2, 1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_trigger"]
+size = Vector3(3, 2, 1)
+
+[node name="Game" type="Node3D"]
+script = ExtResource("1_gm")
+
+[node name="World" type="Node3D" parent="."]
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="World"]
+transform = Transform3D(1, 0, 0, 0, 0.707107, 0.707107, 0, -0.707107, 0.707107, 0, 10, 0)
+
+[node name="Floor" type="StaticBody3D" parent="World"]
+
+[node name="FloorMesh" type="MeshInstance3D" parent="World/Floor"]
+mesh = SubResource("PlaneMesh_floor")
+
+[node name="FloorCollision" type="CollisionShape3D" parent="World/Floor"]
+shape = SubResource("WorldBoundaryShape3D_floor")
+
+[node name="MapGenerator" type="Node3D" parent="World"]
+script = ExtResource("5_mg")
+
+[node name="Player" type="CharacterBody3D" parent="World"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 5)
+script = ExtResource("2_pc")
+
+[node name="PlayerMesh" type="MeshInstance3D" parent="World/Player"]
+mesh = SubResource("CapsuleMesh_player")
+
+[node name="PlayerCollision" type="CollisionShape3D" parent="World/Player"]
+shape = SubResource("CapsuleShape3D_player")
+
+[node name="CameraRig" type="Node3D" parent="World/Player"]
+
+[node name="Camera3D" type="Camera3D" parent="World/Player/CameraRig"]
+transform = Transform3D(1, 0, 0, 0, 0.707107, 0.707107, 0, -0.707107, 0.707107, 0, 8, 8)
+
+[node name="Enemies" type="Node3D" parent="World"]
+
+[node name="ExitDoor" type="Node3D" parent="World"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -9)
+script = ExtResource("4_ed")
+
+[node name="Barrier" type="MeshInstance3D" parent="World/ExitDoor"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+mesh = SubResource("BoxMesh_barrier")
+surface_material_override/0 = SubResource("Material_barrier")
+
+[node name="Trigger" type="Area3D" parent="World/ExitDoor"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0.5)
+
+[node name="TriggerCollision" type="CollisionShape3D" parent="World/ExitDoor/Trigger"]
+shape = SubResource("BoxShape3D_trigger")
+
+[node name="CanvasLayer" type="CanvasLayer" parent="."]
+
+[node name="HUD" type="VBoxContainer" parent="CanvasLayer"]
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -200.0
+offset_bottom = 140.0
+grow_horizontal = 0
+
+[node name="HpLabel" type="Label" parent="CanvasLayer/HUD"]
+layout_mode = 2
+text = "HP: 15"
+
+[node name="KillLabel" type="Label" parent="CanvasLayer/HUD"]
+layout_mode = 2
+text = "Kills: 0/3"
+
+[node name="StatusLabel" type="Label" parent="CanvasLayer/HUD"]
+layout_mode = 2
+text = "Find and defeat 3 enemies"
+
+[node name="AttackButton" type="Button" parent="CanvasLayer/HUD"]
+layout_mode = 2
+text = "Attack"
+disabled = true
