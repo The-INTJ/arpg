@@ -18,6 +18,7 @@ public partial class GameManager : Node3D
 
     private ProgressBar _enemyHpBar;
     private Label _enemyHpLabel;
+    private ModifyStatsSimple _modifyStatsScreen;
 
     private int _killCount;
     private const int KillsToWin = 3;
@@ -52,6 +53,10 @@ public partial class GameManager : Node3D
 
         BuildAbilityButton();
         BuildEnemyHpBar();
+
+        _modifyStatsScreen = GetNode<ModifyStatsSimple>("CanvasLayer/ModifyStatsSimple");
+        var pauseScreen = GetNode<PauseScreen>("CanvasLayer/PauseScreen");
+        pauseScreen.ViewStatsRequested += () => _modifyStatsScreen.Open(_player.Stats);
 
         int fontSize = Mathf.Max(18, (int)(GetViewport().GetVisibleRect().Size.Y * 0.03f));
         foreach (var label in new[] { _hpLabel, _statsLabel, _killLabel, _statusLabel })
