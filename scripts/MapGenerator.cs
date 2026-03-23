@@ -67,12 +67,7 @@ public partial class MapGenerator : Node3D
             (shuffled[i], shuffled[j]) = (shuffled[j], shuffled[i]);
         }
 
-        int enemyCount = 4 + (int)(GD.Randi() % 2);
-        var result = new Vector3[enemyCount];
-        for (int i = 0; i < enemyCount && i < shuffled.Length; i++)
-            result[i] = shuffled[i];
-
-        return result;
+        return shuffled;
     }
 
     private void PlaceWall(float x, float z, float w, float d, float h, Color color)

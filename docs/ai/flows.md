@@ -12,21 +12,21 @@
 
 `GameManager._Ready()` currently does all of this:
 
-1. Resolve key scene nodes such as player, exit door, camera, HUD labels, and pause screen.
+1. Resolve key scene nodes such as player, exit door, camera, HUD labels, pause screen, and modify-stats overlay.
 2. Create and add `TurnManager`.
 3. Create and add `CombatManager`, then initialize it with player, turn manager, and camera.
-4. Build runtime HUD pieces such as ability button, enemy HP display, and room label.
+4. Build runtime HUD pieces such as ability button, enemy HP display, room label, and item bar.
 5. Apply some world styling such as the floor material.
-6. Ask `MapGenerator` for layout walls and enemy spawn positions.
+6. Ask `MapGenerator` for layout walls and a shuffled spawn set.
 7. Spawn room enemies into `World/Enemies`.
-8. Create and add `ModifyStatsSimple` under the `CanvasLayer`.
+8. Spawn one map item pickup at the next free spawn point after the enemy placements.
 9. Wire pause-to-stats interaction.
 10. Populate HUD text.
 
 ## Exploration Flow
 
 1. Player movement runs in `PlayerController._PhysicsProcess`.
-2. `GameManager._Process()` updates the HUD every frame.
+2. `GameManager._Process()` updates the HUD and item bar every frame.
 3. While `TurnManager.IsExploring`:
    - player regen ticks
    - nearby enemies are scanned for aggro
@@ -39,7 +39,7 @@
 
 ## Combat Flow
 
-Current combat is a one-player versus one-enemy exchange:
+Current combat is still a one-player versus one-enemy exchange:
 
 1. Combat starts either from aggro or pressing attack near an enemy in exploration.
 2. `CombatManager.EnterCombat(...)`:
@@ -50,6 +50,7 @@ Current combat is a one-player versus one-enemy exchange:
 3. On the player turn:
    - `E` attacks
    - `Q` uses the weapon-linked ability if ready
+   - item hotkeys use the occupied inventory slot if the item can be used now
 4. `CombatManager` applies damage and spawns a floating damage number.
 5. If the enemy survives, a short timer triggers retaliation.
 6. Enemy retaliation damages the player and returns control to player turn.
@@ -58,6 +59,18 @@ Current combat is a one-player versus one-enemy exchange:
    - enemy queues free
    - camera exits combat
    - `CombatEnded` signal fires back to `GameManager`
+
+## Item Flow
+
+Current item flow is the MVP version of a larger intended item system:
+
+1. Each room spawns one `ItemPickup`.
+2. Walking into the pickup tries to auto-store the item in the first open inventory slot.
+3. If inventory is full, the pickup stays in the world and shows an inventory-full prompt.
+4. Hotkeys are reserved from `Z` through `M` via `GameKeys`, but the player inventory currently starts with capacity 2, so only `Z` and `X` are active by default.
+5. Current item kinds:
+   - `HealingTonic`: heals immediately; if used on the player turn in combat, it consumes the turn and still hands off to retaliation
+   - `EmberBomb`: combat-only direct damage item; consumes the turn
 
 ## Kill, Loot, And Progression Flow
 
@@ -103,18 +116,22 @@ Loot interaction flow:
 4. View Stats hides pause but leaves the game paused, then asks `GameManager` to open `ModifyStatsSimple`.
 5. Quit to Menu unpauses and loads `MainMenu`.
 
-## Room And Victory Flow
+## Room, Victory, And Defeat Flow
 
 1. Clearing a room unlocks `ExitDoor`.
 2. Walking into the door trigger:
    - advances `GameState.CurrentRoom` and reloads `Game.tscn`, or
    - loads `VictoryScreen` if the final room was cleared
+3. If the player dies, `TurnManager` enters `Defeat`.
+4. `GameManager` handles that state change, clears combat UI, and loads `GameOverScreen`.
+5. `VictoryScreen` and `GameOverScreen` both reset the run before starting again.
 
 ## Current Flow Constraints
 
-These flows all assume:
+These flows all still assume:
 
 - one local player
 - one active combat target at a time
 - room progression through reloading the same gameplay scene
 - persistent player build state stored globally in `GameState`
+- items are currently simple consumables even though the longer-term design intent is permanent cooldown-based item skills

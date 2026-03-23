@@ -9,6 +9,7 @@ This folder explains how the game is actually put together today:
 - `architecture.md`: current scene graph, code boundaries, shared systems, and state ownership
 - `patterns.md`: repo conventions, Godot usage patterns, and current implementation habits
 - `flows.md`: runtime flows from boot through combat, loot, rooms, pause, and victory
+- `inventory-and-items.md`: current item inventory implementation, hotkeys, combat behavior, and intended future direction
 - `abstraction-watchlist.md`: hotspots, drift risks, and the next seams to carve out as the project scales
 
 ## Read Order For Agents
@@ -18,8 +19,9 @@ Read these in this order before making broad or cross-cutting changes:
 1. `AGENTS.md`
 2. `docs/ai/architecture.md`
 3. `docs/ai/flows.md`
-4. `docs/ai/patterns.md`
-5. `docs/ai/abstraction-watchlist.md`
+4. `docs/ai/inventory-and-items.md` if your change touches item flow, inventory, or hotkeys
+5. `docs/ai/patterns.md`
+6. `docs/ai/abstraction-watchlist.md`
 
 For small local changes, read `AGENTS.md` plus the doc most related to the area you are touching.
 

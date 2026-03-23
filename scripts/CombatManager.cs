@@ -55,7 +55,7 @@ public partial class CombatManager : Node
     public void PlayerAttack()
     {
         if (!_turnManager.IsPlayerTurn || _target == null) return;
-        DealDamage(_player.AttackDamage);
+        ResolveDamageAction(_player.AttackDamage, true);
     }
 
     public void PlayerAbility()
@@ -67,10 +67,26 @@ public partial class CombatManager : Node
 
         int damage = (int)(_player.AttackDamage * ability.DamageMultiplier);
         ability.Use();
-        DealDamage(damage);
+        ResolveDamageAction(damage, true);
     }
 
-    private void DealDamage(int damage)
+    public void PlayerUseDamageItem(int damage)
+    {
+        if (!_turnManager.IsPlayerTurn || _target == null) return;
+        ResolveDamageAction(damage, false);
+    }
+
+    public void PlayerUseUtilityItem()
+    {
+        if (!_turnManager.IsPlayerTurn || _target == null || !IsInstanceValid(_target)) return;
+
+        _turnManager.SetState(TurnState.Busy);
+
+        var timer = GetTree().CreateTimer(EnemyRetaliationDelay);
+        timer.Timeout += OnEnemyRetaliate;
+    }
+
+    private void ResolveDamageAction(int damage, bool tickAbilityCooldown)
     {
         _turnManager.SetState(TurnState.Busy);
 
@@ -78,8 +94,8 @@ public partial class CombatManager : Node
         SpawnDamageNumber(_target.GlobalPosition + Vector3.Up * 1.2f, damage, false);
         _shakeTimeLeft = 0.15f;
 
-        // Tick ability cooldown after each attack
-        _player.Ability?.TickCooldown();
+        if (tickAbilityCooldown)
+            _player.Ability?.TickCooldown();
 
         if (_target.IsDead)
         {

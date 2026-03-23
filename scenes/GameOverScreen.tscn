@@ -1,4 +1,4 @@
-[gd_scene load_steps=2 format=3 uid="uid://c4p8m3m3j6snl"]
+[gd_scene format=3 uid="uid://c4p8m3m3j6snl"]
 
 [ext_resource type="Script" path="res://scripts/GameOverScreen.cs" id="1_game_over"]
 

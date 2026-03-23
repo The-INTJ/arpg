@@ -25,7 +25,7 @@
 The repo already has a useful split between:
 
 - node behavior classes such as `GameManager`, `PlayerController`, and `Enemy`
-- plain gameplay model classes such as `PlayerStats`, `Weapon`, `Ability`, and `Modifier`
+- plain gameplay model classes such as `PlayerStats`, `Weapon`, `Ability`, `Modifier`, `PlayerInventory`, and `InventoryItem`
 
 That split should be reinforced, not erased.
 
@@ -39,7 +39,7 @@ Several systems are created directly in code rather than instanced from `.tscn` 
 - `CombatManager`
 - `Enemy`
 - `LootPickup`
-- `ModifyStatsSimple`
+- `ItemPickup`
 - some gameplay HUD controls
 
 This works, but future contributors need a clear rule for when code creation is preferred over packed scenes.
@@ -51,7 +51,7 @@ Menu and victory scenes are straightforward:
 - scene defines layout
 - script styles nodes and wires button signals
 
-This is a healthy pattern and easy for agents to extend safely.
+`GameOverScreen` follows the same pattern. This is a healthy pattern and easy for agents to extend safely.
 
 ### Central Orchestrator In Gameplay
 
@@ -66,6 +66,15 @@ This is a healthy pattern and easy for agents to extend safely.
 - room progression tracker
 
 This is the repo's clearest current pattern and also its biggest scaling risk.
+
+### Consumable MVP For A Permanent Item Goal
+
+The current item system is intentionally not the final shape:
+
+- today: simple run inventory, two starting slots, one pickup per room, consumable item kinds
+- intended direction: permanent items with usable skills on cooldown
+
+Future contributors should treat the current consumables as the first vertical-slice implementation, not as proof that all items should disappear on use.
 
 ## Current Inconsistencies
 
@@ -93,6 +102,7 @@ Prefer plain C# types for:
 
 - stat math
 - item definitions
+- inventory slot state
 - combat result payloads
 - flow-independent game rules
 
@@ -106,6 +116,7 @@ Good future seams include:
 - combat flow
 - HUD presentation
 - inventory/build management
+- item skill and cooldown handling
 
 ## Multi-Agent Pattern Guidance
 

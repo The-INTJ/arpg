@@ -26,7 +26,7 @@ Current problem:
 
 - assumes one player and one enemy target
 - assumes no movement during combat
-- assumes attack and ability are the only player actions
+- current action surface is still hand-authored: attack, weapon ability, and a tiny item-action path
 
 Likely future split:
 
@@ -59,8 +59,8 @@ Current problem:
 
 Examples:
 
-- `scenes/ModifyStatsSimple.tscn` exists, but `GameManager` uses `new ModifyStatsSimple()`
 - `scenes/LootPickup.tscn` exists, but `GameManager` uses `new LootPickup()`
+- `ItemPickup` is code-only today, while loot still has a `.tscn` placeholder scene
 - `scenes/PauseScreen.tscn` exists, but `Game.tscn` embeds a node with the script directly
 
 Recommended rule:
@@ -96,13 +96,15 @@ Recommended rule:
 
 Current problem:
 
-- `PlayerStats` already owns stat math, current HP, weapon slots, and backpack modifiers
+- `PlayerStats` already owns stat math, current HP, weapon slots, backpack modifiers, and the current item inventory
+- the current item MVP is consumable-based, but the intended direction is permanent items with cooldown skills
 - future items, equipment, temporary buffs, and multiplayer loadouts can easily turn it into a second god object
 
 Likely future split:
 
 - `PlayerBuild` or `Loadout`
 - `Inventory`
+- `ItemInstance` or cooldown-bearing item state
 - temporary combat effects or status layer
 - stat calculation service or aggregator
 
@@ -146,8 +148,8 @@ Try to land new work by creating or extending smaller owned units around those f
 ## Concrete Risks Already Visible
 
 - `scripts/GameManager.cs` is far past the repo's preferred script size guideline.
-- `scripts/VictoryScreen.cs` reloads `Game.tscn` directly and does not reset run state, which can preserve stale room/player data.
-- input handling for combat and loot shares the same action keys, which may cause overlap pressure as interaction complexity grows.
+- item behavior is still a kind-switch in `scripts/GameManager.cs`, which is acceptable for now but will not scale to many item skills.
+- `scripts/PlayerStats.cs` now owns both modifier math and inventory state, which increases cross-system merge pressure.
 - current combat and state flow are not yet multiplayer-shaped even though the project wants multiplayer-aware foundations.
 
 ## Suggested Documentation Growth
@@ -155,9 +157,8 @@ Try to land new work by creating or extending smaller owned units around those f
 As the project expands, this folder should eventually gain:
 
 - `combat.md`
-- `inventory-and-items.md`
 - `rooms-and-progression.md`
 - `ui-ownership.md`
 - `multiplayer-readiness.md`
 
-Do not add those early just to be comprehensive. Add them when a real subsystem has enough moving parts to deserve its own map.
+`inventory-and-items.md` exists now because the subsystem crossed that threshold. Keep it updated as item intent and implementation evolve.

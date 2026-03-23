@@ -21,6 +21,8 @@ public partial class GameManager : Node3D
 
     private ProgressBar _enemyHpBar;
     private Label _enemyHpLabel;
+    private Label[] _itemSlotLabels = System.Array.Empty<Label>();
+    private StyleBoxFlat[] _itemSlotStyles = System.Array.Empty<StyleBoxFlat>();
 
     private int _killCount;
     private int _totalEnemies;
@@ -62,6 +64,7 @@ public partial class GameManager : Node3D
         BuildAbilityButton();
         BuildEnemyHpBar();
         BuildRoomLabel();
+        BuildItemBar();
 
         _modifyScreen = GetNode<ModifyStatsSimple>("CanvasLayer/ModifyStatsSimple");
         _pauseScreen = GetNode<PauseScreen>("CanvasLayer/PauseScreen");
@@ -91,6 +94,10 @@ public partial class GameManager : Node3D
             bool isBoss = _isBossRoom && i == 0; // First enemy in boss room is the boss
             SpawnEnemy(enemiesContainer, spawnPositions[i], isBoss);
         }
+
+        if (enemyCount < spawnPositions.Length)
+            SpawnMapItem(spawnPositions[enemyCount]);
+
         _totalEnemies = enemyCount;
 
         UpdateHud();
@@ -182,6 +189,54 @@ public partial class GameManager : Node3D
         canvas.AddChild(_roomLabel);
     }
 
+    private void BuildItemBar()
+    {
+        int slotCount = _player.Stats.Inventory.Capacity;
+        _itemSlotLabels = new Label[slotCount];
+        _itemSlotStyles = new StyleBoxFlat[slotCount];
+
+        var canvas = GetNode<CanvasLayer>("CanvasLayer");
+        var center = new CenterContainer();
+        center.Name = "ItemBarCenter";
+        center.AnchorLeft = 0.0f;
+        center.AnchorRight = 1.0f;
+        center.AnchorTop = 1.0f;
+        center.AnchorBottom = 1.0f;
+        center.OffsetTop = -100;
+        center.OffsetBottom = -20;
+        canvas.AddChild(center);
+
+        var hbox = new HBoxContainer();
+        hbox.AddThemeConstantOverride("separation", 12);
+        center.AddChild(hbox);
+
+        for (int i = 0; i < slotCount; i++)
+        {
+            var panel = new Panel();
+            panel.CustomMinimumSize = new Vector2(180, 58);
+
+            var style = new StyleBoxFlat();
+            style.BgColor = new Color(Palette.BgDark, 0.92f);
+            style.BorderColor = Palette.TextDisabled;
+            style.SetBorderWidthAll(2);
+            style.SetCornerRadiusAll(8);
+            style.SetContentMarginAll(10);
+            panel.AddThemeStyleboxOverride("panel", style);
+            hbox.AddChild(panel);
+
+            var label = new Label();
+            label.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+            label.HorizontalAlignment = HorizontalAlignment.Center;
+            label.VerticalAlignment = VerticalAlignment.Center;
+            label.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+            label.AddThemeFontSizeOverride("font_size", 15);
+            panel.AddChild(label);
+
+            _itemSlotLabels[i] = label;
+            _itemSlotStyles[i] = style;
+        }
+    }
+
     private void SpawnEnemy(Node3D container, Vector3 position, bool isBoss)
     {
         var enemy = new Enemy();
@@ -233,11 +288,22 @@ public partial class GameManager : Node3D
             OnAttackPressed();
         else if (@event.IsActionPressed(GameKeys.Ability))
             OnAbilityPressed();
+
+        for (int i = 0; i < _player.Stats.Inventory.Capacity && i < GameKeys.ItemSlots.Length; i++)
+        {
+            if (!@event.IsActionPressed(GameKeys.ItemSlot(i)))
+                continue;
+
+            OnItemSlotPressed(i);
+            GetViewport().SetInputAsHandled();
+            return;
+        }
     }
 
     public override void _Process(double delta)
     {
         UpdateHud();
+        UpdateItemBar();
 
         if (_turnManager.IsExploring)
         {
@@ -395,6 +461,30 @@ public partial class GameManager : Node3D
         _killLabel.Text = $"Kills: {_killCount}/{_totalEnemies}";
     }
 
+    private void UpdateItemBar()
+    {
+        var inventory = _player.Stats.Inventory;
+        for (int i = 0; i < inventory.Capacity; i++)
+        {
+            string keyName = GameKeys.DisplayName(GameKeys.ItemSlot(i));
+            var item = inventory.GetItem(i);
+
+            if (item == null)
+            {
+                _itemSlotLabels[i].Text = $"{keyName}\n(empty)";
+                _itemSlotLabels[i].AddThemeColorOverride("font_color", Palette.TextDisabled);
+                _itemSlotStyles[i].BgColor = new Color(Palette.BgDark, 0.92f);
+                _itemSlotStyles[i].BorderColor = Palette.TextDisabled;
+                continue;
+            }
+
+            _itemSlotLabels[i].Text = $"{keyName}  {item.Name}\n{item.Description}";
+            _itemSlotLabels[i].AddThemeColorOverride("font_color", Palette.TextLight);
+            _itemSlotStyles[i].BgColor = new Color(Palette.ButtonBg, 0.95f);
+            _itemSlotStyles[i].BorderColor = item.DisplayColor;
+        }
+    }
+
     // --- Actions ---
 
     private Enemy FindNearestEnemy(float range)
@@ -445,6 +535,64 @@ public partial class GameManager : Node3D
         {
             _combatManager.PlayerAbility();
         }
+    }
+
+    private void OnItemSlotPressed(int slotIndex)
+    {
+        if (_turnManager.State == TurnState.Defeat || GetTree().Paused)
+            return;
+
+        var inventory = _player.Stats.Inventory;
+        var item = inventory.GetItem(slotIndex);
+        if (item == null)
+            return;
+
+        if (_turnManager.InCombat && !_turnManager.IsPlayerTurn)
+        {
+            _statusLabel.Text = "Can't use items right now.";
+            return;
+        }
+
+        switch (item.Kind)
+        {
+            case ItemKind.HealingTonic:
+                UseHealingItem(slotIndex, item);
+                break;
+            case ItemKind.EmberBomb:
+                UseEmberBomb(slotIndex, item);
+                break;
+        }
+    }
+
+    private void UseHealingItem(int slotIndex, InventoryItem item)
+    {
+        if (_player.Hp >= _player.Stats.MaxHp)
+        {
+            _statusLabel.Text = "Already at full HP.";
+            return;
+        }
+
+        int oldHp = _player.Hp;
+        _player.Hp = Mathf.Min(_player.Hp + item.Power, _player.Stats.MaxHp);
+        int healed = _player.Hp - oldHp;
+        _player.Stats.Inventory.RemoveAt(slotIndex);
+        _statusLabel.Text = $"Used {item.Name}: +{healed} HP";
+
+        if (_turnManager.IsPlayerTurn)
+            _combatManager.PlayerUseUtilityItem();
+    }
+
+    private void UseEmberBomb(int slotIndex, InventoryItem item)
+    {
+        if (!_turnManager.IsPlayerTurn || _combatManager.Target == null || !IsInstanceValid(_combatManager.Target))
+        {
+            _statusLabel.Text = $"{item.Name} needs a combat target.";
+            return;
+        }
+
+        _player.Stats.Inventory.RemoveAt(slotIndex);
+        _statusLabel.Text = $"Used {item.Name} for {item.Power} damage!";
+        _combatManager.PlayerUseDamageItem(item.Power);
     }
 
     private void OnCombatEnded()
@@ -499,6 +647,27 @@ public partial class GameManager : Node3D
     private void ShowGameOverScreen()
     {
         GetTree().ChangeSceneToFile("res://scenes/GameOverScreen.tscn");
+    }
+
+    private void SpawnMapItem(Vector3 position)
+    {
+        var pickup = new ItemPickup();
+        pickup.Position = position;
+        pickup.Init(InventoryItem.CreateForRoom(_room));
+        pickup.Collected += OnItemCollected;
+        pickup.InventoryFull += OnItemInventoryFull;
+        GetNode<Node3D>("World").AddChild(pickup);
+    }
+
+    private void OnItemCollected(string itemName, int slotIndex)
+    {
+        string keyName = GameKeys.DisplayName(GameKeys.ItemSlot(slotIndex));
+        _statusLabel.Text = $"Picked up {itemName} ({keyName})";
+    }
+
+    private void OnItemInventoryFull(string itemName)
+    {
+        _statusLabel.Text = $"Inventory full for {itemName}.";
     }
 
     // --- Loot ---

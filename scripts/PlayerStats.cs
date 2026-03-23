@@ -23,6 +23,7 @@ public partial class PlayerStats
 
     /// <summary>The player's equipped weapon (provides 2 modifier slots + ability).</summary>
     public Weapon Weapon { get; set; }
+    public PlayerInventory Inventory { get; } = new(2);
 
     // Effective stats (base + weapon slots + modifiers)
     public int MaxHp => (int)ComputeStat(StatTarget.MaxHp, _baseMaxHp);

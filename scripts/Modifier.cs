@@ -45,6 +45,7 @@ public class Modifier
         ModifierOp.PercentAdd => $"{Value:0}%",
         ModifierOp.PercentReduce => $"{Value:0}%",
         ModifierOp.Multiply => $"{Value:0.#}",
+        ModifierOp.FlatAdd when Target == StatTarget.MoveSpeed || Target == StatTarget.AttackRange => $"{Value:0.#}",
         _ => $"{(int)Value}"
     };
 
