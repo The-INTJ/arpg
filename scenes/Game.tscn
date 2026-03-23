@@ -1,10 +1,11 @@
-[gd_scene load_steps=16 format=3 uid="uid://b8ru378ifyyhi"]
+[gd_scene load_steps=17 format=3 uid="uid://b8ru378ifyyhi"]
 
 [ext_resource type="Script" path="res://scripts/GameManager.cs" id="1_gm"]
 [ext_resource type="Script" path="res://scripts/PlayerController.cs" id="2_pc"]
 [ext_resource type="Script" path="res://scripts/ExitDoor.cs" id="4_ed"]
 [ext_resource type="Script" path="res://scripts/MapGenerator.cs" id="5_mg"]
 [ext_resource type="Script" path="res://scripts/PauseScreen.cs" id="6_ps"]
+[ext_resource type="Script" path="res://scripts/ModifyStatsSimple.cs" id="7_mss"]
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_floor"]
 size = Vector2(50, 50)
@@ -148,3 +149,12 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("6_ps")
+
+[node name="ModifyStatsSimple" type="Control" parent="CanvasLayer"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("7_mss")

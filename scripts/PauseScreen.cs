@@ -4,6 +4,9 @@ namespace ARPG;
 
 public partial class PauseScreen : Control
 {
+    [Signal]
+    public delegate void ViewStatsRequestedEventHandler();
+
     private Button _resumeButton;
     private Button _statsButton;
     private Button _quitButton;
@@ -48,6 +51,7 @@ public partial class PauseScreen : Control
         _statsButton = new Button();
         _statsButton.Text = "View Stats";
         Palette.StyleButton(_statsButton, 22);
+        _statsButton.Pressed += OnViewStats;
         vbox.AddChild(_statsButton);
 
         // Quit to menu
@@ -81,6 +85,12 @@ public partial class PauseScreen : Control
     {
         Visible = false;
         GetTree().Paused = false;
+    }
+
+    private void OnViewStats()
+    {
+        Visible = false;
+        EmitSignal(SignalName.ViewStatsRequested);
     }
 
     private void OnQuit()
