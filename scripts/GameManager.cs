@@ -677,15 +677,15 @@ public partial class GameManager : Node3D
         var pickup = new LootPickup();
         pickup.Position = position;
         pickup.Init(ModifierGenerator.Random());
-        pickup.EquipRequested += OnLootEquipRequested;
+        pickup.EquipRequested += () => OnLootEquipRequested(pickup.Modifier);
         pickup.Stashed += OnLootStashed;
         GetNode<Node3D>("World").AddChild(pickup);
     }
 
-    private void OnLootEquipRequested()
+    private void OnLootEquipRequested(Modifier modifier)
     {
-        // Modifier is already in backpack (LootPickup does that)
-        _modifyScreen.Open(_player.Stats);
+        // The modifier is already in the backpack (LootPickup does that).
+        _modifyScreen.Open(_player.Stats, modifier);
     }
 
     private void OnLootStashed(string description)

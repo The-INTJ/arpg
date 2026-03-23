@@ -1,34 +1,36 @@
 using Godot;
-using System.Collections.Generic;
 
 namespace ARPG;
 
 /// <summary>
-/// Overlay screen for managing weapon modifier slots and viewing stats.
-/// Drag modifiers from backpack onto weapon slots, with before/after confirmation.
+/// Overlay screen for managing weapon modifiers and viewing effective stats.
+/// The UI exposes one persistent row per stat target instead of anonymous numbered slots.
 /// </summary>
 public partial class ModifyStatsSimple : Control
 {
 	private PlayerStats _stats;
 	private Label _weaponTitle;
-	private Label[] _slotLabels = new Label[2];
-	private Panel[] _slotPanels = new Panel[2];
+	private Label _selectedModifierLabel;
+	private Button[] _channelButtons = new Button[StatTargetInfo.All.Length];
 	private Label _youStatsLabel;
 	private VBoxContainer _backpackList;
 	private Label _backpackEmptyLabel;
 
-	// Confirmation popup
-	private Panel _confirmPanel;
+	private PanelContainer _confirmPanel;
 	private Label _confirmLabel;
-	private int _pendingSlot = -1;
-	private Modifier _pendingMod;
+	private Modifier _selectedModifier;
+	private Modifier _pendingModifier;
 
 	[Signal]
 	public delegate void ClosedEventHandler();
 
-	public void Open(PlayerStats stats)
+	public void Open(PlayerStats stats, Modifier preferredModifier = null)
 	{
 		_stats = stats;
+		_selectedModifier = stats != null && stats.HasBackpackModifier(preferredModifier)
+			? preferredModifier
+			: null;
+		_pendingModifier = null;
 		Visible = true;
 		GetTree().Paused = true;
 		Refresh();
@@ -37,8 +39,8 @@ public partial class ModifyStatsSimple : Control
 	private void Close()
 	{
 		Visible = false;
-		_pendingSlot = -1;
-		_pendingMod = null;
+		_selectedModifier = null;
+		_pendingModifier = null;
 		_confirmPanel.Visible = false;
 		GetTree().Paused = false;
 		EmitSignal(SignalName.Closed);
@@ -47,73 +49,77 @@ public partial class ModifyStatsSimple : Control
 	public override void _Ready()
 	{
 		Visible = false;
-		// Must fill the entire screen and always process (so input works while paused)
 		SetAnchorsPreset(LayoutPreset.FullRect);
 		GrowHorizontal = GrowDirection.Both;
 		GrowVertical = GrowDirection.Both;
 		ProcessMode = ProcessModeEnum.Always;
 		MouseFilter = MouseFilterEnum.Stop;
 
-		// Dark overlay
 		var overlay = new ColorRect();
-		overlay.Color = new Color(0, 0, 0, 0.7f);
+		overlay.Color = new Color(0, 0, 0, 0.72f);
 		overlay.SetAnchorsPreset(LayoutPreset.FullRect);
 		overlay.MouseFilter = MouseFilterEnum.Stop;
 		AddChild(overlay);
 
-		// Main layout: HBox with weapon+backpack on left, you on right
 		var margin = new MarginContainer();
 		margin.SetAnchorsPreset(LayoutPreset.FullRect);
-		margin.AddThemeConstantOverride("margin_left", 80);
-		margin.AddThemeConstantOverride("margin_right", 80);
-		margin.AddThemeConstantOverride("margin_top", 60);
-		margin.AddThemeConstantOverride("margin_bottom", 60);
+		margin.AddThemeConstantOverride("margin_left", 72);
+		margin.AddThemeConstantOverride("margin_right", 72);
+		margin.AddThemeConstantOverride("margin_top", 48);
+		margin.AddThemeConstantOverride("margin_bottom", 48);
 		AddChild(margin);
 
-		var mainHBox = new HBoxContainer();
-		mainHBox.AddThemeConstantOverride("separation", 40);
-		margin.AddChild(mainHBox);
+		var rootVBox = new VBoxContainer();
+		rootVBox.AddThemeConstantOverride("separation", 18);
+		margin.AddChild(rootVBox);
 
-		// Left column: weapon + backpack
+		var header = new Label();
+		header.Text = "Select a backpack modifier, then click its matching stat row.";
+		header.AddThemeColorOverride("font_color", new Color(Palette.TextLight, 0.9f));
+		header.AddThemeFontSizeOverride("font_size", 18);
+		header.HorizontalAlignment = HorizontalAlignment.Center;
+		rootVBox.AddChild(header);
+
+		var mainHBox = new HBoxContainer();
+		mainHBox.AddThemeConstantOverride("separation", 28);
+		mainHBox.SizeFlagsVertical = SizeFlags.ExpandFill;
+		rootVBox.AddChild(mainHBox);
+
 		var leftVBox = new VBoxContainer();
-		leftVBox.AddThemeConstantOverride("separation", 20);
+		leftVBox.AddThemeConstantOverride("separation", 18);
 		leftVBox.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+		leftVBox.SizeFlagsVertical = SizeFlags.ExpandFill;
 		mainHBox.AddChild(leftVBox);
 
 		BuildWeaponSection(leftVBox);
 		BuildBackpackSection(leftVBox);
 
-		// Right column: you
 		var rightVBox = new VBoxContainer();
-		rightVBox.AddThemeConstantOverride("separation", 10);
-		rightVBox.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-		rightVBox.CustomMinimumSize = new Vector2(280, 0);
+		rightVBox.AddThemeConstantOverride("separation", 18);
+		rightVBox.CustomMinimumSize = new Vector2(320, 0);
 		mainHBox.AddChild(rightVBox);
 
+		BuildSelectedSection(rightVBox);
 		BuildYouSection(rightVBox);
 
-		// Confirmation popup (centered, hidden)
 		BuildConfirmPopup();
 
-		// Close instructions
-		var closeLabel = new Label();
-		closeLabel.Text = "Press Escape to close";
-		closeLabel.HorizontalAlignment = HorizontalAlignment.Center;
-		closeLabel.AddThemeColorOverride("font_color", new Color(Palette.TextLight, 0.5f));
-		closeLabel.AddThemeFontSizeOverride("font_size", 16);
-		closeLabel.SetAnchorsPreset(LayoutPreset.CenterBottom);
-		closeLabel.GrowHorizontal = GrowDirection.Both;
-		closeLabel.OffsetTop = -40;
-		AddChild(closeLabel);
+		var footer = new Label();
+		footer.Text = $"Esc Close  |  ({GameKeys.DisplayName(GameKeys.Ability)}) Clear selection";
+		footer.HorizontalAlignment = HorizontalAlignment.Center;
+		footer.AddThemeColorOverride("font_color", new Color(Palette.TextLight, 0.55f));
+		footer.AddThemeFontSizeOverride("font_size", 15);
+		rootVBox.AddChild(footer);
 	}
 
 	private void BuildWeaponSection(VBoxContainer parent)
 	{
 		var panel = CreateSectionPanel();
+		panel.SizeFlagsHorizontal = SizeFlags.ExpandFill;
 		parent.AddChild(panel);
 
 		var vbox = new VBoxContainer();
-		vbox.AddThemeConstantOverride("separation", 8);
+		vbox.AddThemeConstantOverride("separation", 10);
 		panel.AddChild(vbox);
 
 		_weaponTitle = new Label();
@@ -122,66 +128,103 @@ public partial class ModifyStatsSimple : Control
 		_weaponTitle.HorizontalAlignment = HorizontalAlignment.Center;
 		vbox.AddChild(_weaponTitle);
 
-		for (int i = 0; i < 2; i++)
+		var subtitle = new Label();
+		subtitle.Text = "Stable stat channels replace the old numbered swap slots.";
+		subtitle.AddThemeColorOverride("font_color", new Color(Palette.TextLight, 0.75f));
+		subtitle.AddThemeFontSizeOverride("font_size", 15);
+		subtitle.HorizontalAlignment = HorizontalAlignment.Center;
+		subtitle.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+		vbox.AddChild(subtitle);
+
+		for (int i = 0; i < StatTargetInfo.All.Length; i++)
 		{
-			var slotPanel = new Panel();
-			var slotStyle = new StyleBoxFlat();
-			slotStyle.BgColor = new Color(0.2f, 0.16f, 0.12f);
-			slotStyle.SetCornerRadiusAll(6);
-			slotStyle.SetContentMarginAll(12);
-			slotPanel.AddThemeStyleboxOverride("panel", slotStyle);
-			slotPanel.CustomMinimumSize = new Vector2(0, 44);
-			vbox.AddChild(slotPanel);
-
-			var slotLabel = new Label();
-			slotLabel.AddThemeColorOverride("font_color", Palette.TextLight);
-			slotLabel.AddThemeFontSizeOverride("font_size", 18);
-			slotPanel.AddChild(slotLabel);
-
-			_slotPanels[i] = slotPanel;
-			_slotLabels[i] = slotLabel;
+			StatTarget target = StatTargetInfo.All[i];
+			var button = new Button();
+			button.Alignment = HorizontalAlignment.Left;
+			button.CustomMinimumSize = new Vector2(0, 88);
+			button.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+			button.FocusMode = Control.FocusModeEnum.None;
+			button.Pressed += () => StartApply(target);
+			vbox.AddChild(button);
+			_channelButtons[i] = button;
 		}
 	}
 
 	private void BuildBackpackSection(VBoxContainer parent)
 	{
-		var sectionLabel = new Label();
-		sectionLabel.Text = "BACKPACK";
-		sectionLabel.AddThemeColorOverride("font_color", Palette.Accent);
-		sectionLabel.AddThemeFontSizeOverride("font_size", 22);
-		sectionLabel.HorizontalAlignment = HorizontalAlignment.Center;
-		parent.AddChild(sectionLabel);
+		var panel = CreateSectionPanel();
+		panel.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+		panel.SizeFlagsVertical = SizeFlags.ExpandFill;
+		parent.AddChild(panel);
+
+		var vbox = new VBoxContainer();
+		vbox.AddThemeConstantOverride("separation", 12);
+		vbox.SizeFlagsVertical = SizeFlags.ExpandFill;
+		panel.AddChild(vbox);
+
+		var title = new Label();
+		title.Text = "BACKPACK";
+		title.AddThemeColorOverride("font_color", Palette.Accent);
+		title.AddThemeFontSizeOverride("font_size", 24);
+		title.HorizontalAlignment = HorizontalAlignment.Center;
+		vbox.AddChild(title);
 
 		var scroll = new ScrollContainer();
 		scroll.SizeFlagsVertical = SizeFlags.ExpandFill;
-		scroll.CustomMinimumSize = new Vector2(0, 150);
-		parent.AddChild(scroll);
+		scroll.CustomMinimumSize = new Vector2(0, 180);
+		vbox.AddChild(scroll);
 
 		_backpackList = new VBoxContainer();
-		_backpackList.AddThemeConstantOverride("separation", 6);
+		_backpackList.AddThemeConstantOverride("separation", 8);
 		_backpackList.SizeFlagsHorizontal = SizeFlags.ExpandFill;
 		scroll.AddChild(_backpackList);
 
 		_backpackEmptyLabel = new Label();
 		_backpackEmptyLabel.Text = "(empty)";
+		_backpackEmptyLabel.HorizontalAlignment = HorizontalAlignment.Center;
 		_backpackEmptyLabel.AddThemeColorOverride("font_color", Palette.TextDisabled);
 		_backpackEmptyLabel.AddThemeFontSizeOverride("font_size", 16);
 		_backpackList.AddChild(_backpackEmptyLabel);
 	}
 
-	private void BuildYouSection(VBoxContainer parent)
+	private void BuildSelectedSection(VBoxContainer parent)
 	{
 		var panel = CreateSectionPanel();
+		panel.SizeFlagsHorizontal = SizeFlags.ExpandFill;
 		parent.AddChild(panel);
 
 		var vbox = new VBoxContainer();
-		vbox.AddThemeConstantOverride("separation", 6);
+		vbox.AddThemeConstantOverride("separation", 10);
+		panel.AddChild(vbox);
+
+		var title = new Label();
+		title.Text = "SELECTED";
+		title.AddThemeColorOverride("font_color", Palette.Accent);
+		title.AddThemeFontSizeOverride("font_size", 24);
+		title.HorizontalAlignment = HorizontalAlignment.Center;
+		vbox.AddChild(title);
+
+		_selectedModifierLabel = new Label();
+		_selectedModifierLabel.AddThemeColorOverride("font_color", Palette.TextLight);
+		_selectedModifierLabel.AddThemeFontSizeOverride("font_size", 17);
+		_selectedModifierLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+		vbox.AddChild(_selectedModifierLabel);
+	}
+
+	private void BuildYouSection(VBoxContainer parent)
+	{
+		var panel = CreateSectionPanel();
+		panel.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+		parent.AddChild(panel);
+
+		var vbox = new VBoxContainer();
+		vbox.AddThemeConstantOverride("separation", 8);
 		panel.AddChild(vbox);
 
 		var title = new Label();
 		title.Text = "YOU";
 		title.AddThemeColorOverride("font_color", Palette.Accent);
-		title.AddThemeFontSizeOverride("font_size", 26);
+		title.AddThemeFontSizeOverride("font_size", 24);
 		title.HorizontalAlignment = HorizontalAlignment.Center;
 		vbox.AddChild(title);
 
@@ -193,43 +236,51 @@ public partial class ModifyStatsSimple : Control
 
 	private void BuildConfirmPopup()
 	{
-		_confirmPanel = new Panel();
-		var style = new StyleBoxFlat();
-		style.BgColor = new Color(0.15f, 0.10f, 0.08f, 0.95f);
-		style.SetCornerRadiusAll(12);
-		style.SetContentMarginAll(24);
-		style.BorderColor = Palette.Accent;
-		style.SetBorderWidthAll(2);
-		_confirmPanel.AddThemeStyleboxOverride("panel", style);
-		_confirmPanel.SetAnchorsPreset(LayoutPreset.Center);
-		_confirmPanel.GrowHorizontal = GrowDirection.Both;
-		_confirmPanel.GrowVertical = GrowDirection.Both;
-		_confirmPanel.CustomMinimumSize = new Vector2(400, 200);
+		_confirmPanel = CreateSectionPanel();
 		_confirmPanel.Visible = false;
+		_confirmPanel.AnchorLeft = 0.5f;
+		_confirmPanel.AnchorRight = 0.5f;
+		_confirmPanel.AnchorTop = 0.5f;
+		_confirmPanel.AnchorBottom = 0.5f;
+		_confirmPanel.OffsetLeft = -280;
+		_confirmPanel.OffsetRight = 280;
+		_confirmPanel.OffsetTop = -190;
+		_confirmPanel.OffsetBottom = 190;
+		_confirmPanel.MouseFilter = MouseFilterEnum.Stop;
 		AddChild(_confirmPanel);
+
+		var popupStyle = new StyleBoxFlat();
+		popupStyle.BgColor = new Color(0.16f, 0.11f, 0.08f, 0.98f);
+		popupStyle.BorderColor = Palette.Accent;
+		popupStyle.SetBorderWidthAll(2);
+		popupStyle.SetCornerRadiusAll(12);
+		popupStyle.SetContentMarginAll(22);
+		_confirmPanel.AddThemeStyleboxOverride("panel", popupStyle);
 
 		_confirmLabel = new Label();
 		_confirmLabel.AddThemeColorOverride("font_color", Palette.TextLight);
 		_confirmLabel.AddThemeFontSizeOverride("font_size", 18);
-		_confirmLabel.SetAnchorsPreset(LayoutPreset.FullRect);
 		_confirmLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
 		_confirmPanel.AddChild(_confirmLabel);
 	}
 
-	private Panel CreateSectionPanel()
+	private static PanelContainer CreateSectionPanel()
 	{
-		var panel = new Panel();
+		var panel = new PanelContainer();
 		var style = new StyleBoxFlat();
-		style.BgColor = new Color(0.12f, 0.09f, 0.06f, 0.9f);
-		style.SetCornerRadiusAll(10);
-		style.SetContentMarginAll(16);
+		style.BgColor = new Color(0.12f, 0.09f, 0.06f, 0.92f);
+		style.BorderColor = new Color(Palette.TextDisabled, 0.55f);
+		style.SetBorderWidthAll(1);
+		style.SetCornerRadiusAll(12);
+		style.SetContentMarginAll(18);
 		panel.AddThemeStyleboxOverride("panel", style);
 		return panel;
 	}
 
 	public override void _UnhandledInput(InputEvent @event)
 	{
-		if (!Visible) return;
+		if (!Visible)
+			return;
 
 		if (@event.IsActionPressed(GameKeys.Pause))
 		{
@@ -242,47 +293,93 @@ public partial class ModifyStatsSimple : Control
 		{
 			if (@event.IsActionPressed(GameKeys.Attack))
 			{
-				ConfirmSwap();
+				ConfirmApply();
 				GetViewport().SetInputAsHandled();
 			}
 			else if (@event.IsActionPressed(GameKeys.Ability))
 			{
-				CancelSwap();
+				CancelApply();
 				GetViewport().SetInputAsHandled();
 			}
 			return;
+		}
+
+		if (_selectedModifier != null && @event.IsActionPressed(GameKeys.Ability))
+		{
+			ClearSelection();
+			GetViewport().SetInputAsHandled();
 		}
 	}
 
 	private void Refresh()
 	{
-		if (_stats == null) return;
+		if (_stats == null)
+			return;
 
-		// Weapon section
+		if (_selectedModifier != null && !_stats.HasBackpackModifier(_selectedModifier))
+			_selectedModifier = null;
+
 		var weapon = _stats.Weapon;
 		_weaponTitle.Text = weapon != null ? $"WEAPON: {weapon.Name}" : "WEAPON: None";
 
-		for (int i = 0; i < 2; i++)
+		RefreshWeaponChannels();
+		RefreshSelectionPanel();
+		RefreshStatsPanel();
+		RefreshBackpack();
+	}
+
+	private void RefreshWeaponChannels()
+	{
+		for (int i = 0; i < StatTargetInfo.All.Length; i++)
 		{
-			var mod = weapon?.Slots[i];
-			_slotLabels[i].Text = mod != null ? $"Slot {i + 1}: {mod.Description}" : $"Slot {i + 1}: (empty)";
+			StatTarget target = StatTargetInfo.All[i];
+			var button = _channelButtons[i];
+			var channel = _stats.GetWeaponChannel(target);
+			bool isSelectedTarget = _selectedModifier != null && _selectedModifier.Target == target;
+			string currentSummary = channel?.Summary ?? "(unavailable)";
+
+			string text = $"{StatTargetInfo.DisplayName(target)}\nCurrent: {currentSummary}";
+			if (isSelectedTarget && channel != null)
+				text += $"\nAfter mod: {channel.SummaryWith(_selectedModifier)}";
+
+			button.Text = text;
+			button.TooltipText = isSelectedTarget
+				? $"Apply {_selectedModifier.Description} to {StatTargetInfo.DisplayName(target)}."
+				: _selectedModifier != null
+					? $"Selected modifier affects {StatTargetInfo.DisplayName(_selectedModifier.Target)}."
+					: "Select a backpack modifier first.";
+
+			ApplyChannelButtonTheme(button, isSelectedTarget, _selectedModifier != null);
+		}
+	}
+
+	private void RefreshSelectionPanel()
+	{
+		if (_selectedModifier == null)
+		{
+			_selectedModifierLabel.Text =
+				"No modifier selected.\n\nChoose one from the backpack to preview how it will stack.";
+			return;
 		}
 
-		// You section
+		_selectedModifierLabel.Text =
+			$"{_selectedModifier.Description}\n\n" +
+			$"Next step: click the {StatTargetInfo.DisplayName(_selectedModifier.Target)} row to apply it.\n" +
+			$"Press {GameKeys.DisplayName(GameKeys.Ability)} to clear this selection.";
+	}
+
+	private void RefreshStatsPanel()
+	{
 		_youStatsLabel.Text =
 			$"HP:    {_stats.CurrentHp} / {_stats.MaxHp}\n" +
 			$"ATK:   {_stats.AttackDamage}\n" +
 			$"SPD:   {_stats.MoveSpeed:0.#}\n" +
 			$"Range: {_stats.AttackRange:0.#}";
-
-		// Backpack
-		RefreshBackpack();
 	}
 
 	private void RefreshBackpack()
 	{
-		// Clear existing items (keep the empty label)
-		foreach (var child in _backpackList.GetChildren())
+		foreach (Node child in _backpackList.GetChildren())
 		{
 			if (child != _backpackEmptyLabel)
 				child.QueueFree();
@@ -291,82 +388,201 @@ public partial class ModifyStatsSimple : Control
 		var backpack = _stats.Backpack;
 		_backpackEmptyLabel.Visible = backpack.Count == 0;
 
-		foreach (var mod in backpack)
+		foreach (var modifier in backpack)
 		{
-			var hbox = new HBoxContainer();
-			hbox.AddThemeConstantOverride("separation", 8);
-			_backpackList.AddChild(hbox);
+			var rowPanel = CreateSectionPanel();
+			rowPanel.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+			_backpackList.AddChild(rowPanel);
 
-			var modLabel = new Label();
-			modLabel.Text = mod.Description;
-			modLabel.AddThemeColorOverride("font_color", Palette.TextLight);
-			modLabel.AddThemeFontSizeOverride("font_size", 16);
-			modLabel.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-			hbox.AddChild(modLabel);
+			var row = new HBoxContainer();
+			row.AddThemeConstantOverride("separation", 12);
+			rowPanel.AddChild(row);
 
-			// Slot 1 button
-			for (int s = 0; s < 2; s++)
-			{
-				int slot = s; // capture
-				var captured = mod; // capture
-				var btn = new Button();
-				btn.Text = $"-> Slot {s + 1}";
-				btn.CustomMinimumSize = new Vector2(90, 0);
-				Palette.StyleButton(btn, 14);
-				btn.Pressed += () => StartSwap(slot, captured);
-				hbox.AddChild(btn);
-			}
+			var label = new Label();
+			label.Text = modifier.Description;
+			label.AddThemeColorOverride("font_color", Palette.TextLight);
+			label.AddThemeFontSizeOverride("font_size", 16);
+			label.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+			row.AddChild(label);
+
+			var selectButton = new Button();
+			bool isSelected = modifier == _selectedModifier;
+			selectButton.Text = isSelected ? "Clear" : "Select";
+			selectButton.CustomMinimumSize = new Vector2(92, 0);
+			selectButton.FocusMode = Control.FocusModeEnum.None;
+			ApplyBackpackButtonTheme(selectButton, isSelected);
+
+			var capturedModifier = modifier;
+			selectButton.Pressed += () => ToggleSelection(capturedModifier);
+			row.AddChild(selectButton);
 		}
 	}
 
-	private void StartSwap(int slotIndex, Modifier newMod)
+	private void ToggleSelection(Modifier modifier)
 	{
-		_pendingSlot = slotIndex;
-		_pendingMod = newMod;
+		if (modifier == null)
+			return;
 
-		var weapon = _stats.Weapon;
-		var oldMod = weapon?.Slots[slotIndex];
+		_selectedModifier = _selectedModifier == modifier ? null : modifier;
+		Refresh();
+	}
 
-		// Build before/after text for all stats
-		string text = $"Swap Slot {slotIndex + 1}\n\n";
-		text += $"Current: {(oldMod != null ? oldMod.Description : "(empty)")}\n";
-		text += $"New:     {newMod.Description}\n\n";
+	private void ClearSelection()
+	{
+		_selectedModifier = null;
+		Refresh();
+	}
 
-		var targets = new[] { StatTarget.MaxHp, StatTarget.AttackDamage, StatTarget.MoveSpeed, StatTarget.AttackRange };
-		var names = new[] { "HP", "ATK", "SPD", "Range" };
+	private void StartApply(StatTarget target)
+	{
+		if (_selectedModifier == null || _selectedModifier.Target != target || _stats == null)
+			return;
 
-		for (int i = 0; i < targets.Length; i++)
-		{
-			float before = targets[i] == StatTarget.MaxHp ? _stats.MaxHp :
-						   targets[i] == StatTarget.AttackDamage ? _stats.AttackDamage :
-						   targets[i] == StatTarget.MoveSpeed ? _stats.MoveSpeed : _stats.AttackRange;
-			float after = _stats.PreviewStatWithSwap(targets[i], slotIndex, newMod);
+		var channel = _stats.GetWeaponChannel(target);
+		if (channel == null)
+			return;
 
-			string arrow = after > before ? " ^" : after < before ? " v" : "";
-			text += $"{names[i]}: {FormatStat(before)} -> {FormatStat(after)}{arrow}\n";
-		}
+		_pendingModifier = _selectedModifier;
 
-		text += $"\n({GameKeys.DisplayName(GameKeys.Attack)}) Confirm  |  ({GameKeys.DisplayName(GameKeys.Ability)}) Cancel";
+		_confirmLabel.Text =
+			$"Apply Modifier\n\n" +
+			$"Target: {StatTargetInfo.DisplayName(target)}\n" +
+			$"Current: {channel.Summary}\n" +
+			$"After mod: {channel.SummaryWith(_pendingModifier)}\n\n" +
+			BuildStatPreview(_pendingModifier) +
+			$"\n({GameKeys.DisplayName(GameKeys.Attack)}) Confirm  |  ({GameKeys.DisplayName(GameKeys.Ability)}) Cancel";
 
-		_confirmLabel.Text = text;
 		_confirmPanel.Visible = true;
 	}
 
-	private void ConfirmSwap()
+	private string BuildStatPreview(Modifier modifier)
 	{
-		if (_pendingSlot < 0 || _pendingMod == null) return;
-		_stats.SwapWeaponSlot(_pendingSlot, _pendingMod);
-		_pendingSlot = -1;
-		_pendingMod = null;
+		string beforeHp = $"{_stats.CurrentHp} / {_stats.MaxHp}";
+		string afterHp = $"{_stats.PreviewCurrentHpWithModifier(modifier)} / {(int)_stats.PreviewStatWithModifier(StatTarget.MaxHp, modifier)}";
+
+		return
+			$"HP: {beforeHp} -> {afterHp}\n" +
+			$"ATK: {_stats.AttackDamage} -> {FormatStat(_stats.PreviewStatWithModifier(StatTarget.AttackDamage, modifier))}\n" +
+			$"SPD: {_stats.MoveSpeed:0.#} -> {FormatStat(_stats.PreviewStatWithModifier(StatTarget.MoveSpeed, modifier))}\n" +
+			$"Range: {_stats.AttackRange:0.#} -> {FormatStat(_stats.PreviewStatWithModifier(StatTarget.AttackRange, modifier))}";
+	}
+
+	private void ConfirmApply()
+	{
+		if (_pendingModifier == null)
+			return;
+
+		if (_stats.ApplyBackpackModifier(_pendingModifier))
+			_selectedModifier = null;
+
+		_pendingModifier = null;
 		_confirmPanel.Visible = false;
 		Refresh();
 	}
 
-	private void CancelSwap()
+	private void CancelApply()
 	{
-		_pendingSlot = -1;
-		_pendingMod = null;
+		_pendingModifier = null;
 		_confirmPanel.Visible = false;
+	}
+
+	private static void ApplyChannelButtonTheme(Button button, bool isSelectedTarget, bool hasSelection)
+	{
+		if (isSelectedTarget)
+		{
+			ApplyButtonTheme(
+				button,
+				new Color(Palette.ButtonBg, 0.96f),
+				new Color(Palette.ButtonHover, 0.96f),
+				new Color(Palette.Accent, 0.96f),
+				Palette.Accent,
+				Palette.TextLight,
+				18,
+				14);
+			return;
+		}
+
+		if (hasSelection)
+		{
+			ApplyButtonTheme(
+				button,
+				new Color(0.14f, 0.11f, 0.08f, 0.96f),
+				new Color(0.14f, 0.11f, 0.08f, 0.96f),
+				new Color(0.14f, 0.11f, 0.08f, 0.96f),
+				new Color(Palette.TextDisabled, 0.35f),
+				new Color(Palette.TextLight, 0.75f),
+				18,
+				14);
+			return;
+		}
+
+		ApplyButtonTheme(
+			button,
+			new Color(0.20f, 0.16f, 0.12f, 0.96f),
+			new Color(0.24f, 0.19f, 0.14f, 0.96f),
+			new Color(0.24f, 0.19f, 0.14f, 0.96f),
+			new Color(Palette.TextDisabled, 0.55f),
+			Palette.TextLight,
+			18,
+			14);
+	}
+
+	private static void ApplyBackpackButtonTheme(Button button, bool isSelected)
+	{
+		if (isSelected)
+		{
+			ApplyButtonTheme(
+				button,
+				new Color(Palette.Accent, 0.96f),
+				new Color(Palette.Accent, 0.96f),
+				new Color(Palette.ButtonHover, 0.96f),
+				Palette.Accent,
+				Palette.BgDark,
+				14,
+				10);
+			return;
+		}
+
+		ApplyButtonTheme(
+			button,
+			new Color(Palette.ButtonBg, 0.96f),
+			new Color(Palette.ButtonHover, 0.96f),
+			new Color(Palette.Accent, 0.96f),
+			new Color(Palette.ButtonHover, 0.85f),
+			Palette.TextLight,
+			14,
+			10);
+	}
+
+	private static void ApplyButtonTheme(
+		Button button,
+		Color normalBg,
+		Color hoverBg,
+		Color pressedBg,
+		Color borderColor,
+		Color fontColor,
+		int fontSize,
+		int padding)
+	{
+		button.AddThemeStyleboxOverride("normal", CreateButtonStyle(normalBg, borderColor, padding));
+		button.AddThemeStyleboxOverride("hover", CreateButtonStyle(hoverBg, borderColor, padding));
+		button.AddThemeStyleboxOverride("pressed", CreateButtonStyle(pressedBg, borderColor, padding));
+		button.AddThemeStyleboxOverride("focus", CreateButtonStyle(hoverBg, borderColor, padding));
+		button.AddThemeColorOverride("font_color", fontColor);
+		button.AddThemeColorOverride("font_hover_color", fontColor);
+		button.AddThemeColorOverride("font_pressed_color", fontColor);
+		button.AddThemeFontSizeOverride("font_size", fontSize);
+	}
+
+	private static StyleBoxFlat CreateButtonStyle(Color backgroundColor, Color borderColor, int padding)
+	{
+		var style = new StyleBoxFlat();
+		style.BgColor = backgroundColor;
+		style.BorderColor = borderColor;
+		style.SetBorderWidthAll(2);
+		style.SetCornerRadiusAll(10);
+		style.SetContentMarginAll(padding);
+		return style;
 	}
 
 	private static string FormatStat(float value)

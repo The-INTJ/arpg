@@ -1,19 +1,38 @@
+using System.Collections.Generic;
+
 namespace ARPG;
 
 /// <summary>
-/// A weapon with a name, an ability, and exactly two modifier slots.
-/// The weapon's slot modifiers participate in stat computation alongside other modifiers.
+/// A weapon with a name, an ability, and stable per-stat modifier channels.
+/// Each channel acts like a persistent slot for that stat while allowing stacking.
 /// </summary>
-public class Weapon
+public partial class Weapon
 {
+    private readonly Dictionary<StatTarget, WeaponStatChannel> _channelsByTarget = new();
+    private readonly WeaponStatChannel[] _channels;
+
     public string Name { get; }
     public AbilityType Ability { get; }
-    public Modifier[] Slots { get; } = new Modifier[2];
+    public IReadOnlyList<WeaponStatChannel> Channels => _channels;
 
     public Weapon(string name, AbilityType ability)
     {
         Name = name;
         Ability = ability;
+        _channels = CreateChannels();
+
+        foreach (var channel in _channels)
+            _channelsByTarget[channel.Target] = channel;
+    }
+
+    public WeaponStatChannel GetChannel(StatTarget target) => _channelsByTarget[target];
+
+    public void AddStartingModifier(Modifier modifier)
+    {
+        if (modifier == null)
+            return;
+
+        GetChannel(modifier.Target).Add(modifier);
     }
 
     public static Weapon ForArchetype(Archetype archetype) => archetype switch
@@ -30,14 +49,24 @@ public class Weapon
             new Modifier(ModifierOp.FlatAdd, StatTarget.AttackDamage, 1),
             new Modifier(ModifierOp.PercentAdd, StatTarget.AttackDamage, 5)),
 
-        _ => Create("Fists", AbilityType.None, null, null)
+        _ => Create("Fists", AbilityType.None)
     };
 
-    private static Weapon Create(string name, AbilityType ability, Modifier slot0, Modifier slot1)
+    private static Weapon Create(string name, AbilityType ability, params Modifier[] modifiers)
     {
-        var w = new Weapon(name, ability);
-        w.Slots[0] = slot0;
-        w.Slots[1] = slot1;
-        return w;
+        var weapon = new Weapon(name, ability);
+        foreach (var modifier in modifiers)
+            weapon.AddStartingModifier(modifier);
+
+        return weapon;
+    }
+
+    private static WeaponStatChannel[] CreateChannels()
+    {
+        var channels = new WeaponStatChannel[StatTargetInfo.All.Length];
+        for (int i = 0; i < StatTargetInfo.All.Length; i++)
+            channels[i] = new WeaponStatChannel(StatTargetInfo.All[i]);
+
+        return channels;
     }
 }
