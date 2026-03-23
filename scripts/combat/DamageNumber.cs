@@ -23,15 +23,15 @@ public partial class DamageNumber : Node3D
         SetupText(
             amount.ToString(),
             isPlayerDamage
-                ? new Color(1.0f, 0.3f, 0.3f)
-                : new Color(1.0f, 0.95f, 0.4f));
+                ? Palette.DamagePlayer
+                : Palette.DamageEnemy);
     }
 
     public void SetupText(string text, Color color)
     {
         _label.Text = text;
         _label.Modulate = color;
-        _label.OutlineModulate = new Color(0, 0, 0);
+        _label.OutlineModulate = Palette.OutlineBlack;
 
         Animate();
     }

@@ -1,12 +1,12 @@
 [gd_scene load_steps=18 format=3 uid="uid://b8ru378ifyyhi"]
 
-[ext_resource type="Script" path="res://scripts/GameManager.cs" id="1_gm"]
-[ext_resource type="Script" path="res://scripts/PlayerController.cs" id="2_pc"]
-[ext_resource type="Script" path="res://scripts/ExitDoor.cs" id="4_ed"]
-[ext_resource type="Script" path="res://scripts/MapGenerator.cs" id="5_mg"]
-[ext_resource type="Script" path="res://scripts/PauseScreen.cs" id="6_ps"]
-[ext_resource type="Script" path="res://scripts/ModifyStatsSimple.cs" id="7_mss"]
-[ext_resource type="Script" path="res://scripts/CameraController.cs" id="8_cc"]
+[ext_resource type="Script" path="res://scripts/world/GameManager.cs" id="1_gm"]
+[ext_resource type="Script" path="res://scripts/player/PlayerController.cs" id="2_pc"]
+[ext_resource type="Script" path="res://scripts/world/ExitDoor.cs" id="4_ed"]
+[ext_resource type="Script" path="res://scripts/world/MapGenerator.cs" id="5_mg"]
+[ext_resource type="Script" path="res://scripts/ui/PauseScreen.cs" id="6_ps"]
+[ext_resource type="Script" path="res://scripts/ui/ModifyStatsSimple.cs" id="7_mss"]
+[ext_resource type="Script" path="res://scripts/world/CameraController.cs" id="8_cc"]
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_floor"]
 size = Vector2(100, 100)
