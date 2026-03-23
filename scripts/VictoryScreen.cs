@@ -23,6 +23,7 @@ public partial class VictoryScreen : Control
 
     private void OnPlayAgainPressed()
     {
+        GameState.RestartRun();
         GetTree().ChangeSceneToFile("res://scenes/Game.tscn");
     }
 

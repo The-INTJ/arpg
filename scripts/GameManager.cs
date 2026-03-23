@@ -24,6 +24,7 @@ public partial class GameManager : Node3D
 
     private int _killCount;
     private int _totalEnemies;
+    private bool _isEndingRun;
 
     // Aggro: enemy that spotted the player, pending combat start
     private Enemy _aggroEnemy;
@@ -47,6 +48,7 @@ public partial class GameManager : Node3D
 
         _turnManager = new TurnManager();
         AddChild(_turnManager);
+        _turnManager.TurnChanged += OnTurnChanged;
 
         _combatManager = new CombatManager();
         AddChild(_combatManager);
@@ -473,10 +475,30 @@ public partial class GameManager : Node3D
         if (_player.Hp <= 0)
         {
             _turnManager.SetState(TurnState.Defeat);
-            _statusLabel.Text = "Defeated!";
-            _attackButton.Visible = false;
-            _player.SetPhysicsProcess(false);
         }
+    }
+
+    private void OnTurnChanged(int newState)
+    {
+        if ((TurnState)newState != TurnState.Defeat || _isEndingRun)
+            return;
+
+        _isEndingRun = true;
+        _statusLabel.Text = "Defeated!";
+        _attackButton.Visible = false;
+        _abilityButton.Visible = false;
+        GetNode<VBoxContainer>("CanvasLayer/EnemyHpDisplay").Visible = false;
+        _player.SetPhysicsProcess(false);
+        _pauseScreen.Visible = false;
+        _modifyScreen.Visible = false;
+        GetTree().Paused = false;
+
+        CallDeferred(nameof(ShowGameOverScreen));
+    }
+
+    private void ShowGameOverScreen()
+    {
+        GetTree().ChangeSceneToFile("res://scenes/GameOverScreen.tscn");
     }
 
     // --- Loot ---

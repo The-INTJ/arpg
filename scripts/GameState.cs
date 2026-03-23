@@ -23,6 +23,11 @@ public static class GameState
     public static void StartNewRun(Archetype archetype)
     {
         SelectedArchetype = archetype;
+        RestartRun();
+    }
+
+    public static void RestartRun()
+    {
         CurrentRoom = 1;
         PersistentStats = null;
     }
