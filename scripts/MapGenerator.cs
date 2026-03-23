@@ -4,6 +4,9 @@ namespace ARPG;
 
 public partial class MapGenerator : Node3D
 {
+    // Scale factor applied to all positions and sizes to fill a 200x200 map
+    private const float S = 4.0f;
+
     private static readonly Vector4[][] Layouts =
     {
         new[] // L-shaped walls
@@ -49,23 +52,27 @@ public partial class MapGenerator : Node3D
         var layout = Layouts[idx];
         var spawns = SpawnSets[idx];
 
-        // Boundary walls
-        PlaceWall(0, -25, 52, 1, 3, Palette.BoundaryWall);
-        PlaceWall(0, 25, 52, 1, 3, Palette.BoundaryWall);
-        PlaceWall(-25, 0, 1, 52, 3, Palette.BoundaryWall);
-        PlaceWall(25, 0, 1, 52, 3, Palette.BoundaryWall);
+        // Boundary walls (scaled to 200x200 arena)
+        PlaceWall(0, -25 * S, 52 * S, 1, 4, Palette.BoundaryWall);
+        PlaceWall(0, 25 * S, 52 * S, 1, 4, Palette.BoundaryWall);
+        PlaceWall(-25 * S, 0, 1, 52 * S, 4, Palette.BoundaryWall);
+        PlaceWall(25 * S, 0, 1, 52 * S, 4, Palette.BoundaryWall);
 
-        // Interior walls
+        // Interior walls (scaled positions and sizes)
         foreach (var wall in layout)
-            PlaceWall(wall.X, wall.Y, wall.Z, wall.W, 2.5f, Palette.Wall);
+            PlaceWall(wall.X * S, wall.Y * S, wall.Z * S, wall.W * S, 3f, Palette.Wall);
 
-        // Shuffle and return spawn positions
+        // Shuffle and return spawn positions (scaled)
         var shuffled = (Vector3[])spawns.Clone();
         for (int i = shuffled.Length - 1; i > 0; i--)
         {
             int j = (int)(GD.Randi() % (i + 1));
             (shuffled[i], shuffled[j]) = (shuffled[j], shuffled[i]);
         }
+
+        // Scale X/Z positions, keep Y at ground level
+        for (int i = 0; i < shuffled.Length; i++)
+            shuffled[i] = new Vector3(shuffled[i].X * S, shuffled[i].Y, shuffled[i].Z * S);
 
         return shuffled;
     }

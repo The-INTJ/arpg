@@ -14,7 +14,7 @@ public partial class Enemy : StaticBody3D
     public int MaxHp = 11;
     public int Hp = 11;
     public int AttackDamage = 3;
-    public float SightRange = 7.0f;
+    public float SightRange = 4.0f;
     public bool IsBoss { get; private set; }
 
     public bool HasAggro { get; set; }
@@ -45,7 +45,7 @@ public partial class Enemy : StaticBody3D
         MaxHp = (int)(MaxHp * 2.5f);
         Hp = MaxHp;
         AttackDamage = (int)(AttackDamage * 1.8f);
-        SightRange = 12.0f;
+        SightRange = 6.0f;
     }
 
     public void TakeDamage(int amount)
@@ -157,7 +157,7 @@ public partial class Enemy : StaticBody3D
         label.Modulate = new Color(1.0f, 0.3f, 0.2f);
         label.OutlineSize = 12;
         label.OutlineModulate = new Color(0, 0, 0);
-        label.Position = new Vector3(0, IsBoss ? 2.2f : 1.6f, 0);
+        label.Position = new Vector3(0, IsBoss ? 1.0f : 0.65f, 0);
         label.Name = "AggroIndicator";
         AddChild(label);
 
@@ -245,7 +245,7 @@ public partial class Enemy : StaticBody3D
     {
         if (_effectBadgeAnchor != null && IsInstanceValid(_effectBadgeAnchor))
         {
-            _effectBadgeAnchor.Position = new Vector3(0, IsBoss ? 1.32f : 1.08f, 0);
+            _effectBadgeAnchor.Position = new Vector3(0, IsBoss ? 0.75f : 0.55f, 0);
             return;
         }
 
@@ -257,7 +257,7 @@ public partial class Enemy : StaticBody3D
             AddChild(_effectBadgeAnchor);
         }
 
-        _effectBadgeAnchor.Position = new Vector3(0, IsBoss ? 1.32f : 1.08f, 0);
+        _effectBadgeAnchor.Position = new Vector3(0, IsBoss ? 0.75f : 0.55f, 0);
     }
 
     private void FlashTriggeredBadges(IReadOnlyList<MonsterEffectTriggerRecord> triggers)

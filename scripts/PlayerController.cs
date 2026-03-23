@@ -14,6 +14,8 @@ public partial class PlayerController : CharacterBody3D
     public int AttackDamage => Stats.AttackDamage;
 
     private float _regenAccumulator;
+    private CameraController _cameraController;
+    private Sprite3D _sprite;
 
     public override void _Ready()
     {
@@ -34,23 +36,30 @@ public partial class PlayerController : CharacterBody3D
         // Ability comes from the weapon
         Ability = Ability.ForWeapon(Stats.Weapon);
 
-        // Replace the primitive mesh with a sprite billboard
+        // Replace the primitive mesh with a sprite billboard (smaller for zoomed-in camera)
         var mesh = GetNode<MeshInstance3D>("PlayerMesh");
         mesh.Visible = false;
 
-        var sprite = SpriteFactory.CreateSprite(SpriteFactory.CreatePlayerTexture());
-        sprite.Position = new Vector3(0, 0.5f, 0);
-        AddChild(sprite);
+        _sprite = SpriteFactory.CreateSprite(SpriteFactory.CreatePlayerTexture(), 0.05f);
+        _sprite.Position = new Vector3(0, 0.25f, 0);
+        AddChild(_sprite);
+
+        _cameraController = GetNode<CameraController>("CameraRig");
     }
 
     public override void _PhysicsProcess(double delta)
     {
-        var input = Vector3.Zero;
-        input.X = Input.GetActionStrength("move_right") - Input.GetActionStrength("move_left");
-        input.Z = Input.GetActionStrength("move_back") - Input.GetActionStrength("move_forward");
+        // Gather raw input
+        var raw = Vector3.Zero;
+        raw.X = Input.GetActionStrength("move_right") - Input.GetActionStrength("move_left");
+        raw.Z = Input.GetActionStrength("move_back") - Input.GetActionStrength("move_forward");
 
-        if (input.LengthSquared() > 0)
-            input = input.Normalized();
+        if (raw.LengthSquared() > 0)
+            raw = raw.Normalized();
+
+        // Transform input direction by camera yaw so WASD is camera-relative
+        float yaw = _cameraController.Yaw;
+        var input = new Basis(Vector3.Up, yaw) * raw;
 
         float speed = Stats.MoveSpeed;
         if (Input.IsKeyPressed(Key.Shift))
@@ -61,6 +70,13 @@ public partial class PlayerController : CharacterBody3D
         float maxDelta = speed / rampTime * (float)delta;
         Velocity = Velocity.MoveToward(targetVelocity, maxDelta);
         MoveAndSlide();
+
+        // Flip sprite based on camera-relative horizontal movement
+        if (Velocity.LengthSquared() > 0.01f)
+        {
+            var cameraRight = new Vector3(Mathf.Cos(yaw), 0, -Mathf.Sin(yaw));
+            _sprite.FlipH = Velocity.Dot(cameraRight) < 0;
+        }
     }
 
     public void TickRegen(float delta)

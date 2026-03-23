@@ -1,4 +1,4 @@
-[gd_scene load_steps=17 format=3 uid="uid://b8ru378ifyyhi"]
+[gd_scene load_steps=18 format=3 uid="uid://b8ru378ifyyhi"]
 
 [ext_resource type="Script" path="res://scripts/GameManager.cs" id="1_gm"]
 [ext_resource type="Script" path="res://scripts/PlayerController.cs" id="2_pc"]
@@ -6,19 +6,20 @@
 [ext_resource type="Script" path="res://scripts/MapGenerator.cs" id="5_mg"]
 [ext_resource type="Script" path="res://scripts/PauseScreen.cs" id="6_ps"]
 [ext_resource type="Script" path="res://scripts/ModifyStatsSimple.cs" id="7_mss"]
+[ext_resource type="Script" path="res://scripts/CameraController.cs" id="8_cc"]
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_floor"]
-size = Vector2(50, 50)
+size = Vector2(200, 200)
 
 [sub_resource type="WorldBoundaryShape3D" id="WorldBoundaryShape3D_floor"]
 
 [sub_resource type="CapsuleMesh" id="CapsuleMesh_player"]
-radius = 0.25
-height = 1.0
+radius = 0.15
+height = 0.5
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_player"]
-radius = 0.25
-height = 1.0
+radius = 0.15
+height = 0.5
 
 [sub_resource type="BoxMesh" id="BoxMesh_barrier"]
 size = Vector3(5, 3, 0.5)
@@ -62,7 +63,7 @@ shape = SubResource("WorldBoundaryShape3D_floor")
 script = ExtResource("5_mg")
 
 [node name="Player" type="CharacterBody3D" parent="World"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 18)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.25, 80)
 script = ExtResource("2_pc")
 
 [node name="PlayerMesh" type="MeshInstance3D" parent="World/Player"]
@@ -72,14 +73,15 @@ mesh = SubResource("CapsuleMesh_player")
 shape = SubResource("CapsuleShape3D_player")
 
 [node name="CameraRig" type="Node3D" parent="World/Player"]
+script = ExtResource("8_cc")
 
 [node name="Camera3D" type="Camera3D" parent="World/Player/CameraRig"]
-transform = Transform3D(1, 0, 0, 0, 0.707107, 0.707107, 0, -0.707107, 0.707107, 0, 10, 10)
+transform = Transform3D(1, 0, 0, 0, 0.857, 0.515, 0, -0.515, 0.857, 0, 3.1, 4.9)
 
 [node name="Enemies" type="Node3D" parent="World"]
 
 [node name="ExitDoor" type="Node3D" parent="World"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -23)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -95)
 script = ExtResource("4_ed")
 
 [node name="Barrier" type="MeshInstance3D" parent="World/ExitDoor"]
