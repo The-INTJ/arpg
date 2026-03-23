@@ -5,6 +5,7 @@ namespace ARPG;
 public partial class PlayerController : CharacterBody3D
 {
     public PlayerStats Stats { get; private set; } = new();
+    public Ability Ability { get; private set; }
 
     public int Hp { get => Stats.CurrentHp; set => Stats.CurrentHp = value; }
     public int AttackDamage => Stats.AttackDamage;
@@ -13,6 +14,10 @@ public partial class PlayerController : CharacterBody3D
 
     public override void _Ready()
     {
+        // Apply selected archetype
+        ArchetypeData.ApplyTo(GameState.SelectedArchetype, Stats);
+        Ability = Ability.ForArchetype(GameState.SelectedArchetype);
+
         // Replace the primitive mesh with a sprite billboard
         var mesh = GetNode<MeshInstance3D>("PlayerMesh");
         mesh.Visible = false;
@@ -39,9 +44,6 @@ public partial class PlayerController : CharacterBody3D
         MoveAndSlide();
     }
 
-    /// <summary>
-    /// Called each frame by GameManager to tick HP regen while exploring.
-    /// </summary>
     public void TickRegen(float delta)
     {
         if (Stats.CurrentHp >= Stats.MaxHp) return;
@@ -50,7 +52,7 @@ public partial class PlayerController : CharacterBody3D
         if (_regenAccumulator >= 1.0f)
         {
             int heal = (int)_regenAccumulator;
-            Stats.CurrentHp = Mathf.Min(Stats.CurrentHp + heal, Stats.MaxHp);
+            Stats.CurrentHp = Godot.Mathf.Min(Stats.CurrentHp + heal, Stats.MaxHp);
             _regenAccumulator -= heal;
         }
     }

@@ -7,6 +7,7 @@ public partial class GameManager : Node3D
     private PlayerController _player;
     private ExitDoor _exitDoor;
     private Button _attackButton;
+    private Button _abilityButton;
     private Label _hpLabel;
     private Label _statsLabel;
     private Label _killLabel;
@@ -15,12 +16,16 @@ public partial class GameManager : Node3D
     private CombatManager _combatManager;
     private Camera3D _camera;
 
-    // Enemy HP bar shown during combat
     private ProgressBar _enemyHpBar;
     private Label _enemyHpLabel;
 
     private int _killCount;
     private const int KillsToWin = 3;
+
+    // Aggro: enemy that spotted the player, pending combat start
+    private Enemy _aggroEnemy;
+    private float _aggroTimer;
+    private const float AggroDelay = 0.6f;
 
     public override void _Ready()
     {
@@ -45,9 +50,9 @@ public partial class GameManager : Node3D
         _attackButton.Visible = false;
         Palette.StyleButton(_attackButton, 18);
 
+        BuildAbilityButton();
         BuildEnemyHpBar();
 
-        // Scale HUD font size relative to viewport height (~3% of height)
         int fontSize = Mathf.Max(18, (int)(GetViewport().GetVisibleRect().Size.Y * 0.03f));
         foreach (var label in new[] { _hpLabel, _statsLabel, _killLabel, _statusLabel })
         {
@@ -58,11 +63,9 @@ public partial class GameManager : Node3D
             label.AddThemeColorOverride("font_shadow_color", new Color(0, 0, 0, 0.8f));
         }
 
-        // Floor color
         var floorMesh = GetNode<MeshInstance3D>("World/Floor/FloorMesh");
         floorMesh.MaterialOverride = new StandardMaterial3D { AlbedoColor = Palette.Floor };
 
-        // Generate map and spawn enemies
         var mapGen = GetNode<MapGenerator>("World/MapGenerator");
         var spawnPositions = mapGen.Generate();
         var enemiesContainer = GetNode<Node3D>("World/Enemies");
@@ -70,6 +73,17 @@ public partial class GameManager : Node3D
             SpawnEnemy(enemiesContainer, pos);
 
         UpdateHud();
+    }
+
+    private void BuildAbilityButton()
+    {
+        var canvas = GetNode<CanvasLayer>("CanvasLayer");
+        _abilityButton = new Button();
+        _abilityButton.Name = "AbilityButton";
+        _abilityButton.Visible = false;
+        Palette.StyleButton(_abilityButton, 18);
+        _abilityButton.Pressed += OnAbilityPressed;
+        canvas.AddChild(_abilityButton);
     }
 
     private void BuildEnemyHpBar()
@@ -113,7 +127,6 @@ public partial class GameManager : Node3D
         enemy.Position = position;
         enemy.AddToGroup("enemies");
 
-        // Sprite instead of primitive meshes
         var sprite = SpriteFactory.CreateSprite(SpriteFactory.CreateEnemyTexture());
         sprite.Position = new Vector3(0, 0.5f, 0);
         enemy.AddChild(sprite);
@@ -130,6 +143,8 @@ public partial class GameManager : Node3D
     {
         if (@event.IsActionPressed(GameKeys.Attack))
             OnAttackPressed();
+        else if (@event.IsActionPressed(GameKeys.Ability))
+            OnAbilityPressed();
     }
 
     public override void _Process(double delta)
@@ -139,6 +154,7 @@ public partial class GameManager : Node3D
         if (_turnManager.IsExploring)
         {
             _player.TickRegen((float)delta);
+            CheckAggro((float)delta);
             UpdateExploreUI();
         }
         else if (_turnManager.InCombat)
@@ -146,6 +162,50 @@ public partial class GameManager : Node3D
             UpdateCombatUI();
         }
     }
+
+    // --- Aggro ---
+
+    private void CheckAggro(float delta)
+    {
+        // If already aggroing, tick the timer
+        if (_aggroEnemy != null)
+        {
+            if (!IsInstanceValid(_aggroEnemy))
+            {
+                _aggroEnemy = null;
+                return;
+            }
+
+            _aggroTimer -= delta;
+            if (_aggroTimer <= 0)
+            {
+                var enemy = _aggroEnemy;
+                _aggroEnemy = null;
+                _statusLabel.Text = "Combat!";
+                _combatManager.EnterCombat(enemy);
+            }
+            return;
+        }
+
+        // Check if any enemy spots the player
+        foreach (var node in GetTree().GetNodesInGroup("enemies"))
+        {
+            if (node is Enemy enemy && !enemy.HasAggro)
+            {
+                float dist = _player.GlobalPosition.DistanceTo(enemy.GlobalPosition);
+                if (dist <= enemy.SightRange)
+                {
+                    enemy.ShowAggroIndicator();
+                    _aggroEnemy = enemy;
+                    _aggroTimer = AggroDelay;
+                    _statusLabel.Text = "Spotted!";
+                    return;
+                }
+            }
+        }
+    }
+
+    // --- UI ---
 
     private void UpdateExploreUI()
     {
@@ -174,30 +234,53 @@ public partial class GameManager : Node3D
             _attackButton.Visible = false;
         }
 
-        // Hide enemy HP bar while exploring
+        _abilityButton.Visible = false;
         GetNode<VBoxContainer>("CanvasLayer/EnemyHpDisplay").Visible = false;
     }
 
     private void UpdateCombatUI()
     {
-        // Show attack button at screen center-bottom during combat
+        var viewport = GetViewport().GetVisibleRect().Size;
+
+        // Attack button
         if (_turnManager.IsPlayerTurn)
         {
-            var viewport = GetViewport().GetVisibleRect().Size;
             _attackButton.Text = $"Attack ({GameKeys.DisplayName(GameKeys.Attack)})";
             _attackButton.Visible = true;
             _attackButton.Disabled = false;
             _attackButton.Position = new Vector2(
-                viewport.X / 2 - _attackButton.Size.X / 2,
+                viewport.X / 2 - _attackButton.Size.X / 2 - 100,
                 viewport.Y * 0.75f
             );
+
+            // Ability button
+            var ability = _player.Ability;
+            if (ability != null)
+            {
+                _abilityButton.Visible = true;
+                if (ability.IsReady)
+                {
+                    _abilityButton.Text = $"{ability.Name} ({GameKeys.DisplayName(GameKeys.Ability)})";
+                    _abilityButton.Disabled = false;
+                }
+                else
+                {
+                    _abilityButton.Text = $"{ability.Name} ({ability.TurnsRemaining})";
+                    _abilityButton.Disabled = true;
+                }
+                _abilityButton.Position = new Vector2(
+                    viewport.X / 2 - _abilityButton.Size.X / 2 + 100,
+                    viewport.Y * 0.75f
+                );
+            }
         }
         else
         {
             _attackButton.Visible = false;
+            _abilityButton.Visible = false;
         }
 
-        // Show enemy HP bar above the combat target
+        // Enemy HP bar
         var target = _combatManager.Target;
         var display = GetNode<VBoxContainer>("CanvasLayer/EnemyHpDisplay");
         if (target != null && IsInstanceValid(target))
@@ -223,9 +306,11 @@ public partial class GameManager : Node3D
     {
         var s = _player.Stats;
         _hpLabel.Text = $"HP: {s.CurrentHp} / {s.MaxHp}";
-        _statsLabel.Text = $"ATK: {s.AttackDamage}  |  SPD: {s.MoveSpeed}  |  Range: {s.AttackRange}";
+        _statsLabel.Text = $"ATK: {s.AttackDamage}  |  SPD: {s.MoveSpeed:0.#}  |  Range: {s.AttackRange:0.#}";
         _killLabel.Text = $"Kills: {_killCount}/{KillsToWin}";
     }
+
+    // --- Actions ---
 
     private Enemy FindNearestEnemy(float range)
     {
@@ -254,30 +339,46 @@ public partial class GameManager : Node3D
 
         if (_turnManager.IsExploring)
         {
-            // Initiate combat with nearest enemy
             var enemy = FindNearestEnemy(_player.Stats.AttackRange);
             if (enemy == null) return;
 
+            _aggroEnemy = null; // cancel pending aggro if we're initiating
             _statusLabel.Text = "Combat!";
             _combatManager.EnterCombat(enemy);
         }
         else if (_turnManager.IsPlayerTurn)
         {
-            // Already in combat — attack
             _combatManager.PlayerAttack();
+        }
+    }
+
+    private void OnAbilityPressed()
+    {
+        if (_turnManager.State == TurnState.Defeat) return;
+
+        if (_turnManager.IsPlayerTurn)
+        {
+            _combatManager.PlayerAbility();
         }
     }
 
     private void OnCombatEnded()
     {
         _killCount++;
-        _statusLabel.Text = "Enemy defeated!";
         _attackButton.Visible = false;
+        _abilityButton.Visible = false;
+
+        // Spawn loot at the kill position
+        SpawnLoot(_combatManager.LastKillPosition);
 
         if (_killCount >= KillsToWin)
         {
             _statusLabel.Text = "Exit unlocked! Find the exit!";
             _exitDoor.Unlock();
+        }
+        else
+        {
+            _statusLabel.Text = "Enemy defeated!";
         }
 
         if (_player.Hp <= 0)
@@ -287,5 +388,21 @@ public partial class GameManager : Node3D
             _attackButton.Visible = false;
             _player.SetPhysicsProcess(false);
         }
+    }
+
+    // --- Loot ---
+
+    private void SpawnLoot(Vector3 position)
+    {
+        var pickup = new LootPickup();
+        pickup.Position = position;
+        pickup.Init(ModifierGenerator.Random());
+        pickup.PickedUp += OnLootPickedUp;
+        GetNode<Node3D>("World").AddChild(pickup);
+    }
+
+    private void OnLootPickedUp(string description)
+    {
+        _statusLabel.Text = $"Modifier: {description}";
     }
 }

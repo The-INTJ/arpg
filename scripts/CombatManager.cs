@@ -16,6 +16,9 @@ public partial class CombatManager : Node
     private const float ShakeIntensity = 0.08f;
     private const float EnemyRetaliationDelay = 0.5f;
 
+    /// <summary>Where the last killed enemy stood — used for loot spawning.</summary>
+    public Vector3 LastKillPosition { get; private set; }
+
     [Signal]
     public delegate void CombatEndedEventHandler();
 
@@ -37,9 +40,8 @@ public partial class CombatManager : Node
         _turnManager.SetState(TurnState.Busy);
         _player.SetPhysicsProcess(false);
 
-        // Zoom in + shake
         var tween = CreateTween();
-        var zoomedPos = _cameraRestPosition * 0.75f; // 25% closer
+        var zoomedPos = _cameraRestPosition * 0.75f;
         tween.TweenProperty(_camera, "position", zoomedPos, 0.3f)
             .SetTrans(Tween.TransitionType.Quad)
             .SetEase(Tween.EaseType.Out);
@@ -53,25 +55,42 @@ public partial class CombatManager : Node
     public void PlayerAttack()
     {
         if (!_turnManager.IsPlayerTurn || _target == null) return;
+        DealDamage(_player.AttackDamage);
+    }
 
+    public void PlayerAbility()
+    {
+        if (!_turnManager.IsPlayerTurn || _target == null) return;
+
+        var ability = _player.Ability;
+        if (ability == null || !ability.IsReady) return;
+
+        int damage = (int)(_player.AttackDamage * ability.DamageMultiplier);
+        ability.Use();
+        DealDamage(damage);
+    }
+
+    private void DealDamage(int damage)
+    {
         _turnManager.SetState(TurnState.Busy);
 
-        int damage = _player.AttackDamage;
         _target.TakeDamage(damage);
         SpawnDamageNumber(_target.GlobalPosition + Vector3.Up * 1.2f, damage, false);
         _shakeTimeLeft = 0.15f;
 
+        // Tick ability cooldown after each attack
+        _player.Ability?.TickCooldown();
+
         if (_target.IsDead)
         {
+            LastKillPosition = _target.GlobalPosition;
             _target.Die();
-            var dead = _target;
             _target = null;
             ExitCombat();
             EmitSignal(SignalName.CombatEnded);
             return;
         }
 
-        // Enemy retaliates after delay
         var timer = GetTree().CreateTimer(EnemyRetaliationDelay);
         timer.Timeout += OnEnemyRetaliate;
     }
@@ -93,13 +112,11 @@ public partial class CombatManager : Node
             return;
         }
 
-        // Back to player's turn
         _turnManager.SetState(TurnState.PlayerTurn);
     }
 
     private void ExitCombat()
     {
-        // Zoom out with overshoot bounce
         var tween = CreateTween();
         var overshoot = _cameraRestPosition * 1.08f;
         tween.TweenProperty(_camera, "position", overshoot, 0.25f)
@@ -117,7 +134,6 @@ public partial class CombatManager : Node
 
     public override void _Process(double delta)
     {
-        // Camera shake
         if (_shakeTimeLeft > 0)
         {
             _shakeTimeLeft -= (float)delta;
@@ -140,7 +156,6 @@ public partial class CombatManager : Node
         instance.GlobalPosition = worldPos;
         GetTree().CurrentScene.AddChild(instance);
 
-        // The DamageNumber script handles the rest once it's in the tree
         if (instance is DamageNumber dn)
             dn.Setup(amount, isPlayerDamage);
     }

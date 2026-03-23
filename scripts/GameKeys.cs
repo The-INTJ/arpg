@@ -5,6 +5,7 @@ namespace ARPG;
 public static class GameKeys
 {
     public const string Attack = "attack";
+    public const string Ability = "ability";
 
     public static string DisplayName(string action)
     {

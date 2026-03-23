@@ -29,7 +29,7 @@ Multiplayer is a core consideration from day one. This doesn't mean every featur
 - **Engine**: Godot 4.6, C# (.NET 8.0)
 - **All C# classes must be `partial`** (Godot 4.x requirement)
 - **Project must be runnable after every change** — don't leave it broken between commits
-- **Primitive meshes only** for now (BoxMesh, CapsuleMesh, PlaneMesh, SphereMesh)
+- **Primitive meshes + procedural sprites** — characters use `SpriteFactory` pixel art; environment uses primitive meshes
 - **Hardcode gameplay values** in scripts for now — data-driven content comes later when we have enough systems to justify it
 
 ## Godot C# Patterns
@@ -46,12 +46,18 @@ Multiplayer is a core consideration from day one. This doesn't mean every featur
 
 - **Palette** (`scripts/Palette.cs`): All colors and UI button styling. Vibrant earth-tone palette. Every material/color in the game should reference Palette — don't hardcode color values elsewhere.
 - **GameKeys** (`scripts/GameKeys.cs`): Key binding display names. Actions defined in `project.godot` InputMap; `GameKeys.DisplayName(action)` reads the actual bound key at runtime. Change a key binding in one place (`project.godot`) and the UI updates everywhere.
+- **GameState** (`scripts/GameState.cs`): Static state passed between scenes (e.g., selected archetype).
+- **SpriteFactory** (`scripts/SpriteFactory.cs`): Generates procedural pixel-art textures for characters at runtime.
+- **PlayerStats** (`scripts/PlayerStats.cs`): Base stats + modifier stack. Effective stats computed on the fly. Archetype sets base values; modifiers layer with `+N → +N% → ×M → −N%` ordering.
+- **CombatManager** (`scripts/CombatManager.cs`): Handles combat flow — zoom in/out, attack/ability/retaliate exchange, damage numbers, camera shake.
+- **ModifierGenerator** (`scripts/ModifierGenerator.cs`): Random modifier creation for loot drops.
 
 ## File Layout
 
 ```
-scenes/          — .tscn scene files (MainMenu, Game, VictoryScreen, future scenes)
+scenes/          — .tscn scene files (MainMenu, ArchetypeSelect, Game, VictoryScreen, DamageNumber, etc.)
 scripts/         — .cs script files
+plans/           — development roadmap docs
 ```
 
 Scene files reference scripts via `res://scripts/ScriptName.cs`.
@@ -71,6 +77,7 @@ Scene files reference scripts via `res://scripts/ScriptName.cs`.
 | `move_left` | A |
 | `move_right` | D |
 | `attack` | E |
+| `ability` | Q |
 
 Add new actions to `project.godot` and reference them via `GameKeys` constants.
 

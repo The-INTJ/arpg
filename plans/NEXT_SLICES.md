@@ -1,58 +1,41 @@
 # Next Feature Slices
 
-Small, self-contained additions roughly ordered by build-on-each-other dependency.
+## Completed
+
+- **Enemy Sight / Aggro** — Enemies spot player at 7-unit range, show "!" indicator, auto-initiate combat after 0.6s delay
+- **Archetype Selection** — Pre-game screen: Fighter (tanky), Archer (fast/ranged), Mage (glass cannon). Sets base stats.
+- **Abilities** — One per archetype on Q key. Cleave (2x damage), Snipe (3x), Fireball (2.5x). Turn-based cooldowns.
+- **Modifier System** — `+N`, `+N%`, `×M`, `−N%` operators stack on PlayerStats. Computed on the fly with proper ordering.
+- **Loot Drops** — Enemy death spawns glowing orb with random modifier. Bobbing animation, pickup on walk-over.
 
 ---
 
-## 1. Enemy Sight / Encounter Trigger
-Enemies detect the player at a distance and "aggro" — a visual indicator (exclamation mark, glow pulse) shows they've spotted you. Walking into their sight range auto-initiates combat instead of requiring you to press E first. This lays groundwork for stealth and positioning mattering.
-- **No new scenes needed.**
+## Up Next
 
-## 2. Archetype Selection Screen
-Pre-game screen: pick Fighter / Archer / Mage. Each sets different base values on `PlayerStats`. First consumer of the stats architecture.
-- **New scene needed:** `scenes/ArchetypeSelect.tscn`
-
-## 3. Abilities (One Per Archetype)
-Each archetype gets one unique ability beyond basic attack. Fighter: Cleave (hit all in range). Archer: Snipe (double range). Mage: Fireball (AoE). Bound to Q.
-- **No new scenes needed.**
-
-## 4. Modifier System (Core)
-Implement `+N`, `+N%`, `×M`, `−N%` modifier operators from the vision doc. Modifiers attach to `PlayerStats` and stack.
-- **No new scenes needed.**
-
-## 5. Loot Drops
-Enemies drop a modifier pickup on death (glowing orb). Walking over it adds a random modifier to stats.
-- **New scene needed:** `scenes/LootPickup.tscn`
-
-## 6. Multiple Rooms / Floor Progression
-After clearing + exiting, generate a new room instead of VictoryScreen. Track floor number. Difficulty scales.
+### 6. Multiple Rooms / Floor Progression
+After clearing + exiting, generate a new room instead of VictoryScreen. Track floor number. Difficulty scales (more enemies, tougher stats).
 - **No new scenes needed** (reuses Game.tscn).
 
-## 7. Enemy Variety
-2-3 enemy types with different stats/behaviors: melee brute (high HP, low damage), ranged (attacks from farther), fast (lower HP but hits harder). Different sprite colors/shapes.
+### 7. Enemy Variety
+2-3 enemy types with different stats/behaviors and sprite colors: melee brute (high HP), ranged (farther sight), fast (lower HP, higher damage).
 - **No new scenes needed.**
 
-## 8. Minimap
+### 8. Death / Game Over Screen
+Proper defeat screen with run stats (floor reached, enemies killed, modifiers collected) and restart.
+- **New scene needed:** `scenes/GameOver.tscn`
+
+### 9. Minimap
 Corner overlay showing room layout, player dot, enemy dots. Orthographic SubViewport camera.
 - **No new scenes needed.**
 
-## 9. Sound Effects
-Attack hit, enemy death, door unlock, combat enter/exit, footsteps.
+### 10. Sound Effects
+Attack hit, enemy death, door unlock, combat enter/exit, loot pickup, footsteps.
 - **No new scenes needed**, but need audio files in `audio/`.
 
-## 10. Death / Game Over Screen
-Proper defeat screen with stats summary and restart option.
-- **New scene needed:** `scenes/GameOver.tscn`
+### 11. Status Effects / Buff Display
+Show active modifiers as icons or a list in the HUD. Temporary buffs (e.g., from abilities) vs permanent modifiers.
+- **No new scenes needed.**
 
----
-
-## Scene Creation Summary
-
-| Slice | Needs New Scene? |
-|-------|-----------------|
-| 1     | No              |
-| 2     | Yes — `ArchetypeSelect.tscn` |
-| 3–4   | No              |
-| 5     | Yes — `LootPickup.tscn` |
-| 6–9   | No              |
-| 10    | Yes — `GameOver.tscn` |
+### 12. Story Encounters
+Occasional non-combat events between rooms: NPC dialogue, treasure chests, traps. Simple branching choices.
+- **New scene needed:** `scenes/Encounter.tscn`

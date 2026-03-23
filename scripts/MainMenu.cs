@@ -23,6 +23,6 @@ public partial class MainMenu : Control
 
     private void OnPlayPressed()
     {
-        GetTree().ChangeSceneToFile("res://scenes/Game.tscn");
+        GetTree().ChangeSceneToFile("res://scenes/ArchetypeSelect.tscn");
     }
 }
