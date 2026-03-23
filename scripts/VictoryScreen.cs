@@ -6,6 +6,7 @@ public partial class VictoryScreen : Control
 {
     public override void _Ready()
     {
+        Input.MouseMode = Input.MouseModeEnum.Visible;
         GetNode<ColorRect>("Background").Color = Palette.BgDark;
 
         var title = GetNode<Label>("CenterContainer/VBoxContainer/TitleLabel");
