@@ -11,9 +11,9 @@ public partial class Enemy : StaticBody3D
     private readonly Dictionary<MonsterEffectInstance, Color> _effectBadgeColors = new();
     private Node3D _effectBadgeAnchor;
 
-    public int MaxHp = 10;
-    public int Hp = 10;
-    public int AttackDamage = 2;
+    public int MaxHp = 11;
+    public int Hp = 11;
+    public int AttackDamage = 3;
     public float SightRange = 7.0f;
     public bool IsBoss { get; private set; }
 
@@ -29,8 +29,8 @@ public partial class Enemy : StaticBody3D
     /// </summary>
     public void ScaleForRoom(int room)
     {
-        float hpMult = 1.0f + (room - 1) * 0.5f;   // 1.0, 1.5, 2.0
-        float atkMult = 1.0f + (room - 1) * 0.35f;  // 1.0, 1.35, 1.7
+        float hpMult = 1.0f + (room - 1) * 0.55f;   // 1.0, 1.55, 2.1
+        float atkMult = 1.0f + (room - 1) * 0.4f;   // 1.0, 1.4, 1.8
         MaxHp = (int)(MaxHp * hpMult);
         Hp = MaxHp;
         AttackDamage = (int)(AttackDamage * atkMult);
@@ -64,7 +64,7 @@ public partial class Enemy : StaticBody3D
             return "Effects: none";
 
         return string.Join("\n", _monsterEffects.Select(effect =>
-            $"{effect.Definition.BadgeText} {effect.Definition.Name}: {effect.Definition.DescribeTier(effect.Tier)}"));
+            $"{effect.Definition.BadgeText} T{effect.Tier} {effect.Definition.Name}: {effect.Definition.DescribeTier(effect.Tier)}"));
     }
 
     public void Die()
@@ -131,6 +131,8 @@ public partial class Enemy : StaticBody3D
         context.Damage = Mathf.Max(0, context.Damage);
         if (player != null && context.Damage > 0)
             player.Hp = Mathf.Max(0, player.Hp - context.Damage);
+        if (context.Damage > 0 && context.HealingAmount > 0)
+            Heal(context.HealingAmount);
 
         FlashTriggeredBadges(context.Triggers);
         CleanupExpiredEffects();
@@ -220,7 +222,9 @@ public partial class Enemy : StaticBody3D
             var effect = _monsterEffects[i];
             var label = new Label3D();
             label.Name = $"EffectBadge_{effect.Definition.Id}";
-            label.Text = effect.Definition.BadgeText;
+            label.Text = effect.Tier > 0
+                ? $"{effect.Definition.BadgeText}{effect.Tier}"
+                : effect.Definition.BadgeText;
             label.FontSize = IsBoss ? 18 : 16;
             label.Billboard = BaseMaterial3D.BillboardModeEnum.Enabled;
             label.NoDepthTest = true;

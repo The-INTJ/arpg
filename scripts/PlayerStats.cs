@@ -12,7 +12,7 @@ public partial class PlayerStats
     // Base values set by archetype.
     private int _baseMaxHp = 15;
     private int _baseAttackDamage = 4;
-    private float _baseMoveSpeed = 5.0f;
+    private float _baseMoveSpeed = 5.5f;
     private float _baseAttackRange = 3.5f;
     private int _baseInventorySlots = 2;
     private Weapon _weapon;

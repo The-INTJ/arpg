@@ -13,6 +13,7 @@ public partial class GameManager : Node3D
     private Label _killLabel;
     private Label _statusLabel;
     private Label _roomLabel;
+    private Label _roomRuleLabel;
     private TurnManager _turnManager;
     private CombatManager _combatManager;
     private Camera3D _camera;
@@ -199,6 +200,25 @@ public partial class GameManager : Node3D
         _roomLabel.OffsetTop = 20;
         _roomLabel.HorizontalAlignment = HorizontalAlignment.Right;
         canvas.AddChild(_roomLabel);
+
+        _roomRuleLabel = new Label();
+        _roomRuleLabel.Text = $"{_monsterEffectProfile.DisplayName}\n{_monsterEffectProfile.Description}";
+        _roomRuleLabel.AddThemeColorOverride("font_color", Palette.TextLight);
+        _roomRuleLabel.AddThemeFontSizeOverride("font_size", 14);
+        _roomRuleLabel.AddThemeConstantOverride("shadow_offset_x", 2);
+        _roomRuleLabel.AddThemeConstantOverride("shadow_offset_y", 2);
+        _roomRuleLabel.AddThemeColorOverride("font_shadow_color", new Color(0, 0, 0, 0.8f));
+        _roomRuleLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        _roomRuleLabel.CustomMinimumSize = new Vector2(280, 0);
+        _roomRuleLabel.AnchorLeft = 1.0f;
+        _roomRuleLabel.AnchorRight = 1.0f;
+        _roomRuleLabel.AnchorTop = 0.0f;
+        _roomRuleLabel.AnchorBottom = 0.0f;
+        _roomRuleLabel.GrowHorizontal = Control.GrowDirection.Begin;
+        _roomRuleLabel.OffsetLeft = -320;
+        _roomRuleLabel.OffsetTop = 52;
+        _roomRuleLabel.HorizontalAlignment = HorizontalAlignment.Right;
+        canvas.AddChild(_roomRuleLabel);
     }
 
     private void BuildItemBar()

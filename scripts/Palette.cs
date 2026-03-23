@@ -26,6 +26,9 @@ public static class Palette
     public static readonly Color EffectInvulnerable = new(0.70f, 0.91f, 0.95f);
     public static readonly Color EffectBulwark = new(0.90f, 0.76f, 0.34f);
     public static readonly Color EffectThorns = new(0.48f, 0.78f, 0.42f);
+    public static readonly Color EffectEnraged = new(0.96f, 0.44f, 0.23f);
+    public static readonly Color EffectLeech = new(0.41f, 0.92f, 0.56f);
+    public static readonly Color HealText = new(0.45f, 1.0f, 0.62f);
 
     public static void StyleButton(Button btn, int fontSize = 20)
     {

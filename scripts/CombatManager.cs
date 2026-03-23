@@ -145,6 +145,8 @@ public partial class CombatManager : Node
 
         var result = _target.ResolveOutgoingDamage(_player);
         SpawnDamageNumber(_player.GlobalPosition + Vector3.Up * 1.5f, result.Damage, true);
+        if (result.HealingAmount > 0)
+            SpawnFloatingText(_target.GlobalPosition + Vector3.Up * 1.2f, $"+{result.HealingAmount}", Palette.HealText);
         EmitCombatFeedback(result.BuildFeedbackText());
         _shakeTimeLeft = result.Damage > 0 ? 0.12f : 0.08f;
         _target.OnOwnerTurnEnded();
@@ -201,6 +203,16 @@ public partial class CombatManager : Node
 
         if (instance is DamageNumber dn)
             dn.Setup(amount, isPlayerDamage);
+    }
+
+    private void SpawnFloatingText(Vector3 worldPos, string text, Color color)
+    {
+        var instance = _damageNumberScene.Instantiate<Node3D>();
+        instance.GlobalPosition = worldPos;
+        GetTree().CurrentScene.AddChild(instance);
+
+        if (instance is DamageNumber dn)
+            dn.SetupText(text, color);
     }
 
     private void EmitCombatFeedback(string text)

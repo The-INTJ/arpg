@@ -20,10 +20,17 @@ public partial class DamageNumber : Node3D
 
     public void Setup(int amount, bool isPlayerDamage)
     {
-        _label.Text = amount.ToString();
-        _label.Modulate = isPlayerDamage
-            ? new Color(1.0f, 0.3f, 0.3f)   // red for damage to player
-            : new Color(1.0f, 0.95f, 0.4f);  // yellow for damage to enemy
+        SetupText(
+            amount.ToString(),
+            isPlayerDamage
+                ? new Color(1.0f, 0.3f, 0.3f)
+                : new Color(1.0f, 0.95f, 0.4f));
+    }
+
+    public void SetupText(string text, Color color)
+    {
+        _label.Text = text;
+        _label.Modulate = color;
         _label.OutlineModulate = new Color(0, 0, 0);
 
         Animate();

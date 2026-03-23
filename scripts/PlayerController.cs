@@ -4,6 +4,9 @@ namespace ARPG;
 
 public partial class PlayerController : CharacterBody3D
 {
+    private const float MoveRampUpTime = 0.30f;
+    private const float MoveRampDownTime = 0.15f;
+
     public PlayerStats Stats { get; private set; }
     public Ability Ability { get; private set; }
 
@@ -53,7 +56,10 @@ public partial class PlayerController : CharacterBody3D
         if (Input.IsKeyPressed(Key.Shift))
             speed *= Stats.SprintMultiplier;
 
-        Velocity = input * speed;
+        Vector3 targetVelocity = input * speed;
+        float rampTime = targetVelocity.LengthSquared() > 0 ? MoveRampUpTime : MoveRampDownTime;
+        float maxDelta = speed / rampTime * (float)delta;
+        Velocity = Velocity.MoveToward(targetVelocity, maxDelta);
         MoveAndSlide();
     }
 

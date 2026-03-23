@@ -67,6 +67,7 @@ public partial class MonsterOutgoingDamageContext : MonsterEffectResolutionConte
     public PlayerController Target { get; }
     public int BaseDamage { get; }
     public int Damage { get; set; }
+    public int HealingAmount { get; private set; }
 
     public MonsterOutgoingDamageContext(Enemy attacker, PlayerController target, int baseDamage)
     {
@@ -74,5 +75,10 @@ public partial class MonsterOutgoingDamageContext : MonsterEffectResolutionConte
         Target = target;
         BaseDamage = Math.Max(0, baseDamage);
         Damage = BaseDamage;
+    }
+
+    public void AddHealing(int amount)
+    {
+        HealingAmount += Math.Max(0, amount);
     }
 }
