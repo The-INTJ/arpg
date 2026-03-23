@@ -1,10 +1,12 @@
 using Godot;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace ARPG;
 
 /// <summary>
-/// Overlay screen for managing weapon modifiers and viewing effective stats.
-/// The UI exposes one persistent row per stat target instead of anonymous numbered slots.
+/// Overlay screen for managing flexible weapon modifiers and viewing effective stats.
+/// Modifiers choose their stat targets at apply time, so the UI stages assignments before confirm.
 /// </summary>
 public partial class ModifyStatsSimple : Control
 {
@@ -18,8 +20,8 @@ public partial class ModifyStatsSimple : Control
 
 	private PanelContainer _confirmPanel;
 	private Label _confirmLabel;
-	private Modifier _selectedModifier;
-	private Modifier _pendingModifier;
+	private ModifierAssignmentPlan _selectionPlan;
+	private ModifierAssignmentPlan _pendingPlan;
 
 	[Signal]
 	public delegate void ClosedEventHandler();
@@ -27,20 +29,19 @@ public partial class ModifyStatsSimple : Control
 	public void Open(PlayerStats stats, Modifier preferredModifier = null)
 	{
 		_stats = stats;
-		_selectedModifier = stats != null && stats.HasBackpackModifier(preferredModifier)
-			? preferredModifier
-			: null;
-		_pendingModifier = null;
+		_pendingPlan = null;
+		SelectModifier(stats != null && stats.HasBackpackModifier(preferredModifier) ? preferredModifier : null);
 		Visible = true;
 		GetTree().Paused = true;
+		_confirmPanel.Visible = false;
 		Refresh();
 	}
 
 	private void Close()
 	{
 		Visible = false;
-		_selectedModifier = null;
-		_pendingModifier = null;
+		_selectionPlan = null;
+		_pendingPlan = null;
 		_confirmPanel.Visible = false;
 		GetTree().Paused = false;
 		EmitSignal(SignalName.Closed);
@@ -74,7 +75,7 @@ public partial class ModifyStatsSimple : Control
 		margin.AddChild(rootVBox);
 
 		var header = new Label();
-		header.Text = "Select a backpack modifier, then click its matching stat row.";
+		header.Text = "Pick a modifier, then assign each effect to any stat row you want.";
 		header.AddThemeColorOverride("font_color", new Color(Palette.TextLight, 0.9f));
 		header.AddThemeFontSizeOverride("font_size", 18);
 		header.HorizontalAlignment = HorizontalAlignment.Center;
@@ -96,7 +97,7 @@ public partial class ModifyStatsSimple : Control
 
 		var rightVBox = new VBoxContainer();
 		rightVBox.AddThemeConstantOverride("separation", 18);
-		rightVBox.CustomMinimumSize = new Vector2(320, 0);
+		rightVBox.CustomMinimumSize = new Vector2(340, 0);
 		mainHBox.AddChild(rightVBox);
 
 		BuildSelectedSection(rightVBox);
@@ -105,7 +106,7 @@ public partial class ModifyStatsSimple : Control
 		BuildConfirmPopup();
 
 		var footer = new Label();
-		footer.Text = $"Esc Close  |  ({GameKeys.DisplayName(GameKeys.Ability)}) Clear selection";
+		footer.Text = $"Esc Close  |  ({GameKeys.DisplayName(GameKeys.Ability)}) Reset picks / clear selection";
 		footer.HorizontalAlignment = HorizontalAlignment.Center;
 		footer.AddThemeColorOverride("font_color", new Color(Palette.TextLight, 0.55f));
 		footer.AddThemeFontSizeOverride("font_size", 15);
@@ -129,7 +130,7 @@ public partial class ModifyStatsSimple : Control
 		vbox.AddChild(_weaponTitle);
 
 		var subtitle = new Label();
-		subtitle.Text = "Stable stat channels replace the old numbered swap slots.";
+		subtitle.Text = "Rows are persistent stats. Flexible modifiers bind to a row only when you apply them.";
 		subtitle.AddThemeColorOverride("font_color", new Color(Palette.TextLight, 0.75f));
 		subtitle.AddThemeFontSizeOverride("font_size", 15);
 		subtitle.HorizontalAlignment = HorizontalAlignment.Center;
@@ -144,7 +145,7 @@ public partial class ModifyStatsSimple : Control
 			button.CustomMinimumSize = new Vector2(0, 88);
 			button.SizeFlagsHorizontal = SizeFlags.ExpandFill;
 			button.FocusMode = Control.FocusModeEnum.None;
-			button.Pressed += () => StartApply(target);
+			button.Pressed += () => OnChannelPressed(target);
 			vbox.AddChild(button);
 			_channelButtons[i] = button;
 		}
@@ -242,10 +243,10 @@ public partial class ModifyStatsSimple : Control
 		_confirmPanel.AnchorRight = 0.5f;
 		_confirmPanel.AnchorTop = 0.5f;
 		_confirmPanel.AnchorBottom = 0.5f;
-		_confirmPanel.OffsetLeft = -280;
-		_confirmPanel.OffsetRight = 280;
-		_confirmPanel.OffsetTop = -190;
-		_confirmPanel.OffsetBottom = 190;
+		_confirmPanel.OffsetLeft = -300;
+		_confirmPanel.OffsetRight = 300;
+		_confirmPanel.OffsetTop = -210;
+		_confirmPanel.OffsetBottom = 210;
 		_confirmPanel.MouseFilter = MouseFilterEnum.Stop;
 		AddChild(_confirmPanel);
 
@@ -304,9 +305,14 @@ public partial class ModifyStatsSimple : Control
 			return;
 		}
 
-		if (_selectedModifier != null && @event.IsActionPressed(GameKeys.Ability))
+		if (_selectionPlan != null && @event.IsActionPressed(GameKeys.Ability))
 		{
-			ClearSelection();
+			if (_selectionPlan.HasAnyAssignments)
+				_selectionPlan.Reset();
+			else
+				SelectModifier(null);
+
+			Refresh();
 			GetViewport().SetInputAsHandled();
 		}
 	}
@@ -316,8 +322,8 @@ public partial class ModifyStatsSimple : Control
 		if (_stats == null)
 			return;
 
-		if (_selectedModifier != null && !_stats.HasBackpackModifier(_selectedModifier))
-			_selectedModifier = null;
+		if (_selectionPlan != null && !_stats.HasBackpackModifier(_selectionPlan.Modifier))
+			_selectionPlan = null;
 
 		var weapon = _stats.Weapon;
 		_weaponTitle.Text = weapon != null ? $"WEAPON: {weapon.Name}" : "WEAPON: None";
@@ -330,51 +336,80 @@ public partial class ModifyStatsSimple : Control
 
 	private void RefreshWeaponChannels()
 	{
+		var assignedEffects = _selectionPlan?.BuildAssignedEffects() ?? System.Array.Empty<AppliedModifierEffect>();
+
 		for (int i = 0; i < StatTargetInfo.All.Length; i++)
 		{
 			StatTarget target = StatTargetInfo.All[i];
 			var button = _channelButtons[i];
 			var channel = _stats.GetWeaponChannel(target);
-			bool isSelectedTarget = _selectedModifier != null && _selectedModifier.Target == target;
-			string currentSummary = channel?.Summary ?? "(unavailable)";
 
-			string text = $"{StatTargetInfo.DisplayName(target)}\nCurrent: {currentSummary}";
-			if (isSelectedTarget && channel != null)
-				text += $"\nAfter mod: {channel.SummaryWith(_selectedModifier)}";
+			bool hasSelection = _selectionPlan != null;
+			bool canAssignNext = hasSelection && _selectionPlan.CanAssignNext(target);
+			var previewEffects = hasSelection
+				? (canAssignNext ? _selectionPlan.BuildPreviewEffectsIfNextAssigned(target) : assignedEffects)
+				: System.Array.Empty<AppliedModifierEffect>();
+			bool hasPreviewForTarget = previewEffects.Any(effect => effect.Target == target);
+
+			string text = $"{StatTargetInfo.DisplayName(target)}\nCurrent: {channel?.Summary ?? "(unavailable)"}";
+			if (hasSelection && hasPreviewForTarget && channel != null)
+				text += $"\nAfter mod: {channel.SummaryWith(previewEffects)}";
 
 			button.Text = text;
-			button.TooltipText = isSelectedTarget
-				? $"Apply {_selectedModifier.Description} to {StatTargetInfo.DisplayName(target)}."
-				: _selectedModifier != null
-					? $"Selected modifier affects {StatTargetInfo.DisplayName(_selectedModifier.Target)}."
+			button.TooltipText = canAssignNext
+				? $"Assign {_selectionPlan.GetNextEffect().ShortLabel} to {StatTargetInfo.DisplayName(target)}."
+				: hasSelection
+					? "This row is not selectable for the next pending effect."
 					: "Select a backpack modifier first.";
 
-			ApplyChannelButtonTheme(button, isSelectedTarget, _selectedModifier != null);
+			ApplyChannelButtonTheme(button, canAssignNext, hasSelection, hasPreviewForTarget);
 		}
 	}
 
 	private void RefreshSelectionPanel()
 	{
-		if (_selectedModifier == null)
+		if (_selectionPlan == null)
 		{
 			_selectedModifierLabel.Text =
-				"No modifier selected.\n\nChoose one from the backpack to preview how it will stack.";
+				"No modifier selected.\n\nChoose one from the backpack to assign its effect values to any stat you want.";
 			return;
 		}
 
-		_selectedModifierLabel.Text =
-			$"{_selectedModifier.Description}\n\n" +
-			$"Next step: click the {StatTargetInfo.DisplayName(_selectedModifier.Target)} row to apply it.\n" +
-			$"Press {GameKeys.DisplayName(GameKeys.Ability)} to clear this selection.";
+		var lines = new List<string>
+		{
+			_selectionPlan.Modifier.Description,
+			string.Empty,
+            "Assignments:"
+		};
+
+		for (int i = 0; i < _selectionPlan.SelectedTargets.Count; i++)
+		{
+			var effect = _selectionPlan.GetEffect(i);
+			var selectedTarget = _selectionPlan.SelectedTargets[i];
+			string targetText = selectedTarget.HasValue
+				? StatTargetInfo.DisplayName(selectedTarget.Value)
+				: $"choose {StatTargetInfo.DescribeTargetChoice(effect.AllowedTargets)}";
+
+			lines.Add($"{i + 1}. {effect.ShortLabel} -> {targetText}");
+		}
+
+		var nextEffect = _selectionPlan.GetNextEffect();
+		lines.Add(string.Empty);
+		lines.Add(nextEffect != null
+			? $"Next: choose a row for {nextEffect.ShortLabel}."
+			: "All targets chosen. Confirm or cancel in the popup.");
+
+		_selectedModifierLabel.Text = string.Join("\n", lines);
 	}
 
 	private void RefreshStatsPanel()
 	{
 		_youStatsLabel.Text =
-			$"HP:    {_stats.CurrentHp} / {_stats.MaxHp}\n" +
-			$"ATK:   {_stats.AttackDamage}\n" +
-			$"SPD:   {_stats.MoveSpeed:0.#}\n" +
-			$"Range: {_stats.AttackRange:0.#}";
+			$"HP:     {_stats.CurrentHp} / {_stats.MaxHp}\n" +
+			$"ATK:    {_stats.AttackDamage}\n" +
+			$"SPD:    {_stats.MoveSpeed:0.#}\n" +
+			$"Range:  {_stats.AttackRange:0.#}\n" +
+			$"Slots:  {_stats.InventorySlotCount}";
 	}
 
 	private void RefreshBackpack()
@@ -402,11 +437,12 @@ public partial class ModifyStatsSimple : Control
 			label.Text = modifier.Description;
 			label.AddThemeColorOverride("font_color", Palette.TextLight);
 			label.AddThemeFontSizeOverride("font_size", 16);
+			label.AutowrapMode = TextServer.AutowrapMode.WordSmart;
 			label.SizeFlagsHorizontal = SizeFlags.ExpandFill;
 			row.AddChild(label);
 
 			var selectButton = new Button();
-			bool isSelected = modifier == _selectedModifier;
+			bool isSelected = _selectionPlan != null && modifier == _selectionPlan.Modifier;
 			selectButton.Text = isSelected ? "Clear" : "Select";
 			selectButton.CustomMinimumSize = new Vector2(92, 0);
 			selectButton.FocusMode = Control.FocusModeEnum.None;
@@ -420,75 +456,93 @@ public partial class ModifyStatsSimple : Control
 
 	private void ToggleSelection(Modifier modifier)
 	{
-		if (modifier == null)
-			return;
+		if (_selectionPlan != null && _selectionPlan.Modifier == modifier)
+			SelectModifier(null);
+		else
+			SelectModifier(modifier);
 
-		_selectedModifier = _selectedModifier == modifier ? null : modifier;
 		Refresh();
 	}
 
-	private void ClearSelection()
+	private void SelectModifier(Modifier modifier)
 	{
-		_selectedModifier = null;
-		Refresh();
+		_selectionPlan = modifier != null ? new ModifierAssignmentPlan(modifier) : null;
 	}
 
-	private void StartApply(StatTarget target)
+	private void OnChannelPressed(StatTarget target)
 	{
-		if (_selectedModifier == null || _selectedModifier.Target != target || _stats == null)
+		if (_selectionPlan == null || !_selectionPlan.TryAssignNext(target))
 			return;
 
-		var channel = _stats.GetWeaponChannel(target);
-		if (channel == null)
+		if (_selectionPlan.IsComplete)
+			ShowConfirmPopup();
+		else
+			Refresh();
+	}
+
+	private void ShowConfirmPopup()
+	{
+		_pendingPlan = _selectionPlan?.Clone();
+		if (_pendingPlan == null)
 			return;
 
-		_pendingModifier = _selectedModifier;
+		var pendingEffects = _pendingPlan.BuildAppliedEffects();
+		var lines = new List<string> { "Apply Modifier", string.Empty };
 
-		_confirmLabel.Text =
-			$"Apply Modifier\n\n" +
-			$"Target: {StatTargetInfo.DisplayName(target)}\n" +
-			$"Current: {channel.Summary}\n" +
-			$"After mod: {channel.SummaryWith(_pendingModifier)}\n\n" +
-			BuildStatPreview(_pendingModifier) +
-			$"\n({GameKeys.DisplayName(GameKeys.Attack)}) Confirm  |  ({GameKeys.DisplayName(GameKeys.Ability)}) Cancel";
+		foreach (var target in StatTargetInfo.All)
+		{
+			if (!pendingEffects.Any(effect => effect.Target == target))
+				continue;
 
+			var channel = _stats.GetWeaponChannel(target);
+			lines.Add(StatTargetInfo.DisplayName(target));
+			lines.Add($"Current: {channel?.Summary ?? "(unavailable)"}");
+			lines.Add($"After mod: {channel?.SummaryWith(pendingEffects) ?? "(unavailable)"}");
+			lines.Add(string.Empty);
+		}
+
+		lines.Add(BuildStatPreview(pendingEffects));
+		lines.Add(string.Empty);
+		lines.Add($"({GameKeys.DisplayName(GameKeys.Attack)}) Confirm  |  ({GameKeys.DisplayName(GameKeys.Ability)}) Cancel");
+
+		_confirmLabel.Text = string.Join("\n", lines);
 		_confirmPanel.Visible = true;
 	}
 
-	private string BuildStatPreview(Modifier modifier)
+	private string BuildStatPreview(IReadOnlyList<AppliedModifierEffect> pendingEffects)
 	{
-		string beforeHp = $"{_stats.CurrentHp} / {_stats.MaxHp}";
-		string afterHp = $"{_stats.PreviewCurrentHpWithModifier(modifier)} / {(int)_stats.PreviewStatWithModifier(StatTarget.MaxHp, modifier)}";
-
+		int afterMaxHp = (int)_stats.PreviewStatWithEffects(StatTarget.MaxHp, pendingEffects);
 		return
-			$"HP: {beforeHp} -> {afterHp}\n" +
-			$"ATK: {_stats.AttackDamage} -> {FormatStat(_stats.PreviewStatWithModifier(StatTarget.AttackDamage, modifier))}\n" +
-			$"SPD: {_stats.MoveSpeed:0.#} -> {FormatStat(_stats.PreviewStatWithModifier(StatTarget.MoveSpeed, modifier))}\n" +
-			$"Range: {_stats.AttackRange:0.#} -> {FormatStat(_stats.PreviewStatWithModifier(StatTarget.AttackRange, modifier))}";
+			$"HP: {_stats.CurrentHp} / {_stats.MaxHp} -> {_stats.PreviewCurrentHpWithEffects(pendingEffects)} / {afterMaxHp}\n" +
+			$"ATK: {_stats.AttackDamage} -> {StatTargetInfo.FormatStatValue(StatTarget.AttackDamage, _stats.PreviewStatWithEffects(StatTarget.AttackDamage, pendingEffects))}\n" +
+			$"SPD: {_stats.MoveSpeed:0.#} -> {StatTargetInfo.FormatStatValue(StatTarget.MoveSpeed, _stats.PreviewStatWithEffects(StatTarget.MoveSpeed, pendingEffects))}\n" +
+			$"Range: {_stats.AttackRange:0.#} -> {StatTargetInfo.FormatStatValue(StatTarget.AttackRange, _stats.PreviewStatWithEffects(StatTarget.AttackRange, pendingEffects))}\n" +
+			$"Slots: {_stats.InventorySlotCount} -> {_stats.PreviewInventorySlotCountWithEffects(pendingEffects)}";
 	}
 
 	private void ConfirmApply()
 	{
-		if (_pendingModifier == null)
+		if (_pendingPlan == null)
 			return;
 
-		if (_stats.ApplyBackpackModifier(_pendingModifier))
-			_selectedModifier = null;
+		if (_stats.ApplyBackpackModifier(_pendingPlan))
+			SelectModifier(null);
 
-		_pendingModifier = null;
+		_pendingPlan = null;
 		_confirmPanel.Visible = false;
 		Refresh();
 	}
 
 	private void CancelApply()
 	{
-		_pendingModifier = null;
+		_pendingPlan = null;
 		_confirmPanel.Visible = false;
+		Refresh();
 	}
 
-	private static void ApplyChannelButtonTheme(Button button, bool isSelectedTarget, bool hasSelection)
+	private static void ApplyChannelButtonTheme(Button button, bool canAssign, bool hasSelection, bool hasPreview)
 	{
-		if (isSelectedTarget)
+		if (canAssign)
 		{
 			ApplyButtonTheme(
 				button,
@@ -496,6 +550,20 @@ public partial class ModifyStatsSimple : Control
 				new Color(Palette.ButtonHover, 0.96f),
 				new Color(Palette.Accent, 0.96f),
 				Palette.Accent,
+				Palette.TextLight,
+				18,
+				14);
+			return;
+		}
+
+		if (hasSelection && hasPreview)
+		{
+			ApplyButtonTheme(
+				button,
+				new Color(0.18f, 0.14f, 0.10f, 0.96f),
+				new Color(0.18f, 0.14f, 0.10f, 0.96f),
+				new Color(0.18f, 0.14f, 0.10f, 0.96f),
+				new Color(Palette.Accent, 0.45f),
 				Palette.TextLight,
 				18,
 				14);
@@ -583,10 +651,5 @@ public partial class ModifyStatsSimple : Control
 		style.SetCornerRadiusAll(10);
 		style.SetContentMarginAll(padding);
 		return style;
-	}
-
-	private static string FormatStat(float value)
-	{
-		return value == (int)value ? $"{(int)value}" : $"{value:0.#}";
 	}
 }

@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace ARPG;
 
@@ -15,88 +17,44 @@ public enum StatTarget
     MaxHp,
     AttackDamage,
     MoveSpeed,
-    AttackRange
+    AttackRange,
+    InventorySlots
 }
 
 public partial class Modifier
 {
-    public ModifierOp Op { get; }
-    public StatTarget Target { get; }
-    public float Value { get; }
+    private readonly ModifierEffect[] _effects;
 
-    public Modifier(ModifierOp op, StatTarget target, float value)
+    public IReadOnlyList<ModifierEffect> Effects => _effects;
+
+    public string Description => string.Join("  +  ", _effects.Select(effect => effect.Description));
+
+    public Modifier(params ModifierEffect[] effects)
     {
-        Op = op;
-        Target = target;
-        Value = value;
+        if (effects == null || effects.Length == 0)
+            throw new ArgumentException("Modifier must contain at least one effect.", nameof(effects));
+
+        _effects = effects.ToArray();
     }
 
-    public string Description => Describe(Op, Target, Value);
+    public static Modifier Create(params ModifierEffect[] effects) => new(effects);
 
-    public static string Describe(ModifierOp op, StatTarget target, float value)
+    public static Modifier Fixed(ModifierOp op, StatTarget target, float value)
     {
-        return $"{GetOpSymbol(op)}{FormatValue(op, target, value)} {StatTargetInfo.DisplayName(target)}";
+        return new Modifier(new ModifierEffect(op, value, new[] { target }));
     }
 
-    public static string DescribeCombined(StatTarget target, IEnumerable<Modifier> modifiers)
+    public static Modifier Flexible(ModifierOp op, float value)
     {
-        float flat = 0;
-        float percentAdd = 0;
-        float multiply = 1;
-        float percentReduce = 0;
-        bool hasMultiply = false;
-
-        foreach (var modifier in modifiers)
-        {
-            if (modifier == null || modifier.Target != target)
-                continue;
-
-            switch (modifier.Op)
-            {
-                case ModifierOp.FlatAdd:
-                    flat += modifier.Value;
-                    break;
-                case ModifierOp.PercentAdd:
-                    percentAdd += modifier.Value;
-                    break;
-                case ModifierOp.Multiply:
-                    multiply *= modifier.Value;
-                    hasMultiply = true;
-                    break;
-                case ModifierOp.PercentReduce:
-                    percentReduce += modifier.Value;
-                    break;
-            }
-        }
-
-        var parts = new List<string>();
-        if (flat != 0)
-            parts.Add(Describe(ModifierOp.FlatAdd, target, flat));
-        if (percentAdd != 0)
-            parts.Add(Describe(ModifierOp.PercentAdd, target, percentAdd));
-        if (hasMultiply && multiply != 1)
-            parts.Add(Describe(ModifierOp.Multiply, target, multiply));
-        if (percentReduce != 0)
-            parts.Add(Describe(ModifierOp.PercentReduce, target, percentReduce));
-
-        return parts.Count > 0 ? string.Join(", ", parts) : "(empty)";
+        return new Modifier(new ModifierEffect(op, value, StatTargetInfo.All));
     }
 
-    private static string GetOpSymbol(ModifierOp op) => op switch
+    public AppliedModifierEffect[] CreateAppliedEffectsFromFixedTargets()
     {
-        ModifierOp.FlatAdd => "+",
-        ModifierOp.PercentAdd => "+",
-        ModifierOp.Multiply => "x",
-        ModifierOp.PercentReduce => "-",
-        _ => ""
-    };
+        var appliedEffects = new AppliedModifierEffect[_effects.Length];
+        for (int i = 0; i < _effects.Length; i++)
+            appliedEffects[i] = new AppliedModifierEffect(this, _effects[i], _effects[i].GetFixedTarget());
 
-    private static string FormatValue(ModifierOp op, StatTarget target, float value) => op switch
-    {
-        ModifierOp.PercentAdd => $"{value:0}%",
-        ModifierOp.PercentReduce => $"{value:0}%",
-        ModifierOp.Multiply => $"{value:0.#}",
-        ModifierOp.FlatAdd when target == StatTarget.MoveSpeed || target == StatTarget.AttackRange => $"{value:0.#}",
-        _ => $"{(int)value}"
-    };
+        return appliedEffects;
+    }
 }

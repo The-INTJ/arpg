@@ -4,8 +4,8 @@ using System.Collections.Generic;
 namespace ARPG;
 
 /// <summary>
-/// Holds a player's base stats plus modifier stacks. Effective stats are computed on the fly.
-/// Archetype sets the base values; weapon-applied modifiers and general modifiers layer on top.
+/// Holds a player's base stats plus resolved modifier effects. Effects remain target-agnostic
+/// while in the backpack, then become concrete AppliedModifierEffects when the player assigns them.
 /// </summary>
 public partial class PlayerStats
 {
@@ -14,53 +14,80 @@ public partial class PlayerStats
     private int _baseAttackDamage = 4;
     private float _baseMoveSpeed = 5.0f;
     private float _baseAttackRange = 3.5f;
+    private int _baseInventorySlots = 2;
+    private Weapon _weapon;
 
     public float SprintMultiplier { get; set; } = 2.0f;
     public float HpRegenRate { get; set; } = 0.2f; // 1 HP per 5 seconds
 
-    private readonly List<Modifier> _modifiers = new();
+    private readonly List<AppliedModifierEffect> _modifiers = new();
     private readonly List<Modifier> _backpack = new();
 
     /// <summary>The player's equipped weapon (provides stat channels plus ability).</summary>
-    public Weapon Weapon { get; set; }
+    public Weapon Weapon
+    {
+        get => _weapon;
+        set
+        {
+            int oldMaxHp = MaxHp;
+            _weapon = value;
+            AdjustCurrentHpForMaxChange(oldMaxHp);
+            SyncInventoryCapacity();
+        }
+    }
+
     public PlayerInventory Inventory { get; } = new(2);
 
     public int MaxHp => (int)GetEffectiveStatValue(StatTarget.MaxHp);
     public int AttackDamage => (int)GetEffectiveStatValue(StatTarget.AttackDamage);
     public float MoveSpeed => GetEffectiveStatValue(StatTarget.MoveSpeed);
     public float AttackRange => GetEffectiveStatValue(StatTarget.AttackRange);
+    public int DesiredInventorySlotCount => ClampInventorySlots((int)GetEffectiveStatValue(StatTarget.InventorySlots));
+    public int InventorySlotCount => Inventory.Capacity;
 
     // Current mutable state.
     public int CurrentHp { get; set; }
     public bool IsAlive => CurrentHp > 0;
 
-    public IReadOnlyList<Modifier> Modifiers => _modifiers;
+    public IReadOnlyList<AppliedModifierEffect> Modifiers => _modifiers;
     public IReadOnlyList<Modifier> Backpack => _backpack;
 
     public PlayerStats()
     {
         CurrentHp = _baseMaxHp;
+        SyncInventoryCapacity();
     }
 
     public void SetBaseStats(int maxHp, int attackDamage, float moveSpeed, float attackRange)
     {
+        int oldMaxHp = MaxHp;
         _baseMaxHp = maxHp;
         _baseAttackDamage = attackDamage;
         _baseMoveSpeed = moveSpeed;
         _baseAttackRange = attackRange;
+        AdjustCurrentHpForMaxChange(oldMaxHp);
     }
 
-    public void AddModifier(Modifier mod)
+    public void SetBaseInventorySlots(int inventorySlots)
     {
-        int oldMaxHp = MaxHp;
-        _modifiers.Add(mod);
-        if (mod.Target == StatTarget.MaxHp && MaxHp > oldMaxHp)
-            CurrentHp += MaxHp - oldMaxHp;
+        _baseInventorySlots = Math.Max(1, inventorySlots);
+        SyncInventoryCapacity();
     }
 
-    public void AddToBackpack(Modifier mod) => _backpack.Add(mod);
-    public bool RemoveFromBackpack(Modifier mod) => _backpack.Remove(mod);
-    public bool HasBackpackModifier(Modifier mod) => mod != null && _backpack.Contains(mod);
+    public void AddModifier(AppliedModifierEffect effect)
+    {
+        if (effect == null)
+            return;
+
+        int oldMaxHp = MaxHp;
+        _modifiers.Add(effect);
+        AdjustCurrentHpForMaxChange(oldMaxHp);
+        SyncInventoryCapacity();
+    }
+
+    public void AddToBackpack(Modifier modifier) => _backpack.Add(modifier);
+    public bool RemoveFromBackpack(Modifier modifier) => _backpack.Remove(modifier);
+    public bool HasBackpackModifier(Modifier modifier) => modifier != null && _backpack.Contains(modifier);
 
     public void ResetHp() => CurrentHp = MaxHp;
 
@@ -71,46 +98,41 @@ public partial class PlayerStats
         return Weapon?.GetChannel(target);
     }
 
-    /// <summary>
-    /// Applies a backpack modifier into its matching weapon stat channel.
-    /// The modifier stops living in the backpack and starts affecting the weapon immediately.
-    /// </summary>
-    public bool ApplyBackpackModifier(Modifier modifier)
+    public bool ApplyBackpackModifier(ModifierAssignmentPlan plan)
     {
-        if (Weapon == null || modifier == null || !_backpack.Contains(modifier))
+        if (Weapon == null || plan == null || !plan.IsComplete || !_backpack.Contains(plan.Modifier))
             return false;
 
         int oldMaxHp = MaxHp;
-        Weapon.GetChannel(modifier.Target).Add(modifier);
-        _backpack.Remove(modifier);
+        foreach (var effect in plan.BuildAppliedEffects())
+            Weapon.GetChannel(effect.Target).Add(effect);
+
+        _backpack.Remove(plan.Modifier);
         AdjustCurrentHpForMaxChange(oldMaxHp);
+        SyncInventoryCapacity();
         return true;
     }
 
-    /// <summary>
-    /// Preview what a stat would be if a modifier were applied to the weapon.
-    /// </summary>
-    public float PreviewStatWithModifier(StatTarget target, Modifier modifier)
+    public float PreviewStatWithEffects(StatTarget target, IReadOnlyList<AppliedModifierEffect> extraEffects)
     {
-        if (modifier == null || Weapon == null)
-            return GetEffectiveStatValue(target);
-
-        var channel = Weapon.GetChannel(modifier.Target);
-        channel.Add(modifier);
-        float result = GetEffectiveStatValue(target);
-        channel.Remove(modifier);
-        return result;
+        return ComputeStat(target, GetBase(target), extraEffects);
     }
 
-    public int PreviewCurrentHpWithModifier(Modifier modifier)
+    public int PreviewCurrentHpWithEffects(IReadOnlyList<AppliedModifierEffect> extraEffects)
     {
         int beforeMaxHp = MaxHp;
-        int afterMaxHp = (int)PreviewStatWithModifier(StatTarget.MaxHp, modifier);
+        int afterMaxHp = (int)PreviewStatWithEffects(StatTarget.MaxHp, extraEffects);
 
         if (afterMaxHp > beforeMaxHp)
             return CurrentHp + (afterMaxHp - beforeMaxHp);
 
         return Math.Min(CurrentHp, afterMaxHp);
+    }
+
+    public int PreviewInventorySlotCountWithEffects(IReadOnlyList<AppliedModifierEffect> extraEffects)
+    {
+        int desiredCapacity = ClampInventorySlots((int)PreviewStatWithEffects(StatTarget.InventorySlots, extraEffects));
+        return Math.Max(desiredCapacity, Inventory.MinimumRequiredCapacity);
     }
 
     private float GetBase(StatTarget target) => target switch
@@ -119,6 +141,7 @@ public partial class PlayerStats
         StatTarget.AttackDamage => _baseAttackDamage,
         StatTarget.MoveSpeed => _baseMoveSpeed,
         StatTarget.AttackRange => _baseAttackRange,
+        StatTarget.InventorySlots => _baseInventorySlots,
         _ => 0
     };
 
@@ -131,52 +154,67 @@ public partial class PlayerStats
             CurrentHp = newMaxHp;
     }
 
+    private void SyncInventoryCapacity()
+    {
+        Inventory.SetCapacity(DesiredInventorySlotCount);
+    }
+
+    private static int ClampInventorySlots(int value)
+    {
+        return Math.Clamp(value, 1, GameKeys.ItemSlots.Length);
+    }
+
     /// <summary>
     /// Applies modifiers in order: +N -> +N% -> xM -> -N%.
-    /// Includes weapon-applied modifiers and general modifiers. Minimum result is 1.
+    /// Includes weapon-applied effects, general effects, and optional preview effects.
+    /// Minimum result is 1.
     /// </summary>
-    private float ComputeStat(StatTarget target, float baseValue)
+    private float ComputeStat(StatTarget target, float baseValue, IReadOnlyList<AppliedModifierEffect> extraEffects = null)
     {
         float flat = 0;
         float percentAdd = 0;
         float multiply = 1;
         float percentReduce = 0;
 
-        void Accumulate(Modifier mod)
+        void Accumulate(AppliedModifierEffect effect)
         {
-            if (mod == null || mod.Target != target)
+            if (effect == null || effect.Target != target)
                 return;
 
-            switch (mod.Op)
+            switch (effect.Op)
             {
                 case ModifierOp.FlatAdd:
-                    flat += mod.Value;
+                    flat += effect.Value;
                     break;
                 case ModifierOp.PercentAdd:
-                    percentAdd += mod.Value;
+                    percentAdd += effect.Value;
                     break;
                 case ModifierOp.Multiply:
-                    multiply *= mod.Value;
+                    multiply *= effect.Value;
                     break;
                 case ModifierOp.PercentReduce:
-                    percentReduce += mod.Value;
+                    percentReduce += effect.Value;
                     break;
             }
         }
 
-        // Weapon-applied modifiers.
         if (Weapon != null)
         {
             foreach (var channel in Weapon.Channels)
             {
-                foreach (var modifier in channel.Modifiers)
-                    Accumulate(modifier);
+                foreach (var effect in channel.Effects)
+                    Accumulate(effect);
             }
         }
 
-        // General modifiers.
-        foreach (var mod in _modifiers)
-            Accumulate(mod);
+        foreach (var effect in _modifiers)
+            Accumulate(effect);
+
+        if (extraEffects != null)
+        {
+            foreach (var effect in extraEffects)
+                Accumulate(effect);
+        }
 
         float result = baseValue + flat;
         result *= (1 + percentAdd / 100f);

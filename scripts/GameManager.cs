@@ -196,6 +196,9 @@ public partial class GameManager : Node3D
         _itemSlotStyles = new StyleBoxFlat[slotCount];
 
         var canvas = GetNode<CanvasLayer>("CanvasLayer");
+        var existing = canvas.GetNodeOrNull<CenterContainer>("ItemBarCenter");
+        existing?.QueueFree();
+
         var center = new CenterContainer();
         center.Name = "ItemBarCenter";
         center.AnchorLeft = 0.0f;
@@ -464,6 +467,9 @@ public partial class GameManager : Node3D
     private void UpdateItemBar()
     {
         var inventory = _player.Stats.Inventory;
+        if (_itemSlotLabels.Length != inventory.Capacity || _itemSlotStyles.Length != inventory.Capacity)
+            BuildItemBar();
+
         for (int i = 0; i < inventory.Capacity; i++)
         {
             string keyName = GameKeys.DisplayName(GameKeys.ItemSlot(i));

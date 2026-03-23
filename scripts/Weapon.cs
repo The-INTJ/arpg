@@ -32,22 +32,23 @@ public partial class Weapon
         if (modifier == null)
             return;
 
-        GetChannel(modifier.Target).Add(modifier);
+        foreach (var appliedEffect in modifier.CreateAppliedEffectsFromFixedTargets())
+            GetChannel(appliedEffect.Target).Add(appliedEffect);
     }
 
     public static Weapon ForArchetype(Archetype archetype) => archetype switch
     {
         Archetype.Fighter => Create("Iron Sword", AbilityType.Cleave,
-            new Modifier(ModifierOp.FlatAdd, StatTarget.AttackDamage, 2),
-            new Modifier(ModifierOp.FlatAdd, StatTarget.MaxHp, 3)),
+            Modifier.Fixed(ModifierOp.FlatAdd, StatTarget.AttackDamage, 2),
+            Modifier.Fixed(ModifierOp.FlatAdd, StatTarget.MaxHp, 3)),
 
         Archetype.Archer => Create("Longbow", AbilityType.Snipe,
-            new Modifier(ModifierOp.FlatAdd, StatTarget.AttackRange, 0.5f),
-            new Modifier(ModifierOp.FlatAdd, StatTarget.AttackDamage, 1)),
+            Modifier.Fixed(ModifierOp.FlatAdd, StatTarget.AttackRange, 0.5f),
+            Modifier.Fixed(ModifierOp.FlatAdd, StatTarget.AttackDamage, 1)),
 
         Archetype.Mage => Create("Oak Staff", AbilityType.Fireball,
-            new Modifier(ModifierOp.FlatAdd, StatTarget.AttackDamage, 1),
-            new Modifier(ModifierOp.PercentAdd, StatTarget.AttackDamage, 5)),
+            Modifier.Fixed(ModifierOp.FlatAdd, StatTarget.AttackDamage, 1),
+            Modifier.Fixed(ModifierOp.PercentAdd, StatTarget.AttackDamage, 5)),
 
         _ => Create("Fists", AbilityType.None)
     };

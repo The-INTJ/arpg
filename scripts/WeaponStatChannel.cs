@@ -9,45 +9,50 @@ namespace ARPG;
 /// </summary>
 public partial class WeaponStatChannel
 {
-    private readonly List<Modifier> _modifiers = new();
+    private readonly List<AppliedModifierEffect> _effects = new();
 
     public StatTarget Target { get; }
-    public IReadOnlyList<Modifier> Modifiers => _modifiers;
-    public bool IsEmpty => _modifiers.Count == 0;
-    public string Summary => Modifier.DescribeCombined(Target, _modifiers);
+    public IReadOnlyList<AppliedModifierEffect> Effects => _effects;
+    public bool IsEmpty => _effects.Count == 0;
+    public string Summary => AppliedModifierEffect.DescribeCombined(Target, _effects);
 
     public WeaponStatChannel(StatTarget target)
     {
         Target = target;
     }
 
-    public void Add(Modifier modifier)
+    public void Add(AppliedModifierEffect effect)
     {
-        if (modifier == null)
+        if (effect == null)
             return;
 
-        if (modifier.Target != Target)
-            throw new ArgumentException($"Modifier target {modifier.Target} does not match channel target {Target}.");
+        if (effect.Target != Target)
+            throw new ArgumentException($"Applied effect target {effect.Target} does not match channel target {Target}.");
 
-        _modifiers.Add(modifier);
+        _effects.Add(effect);
     }
 
-    public bool Remove(Modifier modifier)
+    public bool Remove(AppliedModifierEffect effect)
     {
-        if (modifier == null)
+        if (effect == null)
             return false;
 
-        return _modifiers.Remove(modifier);
+        return _effects.Remove(effect);
     }
 
-    public string SummaryWith(Modifier modifier)
+    public string SummaryWith(IEnumerable<AppliedModifierEffect> previewEffects)
     {
-        if (modifier == null || modifier.Target != Target)
+        if (previewEffects == null)
             return Summary;
 
-        var previewModifiers = new List<Modifier>(_modifiers.Count + 1);
-        previewModifiers.AddRange(_modifiers);
-        previewModifiers.Add(modifier);
-        return Modifier.DescribeCombined(Target, previewModifiers);
+        var combinedEffects = new List<AppliedModifierEffect>(_effects.Count);
+        combinedEffects.AddRange(_effects);
+        foreach (var effect in previewEffects)
+        {
+            if (effect != null && effect.Target == Target)
+                combinedEffects.Add(effect);
+        }
+
+        return AppliedModifierEffect.DescribeCombined(Target, combinedEffects);
     }
 }
