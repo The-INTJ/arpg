@@ -12,21 +12,28 @@ public partial class GameManager : Node3D
     private Label _statsLabel;
     private Label _killLabel;
     private Label _statusLabel;
+    private Label _roomLabel;
     private TurnManager _turnManager;
     private CombatManager _combatManager;
     private Camera3D _camera;
+    private ModifyStatsSimple _modifyScreen;
+    private PauseScreen _pauseScreen;
 
     private ProgressBar _enemyHpBar;
     private Label _enemyHpLabel;
     private ModifyStatsSimple _modifyStatsScreen;
 
     private int _killCount;
-    private const int KillsToWin = 3;
+    private int _totalEnemies;
 
     // Aggro: enemy that spotted the player, pending combat start
     private Enemy _aggroEnemy;
     private float _aggroTimer;
     private const float AggroDelay = 0.6f;
+
+    // Room configuration
+    private int _room => GameState.CurrentRoom;
+    private bool _isBossRoom => _room == GameState.BossRoom;
 
     public override void _Ready()
     {
@@ -53,6 +60,7 @@ public partial class GameManager : Node3D
 
         BuildAbilityButton();
         BuildEnemyHpBar();
+        BuildRoomLabel();
 
         _modifyStatsScreen = GetNode<ModifyStatsSimple>("CanvasLayer/ModifyStatsSimple");
         var pauseScreen = GetNode<PauseScreen>("CanvasLayer/PauseScreen");
@@ -71,13 +79,48 @@ public partial class GameManager : Node3D
         var floorMesh = GetNode<MeshInstance3D>("World/Floor/FloorMesh");
         floorMesh.MaterialOverride = new StandardMaterial3D { AlbedoColor = Palette.Floor };
 
+        // Generate map and spawn enemies scaled to room
         var mapGen = GetNode<MapGenerator>("World/MapGenerator");
         var spawnPositions = mapGen.Generate();
         var enemiesContainer = GetNode<Node3D>("World/Enemies");
-        foreach (var pos in spawnPositions)
-            SpawnEnemy(enemiesContainer, pos);
+
+        int enemyCount = GetEnemyCount();
+        for (int i = 0; i < enemyCount && i < spawnPositions.Length; i++)
+        {
+            bool isBoss = _isBossRoom && i == 0; // First enemy in boss room is the boss
+            SpawnEnemy(enemiesContainer, spawnPositions[i], isBoss);
+        }
+        _totalEnemies = enemyCount;
+
+        // Wire up ModifyStatsSimple
+        _modifyScreen = new ModifyStatsSimple();
+        _modifyScreen.Name = "ModifyStatsSimple";
+        GetNode<CanvasLayer>("CanvasLayer").AddChild(_modifyScreen);
+
+        // Wire up PauseScreen signals
+        _pauseScreen = GetNode<PauseScreen>("CanvasLayer/PauseScreen");
+        _pauseScreen.ViewStatsRequested += OnViewStatsRequested;
 
         UpdateHud();
+        _statusLabel.Text = GetRoomIntroText();
+    }
+
+    private int GetEnemyCount()
+    {
+        return _room switch
+        {
+            1 => 3,
+            2 => 4,
+            3 => 4, // 1 boss + 3 normal
+            _ => 3
+        };
+    }
+
+    private string GetRoomIntroText()
+    {
+        if (_isBossRoom)
+            return $"Room {_room}/{GameState.TotalRooms} — Boss ahead! Defeat all enemies!";
+        return $"Room {_room}/{GameState.TotalRooms} — Clear all enemies to proceed";
     }
 
     private void BuildAbilityButton()
@@ -126,15 +169,63 @@ public partial class GameManager : Node3D
         container.AddChild(_enemyHpBar);
     }
 
-    private void SpawnEnemy(Node3D container, Vector3 position)
+    private void BuildRoomLabel()
+    {
+        var canvas = GetNode<CanvasLayer>("CanvasLayer");
+        _roomLabel = new Label();
+        _roomLabel.Text = $"Room {_room}/{GameState.TotalRooms}";
+        _roomLabel.AddThemeColorOverride("font_color", Palette.Accent);
+        _roomLabel.AddThemeFontSizeOverride("font_size", 22);
+        _roomLabel.AddThemeConstantOverride("shadow_offset_x", 2);
+        _roomLabel.AddThemeConstantOverride("shadow_offset_y", 2);
+        _roomLabel.AddThemeColorOverride("font_shadow_color", new Color(0, 0, 0, 0.8f));
+        _roomLabel.AnchorLeft = 1.0f;
+        _roomLabel.AnchorRight = 1.0f;
+        _roomLabel.AnchorTop = 0.0f;
+        _roomLabel.AnchorBottom = 0.0f;
+        _roomLabel.GrowHorizontal = Control.GrowDirection.Begin;
+        _roomLabel.OffsetLeft = -200;
+        _roomLabel.OffsetTop = 20;
+        _roomLabel.HorizontalAlignment = HorizontalAlignment.Right;
+        canvas.AddChild(_roomLabel);
+    }
+
+    private void SpawnEnemy(Node3D container, Vector3 position, bool isBoss)
     {
         var enemy = new Enemy();
         enemy.Position = position;
         enemy.AddToGroup("enemies");
 
-        var sprite = SpriteFactory.CreateSprite(SpriteFactory.CreateEnemyTexture());
-        sprite.Position = new Vector3(0, 0.5f, 0);
-        enemy.AddChild(sprite);
+        // Scale for current room
+        enemy.ScaleForRoom(_room);
+
+        if (isBoss)
+        {
+            enemy.MakeBoss();
+            var sprite = SpriteFactory.CreateSprite(SpriteFactory.CreateBossTexture(), 0.14f);
+            sprite.Position = new Vector3(0, 0.7f, 0);
+            enemy.AddChild(sprite);
+
+            // Boss name label
+            var nameLabel = new Label3D();
+            nameLabel.Text = "BOSS";
+            nameLabel.FontSize = 32;
+            nameLabel.Billboard = BaseMaterial3D.BillboardModeEnum.Enabled;
+            nameLabel.NoDepthTest = true;
+            nameLabel.FixedSize = true;
+            nameLabel.PixelSize = 0.008f;
+            nameLabel.Modulate = new Color(1.0f, 0.2f, 0.15f);
+            nameLabel.OutlineSize = 8;
+            nameLabel.OutlineModulate = new Color(0, 0, 0);
+            nameLabel.Position = new Vector3(0, 1.8f, 0);
+            enemy.AddChild(nameLabel);
+        }
+        else
+        {
+            var sprite = SpriteFactory.CreateSprite(SpriteFactory.CreateEnemyTexture());
+            sprite.Position = new Vector3(0, 0.5f, 0);
+            enemy.AddChild(sprite);
+        }
 
         var shape = new CollisionShape3D();
         shape.Shape = new BoxShape3D { Size = new Vector3(0.6f, 0.9f, 0.6f) };
@@ -172,7 +263,6 @@ public partial class GameManager : Node3D
 
     private void CheckAggro(float delta)
     {
-        // If already aggroing, tick the timer
         if (_aggroEnemy != null)
         {
             if (!IsInstanceValid(_aggroEnemy))
@@ -192,7 +282,6 @@ public partial class GameManager : Node3D
             return;
         }
 
-        // Check if any enemy spots the player
         foreach (var node in GetTree().GetNodesInGroup("enemies"))
         {
             if (node is Enemy enemy && !enemy.HasAggro)
@@ -203,7 +292,7 @@ public partial class GameManager : Node3D
                     enemy.ShowAggroIndicator();
                     _aggroEnemy = enemy;
                     _aggroTimer = AggroDelay;
-                    _statusLabel.Text = "Spotted!";
+                    _statusLabel.Text = enemy.IsBoss ? "Boss spotted!" : "Spotted!";
                     return;
                 }
             }
@@ -247,7 +336,6 @@ public partial class GameManager : Node3D
     {
         var viewport = GetViewport().GetVisibleRect().Size;
 
-        // Attack button
         if (_turnManager.IsPlayerTurn)
         {
             _attackButton.Text = $"Attack ({GameKeys.DisplayName(GameKeys.Attack)})";
@@ -258,7 +346,6 @@ public partial class GameManager : Node3D
                 viewport.Y * 0.75f
             );
 
-            // Ability button
             var ability = _player.Ability;
             if (ability != null)
             {
@@ -292,7 +379,8 @@ public partial class GameManager : Node3D
         {
             display.Visible = true;
             _enemyHpBar.Value = target.HpPercent;
-            _enemyHpLabel.Text = $"Enemy  {target.Hp}/{target.MaxHp}";
+            string label = target.IsBoss ? "BOSS" : "Enemy";
+            _enemyHpLabel.Text = $"{label}  {target.Hp}/{target.MaxHp}";
 
             var worldPos = target.GlobalPosition + Vector3.Up * 1.8f;
             if (!_camera.IsPositionBehind(worldPos))
@@ -312,7 +400,7 @@ public partial class GameManager : Node3D
         var s = _player.Stats;
         _hpLabel.Text = $"HP: {s.CurrentHp} / {s.MaxHp}";
         _statsLabel.Text = $"ATK: {s.AttackDamage}  |  SPD: {s.MoveSpeed:0.#}  |  Range: {s.AttackRange:0.#}";
-        _killLabel.Text = $"Kills: {_killCount}/{KillsToWin}";
+        _killLabel.Text = $"Kills: {_killCount}/{_totalEnemies}";
     }
 
     // --- Actions ---
@@ -347,7 +435,7 @@ public partial class GameManager : Node3D
             var enemy = FindNearestEnemy(_player.Stats.AttackRange);
             if (enemy == null) return;
 
-            _aggroEnemy = null; // cancel pending aggro if we're initiating
+            _aggroEnemy = null;
             _statusLabel.Text = "Combat!";
             _combatManager.EnterCombat(enemy);
         }
@@ -376,14 +464,20 @@ public partial class GameManager : Node3D
         // Spawn loot at the kill position
         SpawnLoot(_combatManager.LastKillPosition);
 
-        if (_killCount >= KillsToWin)
+        if (_killCount >= _totalEnemies)
         {
-            _statusLabel.Text = "Exit unlocked! Find the exit!";
+            // All enemies cleared — unlock the exit
             _exitDoor.Unlock();
+
+            if (_room >= GameState.TotalRooms)
+                _statusLabel.Text = "All rooms cleared! Find the exit!";
+            else
+                _statusLabel.Text = "Room cleared! Find the exit to proceed!";
         }
         else
         {
-            _statusLabel.Text = "Enemy defeated!";
+            int remaining = _totalEnemies - _killCount;
+            _statusLabel.Text = $"Enemy defeated! {remaining} remaining";
         }
 
         if (_player.Hp <= 0)
@@ -402,12 +496,24 @@ public partial class GameManager : Node3D
         var pickup = new LootPickup();
         pickup.Position = position;
         pickup.Init(ModifierGenerator.Random());
-        pickup.PickedUp += OnLootPickedUp;
+        pickup.EquipRequested += OnLootEquipRequested;
+        pickup.Stashed += OnLootStashed;
         GetNode<Node3D>("World").AddChild(pickup);
     }
 
-    private void OnLootPickedUp(string description)
+    private void OnLootEquipRequested()
     {
-        _statusLabel.Text = $"Modifier: {description}";
+        // Modifier is already in backpack (LootPickup does that)
+        _modifyScreen.Open(_player.Stats);
+    }
+
+    private void OnLootStashed(string description)
+    {
+        _statusLabel.Text = $"Stashed: {description}";
+    }
+
+    private void OnViewStatsRequested()
+    {
+        _modifyScreen.Open(_player.Stats);
     }
 }

@@ -5,7 +5,7 @@ namespace ARPG;
 
 /// <summary>
 /// Holds a player's base stats + modifier stack. Effective stats are computed on the fly.
-/// Archetype sets the base values; modifiers layer on top.
+/// Archetype sets the base values; weapon slot modifiers and general modifiers layer on top.
 /// </summary>
 public partial class PlayerStats
 {
@@ -19,8 +19,12 @@ public partial class PlayerStats
     public float HpRegenRate { get; set; } = 0.2f; // 1 HP per 5 seconds
 
     private readonly List<Modifier> _modifiers = new();
+    private readonly List<Modifier> _backpack = new();
 
-    // Effective stats (base + modifiers)
+    /// <summary>The player's equipped weapon (provides 2 modifier slots + ability).</summary>
+    public Weapon Weapon { get; set; }
+
+    // Effective stats (base + weapon slots + modifiers)
     public int MaxHp => (int)ComputeStat(StatTarget.MaxHp, _baseMaxHp);
     public int AttackDamage => (int)ComputeStat(StatTarget.AttackDamage, _baseAttackDamage);
     public float MoveSpeed => ComputeStat(StatTarget.MoveSpeed, _baseMoveSpeed);
@@ -31,6 +35,7 @@ public partial class PlayerStats
     public bool IsAlive => CurrentHp > 0;
 
     public IReadOnlyList<Modifier> Modifiers => _modifiers;
+    public IReadOnlyList<Modifier> Backpack => _backpack;
 
     public PlayerStats()
     {
@@ -49,15 +54,68 @@ public partial class PlayerStats
     {
         int oldMaxHp = MaxHp;
         _modifiers.Add(mod);
-        // If max HP increased, grant the extra HP
         if (mod.Target == StatTarget.MaxHp && MaxHp > oldMaxHp)
             CurrentHp += MaxHp - oldMaxHp;
     }
 
+    public void AddToBackpack(Modifier mod) => _backpack.Add(mod);
+
+    public bool RemoveFromBackpack(Modifier mod) => _backpack.Remove(mod);
+
     public void ResetHp() => CurrentHp = MaxHp;
 
     /// <summary>
-    /// Applies modifiers in order: +N → +N% → ×M → −N%. Minimum result is 1.
+    /// Swaps a modifier from the backpack into a weapon slot. Returns the old slot modifier
+    /// (which goes back to backpack), or null if the slot was empty.
+    /// </summary>
+    public Modifier SwapWeaponSlot(int slotIndex, Modifier newMod)
+    {
+        if (Weapon == null || slotIndex < 0 || slotIndex >= Weapon.Slots.Length) return null;
+
+        int oldMaxHp = MaxHp;
+
+        var old = Weapon.Slots[slotIndex];
+        Weapon.Slots[slotIndex] = newMod;
+        _backpack.Remove(newMod);
+        if (old != null)
+            _backpack.Add(old);
+
+        // Adjust current HP if max changed
+        int newMaxHp = MaxHp;
+        if (newMaxHp > oldMaxHp)
+            CurrentHp += newMaxHp - oldMaxHp;
+        else if (CurrentHp > newMaxHp)
+            CurrentHp = newMaxHp;
+
+        return old;
+    }
+
+    /// <summary>
+    /// Preview what a stat would be if a weapon slot were swapped.
+    /// </summary>
+    public float PreviewStatWithSwap(StatTarget target, int slotIndex, Modifier newMod)
+    {
+        if (Weapon == null) return ComputeStat(target, GetBase(target));
+
+        var old = Weapon.Slots[slotIndex];
+        Weapon.Slots[slotIndex] = newMod;
+        float result = ComputeStat(target, GetBase(target));
+        Weapon.Slots[slotIndex] = old;
+        return result;
+    }
+
+    private float GetBase(StatTarget target) => target switch
+    {
+        StatTarget.MaxHp => _baseMaxHp,
+        StatTarget.AttackDamage => _baseAttackDamage,
+        StatTarget.MoveSpeed => _baseMoveSpeed,
+        StatTarget.AttackRange => _baseAttackRange,
+        _ => 0
+    };
+
+    /// <summary>
+    /// Applies modifiers in order: +N -> +N% -> xM -> -N%.
+    /// Includes weapon slot modifiers and general modifiers. Minimum result is 1.
     /// </summary>
     private float ComputeStat(StatTarget target, float baseValue)
     {
@@ -66,9 +124,9 @@ public partial class PlayerStats
         float multiply = 1;
         float percentReduce = 0;
 
-        foreach (var mod in _modifiers)
+        void Accumulate(Modifier mod)
         {
-            if (mod.Target != target) continue;
+            if (mod == null || mod.Target != target) return;
             switch (mod.Op)
             {
                 case ModifierOp.FlatAdd: flat += mod.Value; break;
@@ -77,6 +135,17 @@ public partial class PlayerStats
                 case ModifierOp.PercentReduce: percentReduce += mod.Value; break;
             }
         }
+
+        // Weapon slot modifiers
+        if (Weapon != null)
+        {
+            foreach (var slot in Weapon.Slots)
+                Accumulate(slot);
+        }
+
+        // General modifiers
+        foreach (var mod in _modifiers)
+            Accumulate(mod);
 
         float result = baseValue + flat;
         result *= (1 + percentAdd / 100f);

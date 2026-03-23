@@ -4,39 +4,55 @@ using System.Collections.Generic;
 namespace ARPG;
 
 /// <summary>
-/// Full-screen stats overlay showing player stats, active modifiers, and backpack.
-/// Opened as a pause overlay from the game scene.
+/// Overlay screen for managing weapon modifier slots and viewing stats.
+/// Drag modifiers from backpack onto weapon slots, with before/after confirmation.
 /// </summary>
 public partial class ModifyStatsSimple : Control
 {
     private PlayerStats _stats;
-    private Label _hpValue;
-    private Label _atkValue;
-    private Label _spdValue;
-    private Label _rangeValue;
-    private VBoxContainer _modifierList;
+    private Label _weaponTitle;
+    private Label[] _slotLabels = new Label[2];
+    private Panel[] _slotPanels = new Panel[2];
+    private Label _youStatsLabel;
+    private VBoxContainer _backpackList;
+    private Label _backpackEmptyLabel;
+
+    // Confirmation popup
+    private Panel _confirmPanel;
+    private Label _confirmLabel;
+    private int _pendingSlot = -1;
+    private Modifier _pendingMod;
+
+    [Signal]
+    public delegate void ClosedEventHandler();
 
     public void Open(PlayerStats stats)
     {
         _stats = stats;
         Visible = true;
         GetTree().Paused = true;
-        ProcessMode = ProcessModeEnum.Always;
-        RefreshStats();
-        RefreshModifiers();
+        Refresh();
     }
 
-    public void Close()
+    private void Close()
     {
         Visible = false;
+        _pendingSlot = -1;
+        _pendingMod = null;
+        _confirmPanel.Visible = false;
         GetTree().Paused = false;
+        EmitSignal(SignalName.Closed);
     }
 
     public override void _Ready()
     {
         Visible = false;
-        MouseFilter = MouseFilterEnum.Stop;
+        // Must fill the entire screen and always process (so input works while paused)
         SetAnchorsPreset(LayoutPreset.FullRect);
+        GrowHorizontal = GrowDirection.Both;
+        GrowVertical = GrowDirection.Both;
+        ProcessMode = ProcessModeEnum.Always;
+        MouseFilter = MouseFilterEnum.Stop;
 
         // Dark overlay
         var overlay = new ColorRect();
@@ -45,197 +61,316 @@ public partial class ModifyStatsSimple : Control
         overlay.MouseFilter = MouseFilterEnum.Stop;
         AddChild(overlay);
 
-        // Outer centering container
-        var center = new CenterContainer();
-        center.SetAnchorsPreset(LayoutPreset.FullRect);
-        center.MouseFilter = MouseFilterEnum.Ignore;
-        AddChild(center);
+        // Main layout: HBox with weapon+backpack on left, you on right
+        var margin = new MarginContainer();
+        margin.SetAnchorsPreset(LayoutPreset.FullRect);
+        margin.AddThemeConstantOverride("margin_left", 80);
+        margin.AddThemeConstantOverride("margin_right", 80);
+        margin.AddThemeConstantOverride("margin_top", 60);
+        margin.AddThemeConstantOverride("margin_bottom", 60);
+        AddChild(margin);
 
-        // Main panel background
-        var panel = new PanelContainer();
-        panel.CustomMinimumSize = new Vector2(520, 400);
-        var panelStyle = new StyleBoxFlat();
-        panelStyle.BgColor = new Color(0.14f, 0.10f, 0.07f, 0.95f);
-        panelStyle.SetBorderWidthAll(2);
-        panelStyle.BorderColor = Palette.Accent;
-        panelStyle.SetCornerRadiusAll(12);
-        panelStyle.SetContentMarginAll(24);
-        panel.AddThemeStyleboxOverride("panel", panelStyle);
-        center.AddChild(panel);
+        var mainHBox = new HBoxContainer();
+        mainHBox.AddThemeConstantOverride("separation", 40);
+        margin.AddChild(mainHBox);
 
-        // Main vertical layout inside the panel
-        var mainVBox = new VBoxContainer();
-        mainVBox.AddThemeConstantOverride("separation", 20);
-        panel.AddChild(mainVBox);
+        // Left column: weapon + backpack
+        var leftVBox = new VBoxContainer();
+        leftVBox.AddThemeConstantOverride("separation", 20);
+        leftVBox.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        mainHBox.AddChild(leftVBox);
 
-        // Title
+        BuildWeaponSection(leftVBox);
+        BuildBackpackSection(leftVBox);
+
+        // Right column: you
+        var rightVBox = new VBoxContainer();
+        rightVBox.AddThemeConstantOverride("separation", 10);
+        rightVBox.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        rightVBox.CustomMinimumSize = new Vector2(280, 0);
+        mainHBox.AddChild(rightVBox);
+
+        BuildYouSection(rightVBox);
+
+        // Confirmation popup (centered, hidden)
+        BuildConfirmPopup();
+
+        // Close instructions
+        var closeLabel = new Label();
+        closeLabel.Text = "Press Escape to close";
+        closeLabel.HorizontalAlignment = HorizontalAlignment.Center;
+        closeLabel.AddThemeColorOverride("font_color", new Color(Palette.TextLight, 0.5f));
+        closeLabel.AddThemeFontSizeOverride("font_size", 16);
+        closeLabel.SetAnchorsPreset(LayoutPreset.CenterBottom);
+        closeLabel.GrowHorizontal = GrowDirection.Both;
+        closeLabel.OffsetTop = -40;
+        AddChild(closeLabel);
+    }
+
+    private void BuildWeaponSection(VBoxContainer parent)
+    {
+        var panel = CreateSectionPanel();
+        parent.AddChild(panel);
+
+        var vbox = new VBoxContainer();
+        vbox.AddThemeConstantOverride("separation", 8);
+        panel.AddChild(vbox);
+
+        _weaponTitle = new Label();
+        _weaponTitle.AddThemeColorOverride("font_color", Palette.Accent);
+        _weaponTitle.AddThemeFontSizeOverride("font_size", 26);
+        _weaponTitle.HorizontalAlignment = HorizontalAlignment.Center;
+        vbox.AddChild(_weaponTitle);
+
+        for (int i = 0; i < 2; i++)
+        {
+            var slotPanel = new Panel();
+            var slotStyle = new StyleBoxFlat();
+            slotStyle.BgColor = new Color(0.2f, 0.16f, 0.12f);
+            slotStyle.SetCornerRadiusAll(6);
+            slotStyle.SetContentMarginAll(12);
+            slotPanel.AddThemeStyleboxOverride("panel", slotStyle);
+            slotPanel.CustomMinimumSize = new Vector2(0, 44);
+            vbox.AddChild(slotPanel);
+
+            var slotLabel = new Label();
+            slotLabel.AddThemeColorOverride("font_color", Palette.TextLight);
+            slotLabel.AddThemeFontSizeOverride("font_size", 18);
+            slotPanel.AddChild(slotLabel);
+
+            _slotPanels[i] = slotPanel;
+            _slotLabels[i] = slotLabel;
+        }
+    }
+
+    private void BuildBackpackSection(VBoxContainer parent)
+    {
+        var sectionLabel = new Label();
+        sectionLabel.Text = "BACKPACK";
+        sectionLabel.AddThemeColorOverride("font_color", Palette.Accent);
+        sectionLabel.AddThemeFontSizeOverride("font_size", 22);
+        sectionLabel.HorizontalAlignment = HorizontalAlignment.Center;
+        parent.AddChild(sectionLabel);
+
+        var scroll = new ScrollContainer();
+        scroll.SizeFlagsVertical = SizeFlags.ExpandFill;
+        scroll.CustomMinimumSize = new Vector2(0, 150);
+        parent.AddChild(scroll);
+
+        _backpackList = new VBoxContainer();
+        _backpackList.AddThemeConstantOverride("separation", 6);
+        _backpackList.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        scroll.AddChild(_backpackList);
+
+        _backpackEmptyLabel = new Label();
+        _backpackEmptyLabel.Text = "(empty)";
+        _backpackEmptyLabel.AddThemeColorOverride("font_color", Palette.TextDisabled);
+        _backpackEmptyLabel.AddThemeFontSizeOverride("font_size", 16);
+        _backpackList.AddChild(_backpackEmptyLabel);
+    }
+
+    private void BuildYouSection(VBoxContainer parent)
+    {
+        var panel = CreateSectionPanel();
+        parent.AddChild(panel);
+
+        var vbox = new VBoxContainer();
+        vbox.AddThemeConstantOverride("separation", 6);
+        panel.AddChild(vbox);
+
         var title = new Label();
-        title.Text = "STATS & MODIFIERS";
-        title.HorizontalAlignment = HorizontalAlignment.Center;
+        title.Text = "YOU";
         title.AddThemeColorOverride("font_color", Palette.Accent);
-        title.AddThemeFontSizeOverride("font_size", 28);
-        mainVBox.AddChild(title);
+        title.AddThemeFontSizeOverride("font_size", 26);
+        title.HorizontalAlignment = HorizontalAlignment.Center;
+        vbox.AddChild(title);
 
-        // Separator
-        mainVBox.AddChild(CreateSeparator());
+        _youStatsLabel = new Label();
+        _youStatsLabel.AddThemeColorOverride("font_color", Palette.TextLight);
+        _youStatsLabel.AddThemeFontSizeOverride("font_size", 20);
+        vbox.AddChild(_youStatsLabel);
+    }
 
-        // Two-column layout: Stats on left, Modifiers on right
-        var columns = new HBoxContainer();
-        columns.AddThemeConstantOverride("separation", 24);
-        columns.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        mainVBox.AddChild(columns);
+    private void BuildConfirmPopup()
+    {
+        _confirmPanel = new Panel();
+        var style = new StyleBoxFlat();
+        style.BgColor = new Color(0.15f, 0.10f, 0.08f, 0.95f);
+        style.SetCornerRadiusAll(12);
+        style.SetContentMarginAll(24);
+        style.BorderColor = Palette.Accent;
+        style.SetBorderWidthAll(2);
+        _confirmPanel.AddThemeStyleboxOverride("panel", style);
+        _confirmPanel.SetAnchorsPreset(LayoutPreset.Center);
+        _confirmPanel.GrowHorizontal = GrowDirection.Both;
+        _confirmPanel.GrowVertical = GrowDirection.Both;
+        _confirmPanel.CustomMinimumSize = new Vector2(400, 200);
+        _confirmPanel.Visible = false;
+        AddChild(_confirmPanel);
 
-        // Left column: Stats
-        columns.AddChild(BuildStatsPanel());
+        _confirmLabel = new Label();
+        _confirmLabel.AddThemeColorOverride("font_color", Palette.TextLight);
+        _confirmLabel.AddThemeFontSizeOverride("font_size", 18);
+        _confirmLabel.SetAnchorsPreset(LayoutPreset.FullRect);
+        _confirmLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        _confirmPanel.AddChild(_confirmLabel);
+    }
 
-        // Vertical divider
-        var divider = new VSeparator();
-        divider.AddThemeColorOverride("separator", new Color(Palette.Accent, 0.4f));
-        columns.AddChild(divider);
-
-        // Right column: Modifiers
-        columns.AddChild(BuildModifiersPanel());
-
-        // Separator
-        mainVBox.AddChild(CreateSeparator());
-
-        // Close hint
-        var hint = new Label();
-        hint.Text = "Press Escape to close";
-        hint.HorizontalAlignment = HorizontalAlignment.Center;
-        hint.AddThemeColorOverride("font_color", new Color(Palette.TextLight, 0.5f));
-        hint.AddThemeFontSizeOverride("font_size", 14);
-        mainVBox.AddChild(hint);
+    private Panel CreateSectionPanel()
+    {
+        var panel = new Panel();
+        var style = new StyleBoxFlat();
+        style.BgColor = new Color(0.12f, 0.09f, 0.06f, 0.9f);
+        style.SetCornerRadiusAll(10);
+        style.SetContentMarginAll(16);
+        panel.AddThemeStyleboxOverride("panel", style);
+        return panel;
     }
 
     public override void _UnhandledInput(InputEvent @event)
     {
         if (!Visible) return;
 
-        if (@event.IsActionPressed(GameKeys.Pause) || @event is InputEventKey key && key.Pressed && key.Keycode == Key.Escape)
+        if (@event.IsActionPressed(GameKeys.Pause))
         {
             Close();
             GetViewport().SetInputAsHandled();
-        }
-    }
-
-    private Control BuildStatsPanel()
-    {
-        var vbox = new VBoxContainer();
-        vbox.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        vbox.AddThemeConstantOverride("separation", 8);
-
-        var heading = new Label();
-        heading.Text = "YOU";
-        heading.AddThemeColorOverride("font_color", Palette.Accent);
-        heading.AddThemeFontSizeOverride("font_size", 20);
-        vbox.AddChild(heading);
-
-        _hpValue = AddStatRow(vbox, "HP");
-        _atkValue = AddStatRow(vbox, "ATK");
-        _spdValue = AddStatRow(vbox, "SPD");
-        _rangeValue = AddStatRow(vbox, "Range");
-
-        return vbox;
-    }
-
-    private Label AddStatRow(VBoxContainer parent, string statName)
-    {
-        var row = new HBoxContainer();
-        row.AddThemeConstantOverride("separation", 12);
-
-        var nameLabel = new Label();
-        nameLabel.Text = statName;
-        nameLabel.CustomMinimumSize = new Vector2(70, 0);
-        nameLabel.AddThemeColorOverride("font_color", Palette.TextLight);
-        nameLabel.AddThemeFontSizeOverride("font_size", 18);
-        row.AddChild(nameLabel);
-
-        var valueLabel = new Label();
-        valueLabel.AddThemeColorOverride("font_color", Palette.Accent);
-        valueLabel.AddThemeFontSizeOverride("font_size", 18);
-        row.AddChild(valueLabel);
-
-        parent.AddChild(row);
-        return valueLabel;
-    }
-
-    private Control BuildModifiersPanel()
-    {
-        var vbox = new VBoxContainer();
-        vbox.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        vbox.AddThemeConstantOverride("separation", 8);
-
-        var heading = new Label();
-        heading.Text = "MODIFIERS";
-        heading.AddThemeColorOverride("font_color", Palette.Accent);
-        heading.AddThemeFontSizeOverride("font_size", 20);
-        vbox.AddChild(heading);
-
-        // Scrollable modifier list
-        var scroll = new ScrollContainer();
-        scroll.SizeFlagsVertical = SizeFlags.ExpandFill;
-        scroll.CustomMinimumSize = new Vector2(200, 200);
-        vbox.AddChild(scroll);
-
-        _modifierList = new VBoxContainer();
-        _modifierList.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        _modifierList.AddThemeConstantOverride("separation", 6);
-        scroll.AddChild(_modifierList);
-
-        return vbox;
-    }
-
-    private void RefreshStats()
-    {
-        if (_stats == null) return;
-        _hpValue.Text = $"{_stats.CurrentHp} / {_stats.MaxHp}";
-        _atkValue.Text = $"{_stats.AttackDamage}";
-        _spdValue.Text = $"{_stats.MoveSpeed:0.#}";
-        _rangeValue.Text = $"{_stats.AttackRange:0.#}";
-    }
-
-    private void RefreshModifiers()
-    {
-        if (_stats == null) return;
-
-        // Clear old entries
-        foreach (var child in _modifierList.GetChildren())
-            child.QueueFree();
-
-        if (_stats.Modifiers.Count == 0)
-        {
-            var empty = new Label();
-            empty.Text = "No modifiers yet";
-            empty.AddThemeColorOverride("font_color", new Color(Palette.TextLight, 0.4f));
-            empty.AddThemeFontSizeOverride("font_size", 15);
-            _modifierList.AddChild(empty);
             return;
         }
 
-        foreach (var mod in _stats.Modifiers)
+        if (_confirmPanel.Visible)
         {
-            var item = new PanelContainer();
-            var itemStyle = new StyleBoxFlat();
-            itemStyle.BgColor = new Color(0.20f, 0.15f, 0.10f, 0.8f);
-            itemStyle.SetCornerRadiusAll(6);
-            itemStyle.SetContentMarginAll(8);
-            item.AddThemeStyleboxOverride("panel", itemStyle);
-
-            var label = new Label();
-            label.Text = mod.Description;
-            label.AddThemeColorOverride("font_color", Palette.TextLight);
-            label.AddThemeFontSizeOverride("font_size", 16);
-            item.AddChild(label);
-
-            _modifierList.AddChild(item);
+            if (@event.IsActionPressed(GameKeys.Attack))
+            {
+                ConfirmSwap();
+                GetViewport().SetInputAsHandled();
+            }
+            else if (@event.IsActionPressed(GameKeys.Ability))
+            {
+                CancelSwap();
+                GetViewport().SetInputAsHandled();
+            }
+            return;
         }
     }
 
-    private static HSeparator CreateSeparator()
+    private void Refresh()
     {
-        var sep = new HSeparator();
-        sep.AddThemeColorOverride("separator", new Color(Palette.Accent, 0.3f));
-        return sep;
+        if (_stats == null) return;
+
+        // Weapon section
+        var weapon = _stats.Weapon;
+        _weaponTitle.Text = weapon != null ? $"WEAPON: {weapon.Name}" : "WEAPON: None";
+
+        for (int i = 0; i < 2; i++)
+        {
+            var mod = weapon?.Slots[i];
+            _slotLabels[i].Text = mod != null ? $"Slot {i + 1}: {mod.Description}" : $"Slot {i + 1}: (empty)";
+        }
+
+        // You section
+        _youStatsLabel.Text =
+            $"HP:    {_stats.CurrentHp} / {_stats.MaxHp}\n" +
+            $"ATK:   {_stats.AttackDamage}\n" +
+            $"SPD:   {_stats.MoveSpeed:0.#}\n" +
+            $"Range: {_stats.AttackRange:0.#}";
+
+        // Backpack
+        RefreshBackpack();
+    }
+
+    private void RefreshBackpack()
+    {
+        // Clear existing items (keep the empty label)
+        foreach (var child in _backpackList.GetChildren())
+        {
+            if (child != _backpackEmptyLabel)
+                child.QueueFree();
+        }
+
+        var backpack = _stats.Backpack;
+        _backpackEmptyLabel.Visible = backpack.Count == 0;
+
+        foreach (var mod in backpack)
+        {
+            var hbox = new HBoxContainer();
+            hbox.AddThemeConstantOverride("separation", 8);
+            _backpackList.AddChild(hbox);
+
+            var modLabel = new Label();
+            modLabel.Text = mod.Description;
+            modLabel.AddThemeColorOverride("font_color", Palette.TextLight);
+            modLabel.AddThemeFontSizeOverride("font_size", 16);
+            modLabel.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+            hbox.AddChild(modLabel);
+
+            // Slot 1 button
+            for (int s = 0; s < 2; s++)
+            {
+                int slot = s; // capture
+                var captured = mod; // capture
+                var btn = new Button();
+                btn.Text = $"-> Slot {s + 1}";
+                btn.CustomMinimumSize = new Vector2(90, 0);
+                Palette.StyleButton(btn, 14);
+                btn.Pressed += () => StartSwap(slot, captured);
+                hbox.AddChild(btn);
+            }
+        }
+    }
+
+    private void StartSwap(int slotIndex, Modifier newMod)
+    {
+        _pendingSlot = slotIndex;
+        _pendingMod = newMod;
+
+        var weapon = _stats.Weapon;
+        var oldMod = weapon?.Slots[slotIndex];
+
+        // Build before/after text for all stats
+        string text = $"Swap Slot {slotIndex + 1}\n\n";
+        text += $"Current: {(oldMod != null ? oldMod.Description : "(empty)")}\n";
+        text += $"New:     {newMod.Description}\n\n";
+
+        var targets = new[] { StatTarget.MaxHp, StatTarget.AttackDamage, StatTarget.MoveSpeed, StatTarget.AttackRange };
+        var names = new[] { "HP", "ATK", "SPD", "Range" };
+
+        for (int i = 0; i < targets.Length; i++)
+        {
+            float before = targets[i] == StatTarget.MaxHp ? _stats.MaxHp :
+                           targets[i] == StatTarget.AttackDamage ? _stats.AttackDamage :
+                           targets[i] == StatTarget.MoveSpeed ? _stats.MoveSpeed : _stats.AttackRange;
+            float after = _stats.PreviewStatWithSwap(targets[i], slotIndex, newMod);
+
+            string arrow = after > before ? " ^" : after < before ? " v" : "";
+            text += $"{names[i]}: {FormatStat(before)} -> {FormatStat(after)}{arrow}\n";
+        }
+
+        text += $"\n({GameKeys.DisplayName(GameKeys.Attack)}) Confirm  |  ({GameKeys.DisplayName(GameKeys.Ability)}) Cancel";
+
+        _confirmLabel.Text = text;
+        _confirmPanel.Visible = true;
+    }
+
+    private void ConfirmSwap()
+    {
+        if (_pendingSlot < 0 || _pendingMod == null) return;
+        _stats.SwapWeaponSlot(_pendingSlot, _pendingMod);
+        _pendingSlot = -1;
+        _pendingMod = null;
+        _confirmPanel.Visible = false;
+        Refresh();
+    }
+
+    private void CancelSwap()
+    {
+        _pendingSlot = -1;
+        _pendingMod = null;
+        _confirmPanel.Visible = false;
+    }
+
+    private static string FormatStat(float value)
+    {
+        return value == (int)value ? $"{(int)value}" : $"{value:0.#}";
     }
 }

@@ -4,9 +4,14 @@
 
 [node name="ModifyStatsSimple" type="Control"]
 layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
+anchor_left = 0.67600006
+anchor_top = 0.82500005
+anchor_right = 1.7500001
+anchor_bottom = 1.728
+offset_left = -451.2801
+offset_top = -266.00006
+offset_right = 206.99976
+offset_bottom = 129.83997
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_script")

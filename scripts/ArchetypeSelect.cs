@@ -42,7 +42,7 @@ public partial class ArchetypeSelect : Control
 
     private void OnSelect(Archetype archetype)
     {
-        GameState.SelectedArchetype = archetype;
+        GameState.StartNewRun(archetype);
         GetTree().ChangeSceneToFile("res://scenes/Game.tscn");
     }
 }

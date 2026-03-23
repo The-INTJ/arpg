@@ -7,3 +7,6 @@ bin/
 obj/
 *.user
 *.suo
+
+# Local agent worktrees
+.claude/worktrees/

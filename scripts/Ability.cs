@@ -50,4 +50,16 @@ public class Ability
         Archetype.Mage => new Ability(AbilityType.Fireball, "Fireball", 3),
         _ => null
     };
+
+    public static Ability ForWeapon(Weapon weapon)
+    {
+        if (weapon == null) return null;
+        return weapon.Ability switch
+        {
+            AbilityType.Cleave => new Ability(AbilityType.Cleave, "Cleave", 2),
+            AbilityType.Snipe => new Ability(AbilityType.Snipe, "Snipe", 3),
+            AbilityType.Fireball => new Ability(AbilityType.Fireball, "Fireball", 3),
+            _ => null
+        };
+    }
 }

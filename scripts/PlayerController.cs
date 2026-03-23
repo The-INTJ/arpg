@@ -4,7 +4,7 @@ namespace ARPG;
 
 public partial class PlayerController : CharacterBody3D
 {
-    public PlayerStats Stats { get; private set; } = new();
+    public PlayerStats Stats { get; private set; }
     public Ability Ability { get; private set; }
 
     public int Hp { get => Stats.CurrentHp; set => Stats.CurrentHp = value; }
@@ -14,9 +14,22 @@ public partial class PlayerController : CharacterBody3D
 
     public override void _Ready()
     {
-        // Apply selected archetype
-        ArchetypeData.ApplyTo(GameState.SelectedArchetype, Stats);
-        Ability = Ability.ForArchetype(GameState.SelectedArchetype);
+        // Reuse persistent stats across rooms, or create fresh for room 1
+        if (GameState.PersistentStats != null)
+        {
+            Stats = GameState.PersistentStats;
+        }
+        else
+        {
+            Stats = new PlayerStats();
+            ArchetypeData.ApplyTo(GameState.SelectedArchetype, Stats);
+            Stats.Weapon = Weapon.ForArchetype(GameState.SelectedArchetype);
+            Stats.ResetHp();
+            GameState.PersistentStats = Stats;
+        }
+
+        // Ability comes from the weapon
+        Ability = Ability.ForWeapon(Stats.Weapon);
 
         // Replace the primitive mesh with a sprite billboard
         var mesh = GetNode<MeshInstance3D>("PlayerMesh");
