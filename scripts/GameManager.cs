@@ -21,7 +21,6 @@ public partial class GameManager : Node3D
 
     private ProgressBar _enemyHpBar;
     private Label _enemyHpLabel;
-    private ModifyStatsSimple _modifyStatsScreen;
 
     private int _killCount;
     private int _totalEnemies;
@@ -62,9 +61,9 @@ public partial class GameManager : Node3D
         BuildEnemyHpBar();
         BuildRoomLabel();
 
-        _modifyStatsScreen = GetNode<ModifyStatsSimple>("CanvasLayer/ModifyStatsSimple");
-        var pauseScreen = GetNode<PauseScreen>("CanvasLayer/PauseScreen");
-        pauseScreen.ViewStatsRequested += () => _modifyStatsScreen.Open(_player.Stats);
+        _modifyScreen = GetNode<ModifyStatsSimple>("CanvasLayer/ModifyStatsSimple");
+        _pauseScreen = GetNode<PauseScreen>("CanvasLayer/PauseScreen");
+        _pauseScreen.ViewStatsRequested += OnViewStatsRequested;
 
         int fontSize = Mathf.Max(18, (int)(GetViewport().GetVisibleRect().Size.Y * 0.03f));
         foreach (var label in new[] { _hpLabel, _statsLabel, _killLabel, _statusLabel })
@@ -91,15 +90,6 @@ public partial class GameManager : Node3D
             SpawnEnemy(enemiesContainer, spawnPositions[i], isBoss);
         }
         _totalEnemies = enemyCount;
-
-        // Wire up ModifyStatsSimple
-        _modifyScreen = new ModifyStatsSimple();
-        _modifyScreen.Name = "ModifyStatsSimple";
-        GetNode<CanvasLayer>("CanvasLayer").AddChild(_modifyScreen);
-
-        // Wire up PauseScreen signals
-        _pauseScreen = GetNode<PauseScreen>("CanvasLayer/PauseScreen");
-        _pauseScreen.ViewStatsRequested += OnViewStatsRequested;
 
         UpdateHud();
         _statusLabel.Text = GetRoomIntroText();

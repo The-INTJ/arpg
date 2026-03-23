@@ -11,9 +11,6 @@ public partial class PauseScreen : Control
     private Button _statsButton;
     private Button _quitButton;
 
-    [Signal]
-    public delegate void ViewStatsRequestedEventHandler();
-
     public override void _Ready()
     {
         Visible = false;
@@ -73,6 +70,7 @@ public partial class PauseScreen : Control
                 OnResume();
             else
                 ShowPause();
+
             GetViewport().SetInputAsHandled();
         }
     }
@@ -93,7 +91,7 @@ public partial class PauseScreen : Control
     private void OnViewStats()
     {
         Visible = false;
-        // Don't unpause — ModifyStatsSimple will manage pause state
+        // Keep the tree paused while the stats overlay is open.
         EmitSignal(SignalName.ViewStatsRequested);
     }
 
