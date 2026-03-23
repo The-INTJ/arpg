@@ -30,19 +30,17 @@ public partial class ExitDoor : Node3D
 
 	private void OnBodyEntered(Node3D body)
 	{
-		if (_unlocked && body is PlayerController)
+		if (!_unlocked || body is not PlayerController player)
+			return;
+
+		if (GameState.CurrentRoom >= GameState.TotalRooms)
 		{
-			if (GameState.CurrentRoom >= GameState.TotalRooms)
-			{
-				// All rooms cleared — victory!
-				GetTree().ChangeSceneToFile("res://scenes/VictoryScreen.tscn");
-			}
-			else
-			{
-				// Advance to next room
-				GameState.CurrentRoom++;
-				GetTree().ChangeSceneToFile("res://scenes/Game.tscn");
-			}
+			GameState.FinalizeCurrentRun(RunOutcome.Victory, player.Stats);
+			GetTree().ChangeSceneToFile("res://scenes/VictoryScreen.tscn");
+			return;
 		}
+
+		GameState.CurrentRoom++;
+		GetTree().ChangeSceneToFile("res://scenes/Game.tscn");
 	}
 }

@@ -18,6 +18,7 @@ public partial class CombatManager : Node
 
     /// <summary>Where the last killed enemy stood — used for loot spawning.</summary>
     public Vector3 LastKillPosition { get; private set; }
+    public bool LastKillWasBoss { get; private set; }
 
     [Signal]
     public delegate void CombatEndedEventHandler();
@@ -93,8 +94,10 @@ public partial class CombatManager : Node
     private void ResolveDamageAction(int damage, bool tickAbilityCooldown)
     {
         _turnManager.SetState(TurnState.Busy);
+        LastKillWasBoss = false;
 
         var result = _target.ResolveIncomingDamage(damage, _player);
+        GameState.RecordDamageDone(result.Damage);
         SpawnDamageNumber(_target.GlobalPosition + Vector3.Up * 1.2f, result.Damage, false);
 
         if (result.RetaliationDamage > 0)
@@ -112,6 +115,7 @@ public partial class CombatManager : Node
         if (targetDied)
         {
             LastKillPosition = _target.GlobalPosition;
+            LastKillWasBoss = _target.IsBoss;
             _target.Die();
             _target = null;
             EmitSignal(SignalName.CombatEnded);
