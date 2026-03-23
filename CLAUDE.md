@@ -1,52 +1,84 @@
-# ARPG - Godot 4.6 .NET/C# Prototype
+# ARPG - Godot 4.6 .NET/C#
 
 ## What This Project Is
-A turn-based ARPG prototype built with Godot 4.6 and C# (.NET 8.0). MVP game loop is complete — now in active feature development.
 
-## Key Rules
-- This is Godot 4.6 with C# (.NET 8.0)
-- Use Godot's Node/Scene system as intended — nodes own their behavior, scenes own their composition
-- Keep scripts focused and under ~150 lines — split if growing beyond that
-- Project must be runnable after every change
-- Use primitive meshes only (BoxMesh, CapsuleMesh, PlaneMesh, SphereMesh)
-- Hardcode gameplay values directly in scripts (no config files or data-driven content yet)
+A tactical roguelike RPG with Baldur's Gate–style turn-based combat and a player-driven modifier system. Built with Godot 4.6 and C# (.NET 8.0). See `GAME_IDEA.md` for the full vision.
 
-## Godot C# Patterns to Follow
+The MVP game loop is complete (menu → explore → fight → win). We are now building real systems on top of that foundation.
+
+## Development Philosophy
+
+**Build foundationally and intentionally.** Every system should be simple today but designed so it can grow without being ripped out and rewritten. This means:
+
+- Write clean, well-structured code that does what's needed *now* without being so rigid it blocks what's needed *next*
+- When a system will clearly need to support multiplayer, multiple archetypes, or modifier stacking later — design the data structures with that in mind, even if the first implementation is single-player/single-archetype
+- Prefer Godot-native patterns over custom engines. Use nodes, scenes, signals, and groups as Godot intends
+- Avoid premature abstraction, but don't avoid *appropriate* abstraction. If three scripts are doing the same thing, that's a sign to extract — not a sign to keep copying
+- Keep scripts focused. If one grows past ~150 lines, consider whether it's doing too many jobs
+
+## Multiplayer Awareness
+
+Multiplayer is a core consideration from day one. This doesn't mean every feature ships multiplayer immediately, but:
+
+- Data structures should assume multiple players exist (e.g., turn order as a list, not a single player reference)
+- Combat flow should not hardcode "the player" as a singleton concept
+- Nothing should be designed in a way that makes multiplayer painful to retrofit
+
+## Technical Rules
+
+- **Engine**: Godot 4.6, C# (.NET 8.0)
+- **All C# classes must be `partial`** (Godot 4.x requirement)
+- **Project must be runnable after every change** — don't leave it broken between commits
+- **Primitive meshes only** for now (BoxMesh, CapsuleMesh, PlaneMesh, SphereMesh)
+- **Hardcode gameplay values** in scripts for now — data-driven content comes later when we have enough systems to justify it
+
+## Godot C# Patterns
+
 - Scripts attach to nodes in scenes (one script per node that needs behavior)
-- All C# classes must be `partial` (e.g., `public partial class Enemy : Node3D`)
-- Use `[Export]` for values you want tunable in the editor
-- Movement goes in `_PhysicsProcess(double delta)` using `MoveAndSlide()`
+- `[Export]` for values tunable in the editor
+- Movement in `_PhysicsProcess(double delta)` using `MoveAndSlide()`
 - Scene changes: `GetTree().ChangeSceneToFile("res://scenes/SceneName.tscn")`
-- Signal connections: prefer connecting in the editor or `Connect()` in `_Ready()`
+- Signal connections: prefer editor or `Connect()` in `_Ready()`
 - Node references: `GetNode<Type>("path")` or `[Export] private NodePath`
+- Dynamic node creation: use `new Enemy()` directly so the C# type is correct, not `SetScript()`
 
 ## Shared Systems
-- **Palette** (`scripts/Palette.cs`): All colors live here. Vibrant earth-tone palette. Also has `StyleButton()` for consistent UI button styling. Every material/color in the game should reference Palette.
-- **GameKeys** (`scripts/GameKeys.cs`): Key binding display names. Actions are defined in project.godot InputMap; `GameKeys.DisplayName(action)` reads the actual bound key at runtime. Change a key in one place (project.godot) and the UI updates everywhere.
+
+- **Palette** (`scripts/Palette.cs`): All colors and UI button styling. Vibrant earth-tone palette. Every material/color in the game should reference Palette — don't hardcode color values elsewhere.
+- **GameKeys** (`scripts/GameKeys.cs`): Key binding display names. Actions defined in `project.godot` InputMap; `GameKeys.DisplayName(action)` reads the actual bound key at runtime. Change a key binding in one place (`project.godot`) and the UI updates everywhere.
 
 ## File Layout
-- Scenes: `scenes/` (MainMenu.tscn, Game.tscn, VictoryScreen.tscn)
-- Scripts: `scripts/`
-- Scene files reference scripts via `res://scripts/ScriptName.cs`
+
+```
+scenes/          — .tscn scene files (MainMenu, Game, VictoryScreen, future scenes)
+scripts/         — .cs script files
+```
+
+Scene files reference scripts via `res://scripts/ScriptName.cs`.
 
 ## Build & Run
+
 - Build: `dotnet build` from project root
-- Run: open in Godot Editor → F5 (or set main scene to MainMenu.tscn)
+- Run: open in Godot Editor → F5
 - Main scene: `res://scenes/MainMenu.tscn`
 
 ## Input Map (project.godot)
-- `move_forward` → W
-- `move_back` → S
-- `move_left` → A
-- `move_right` → D
-- `attack` → E
+
+| Action | Key |
+|--------|-----|
+| `move_forward` | W |
+| `move_back` | S |
+| `move_left` | A |
+| `move_right` | D |
+| `attack` | E |
+
+Add new actions to `project.godot` and reference them via `GameKeys` constants.
 
 ## Common Gotchas
-- After creating new .cs files, rebuild the solution before attaching to nodes
-- Godot uses its own Vector3/Transform3D types, not System.Numerics
-- `_Ready()` is like Start(), `_Process()` is like Update() (Unity equivalents)
+
+- After creating new `.cs` files, rebuild the solution before attaching to nodes
+- Godot uses its own `Vector3`/`Transform3D` types, not `System.Numerics`
+- `_Ready()` ≈ Unity's `Start()`, `_Process()` ≈ `Update()`
 - Node names in scene tree are PascalCase by convention
 - `CharacterBody3D.MoveAndSlide()` uses the `Velocity` property — set it before calling
-- Export variables: `[Export] public float Speed = 5.0f;`
-- Signals in C#: use `[Signal] public delegate void MySignalEventHandler();`
-- Dynamic node creation: use `new Enemy()` directly so the C# type is correct, not `SetScript()`
+- Signals in C#: `[Signal] public delegate void MySignalEventHandler();`
