@@ -40,7 +40,7 @@ public partial class PlayerController : CharacterBody3D
         var mesh = GetNode<MeshInstance3D>("PlayerMesh");
         mesh.Visible = false;
 
-        _sprite = SpriteFactory.CreateSprite(SpriteFactory.CreatePlayerTexture(), 0.05f);
+        _sprite = SpriteFactory.CreateSprite(SpriteFactory.CreatePlayerTexture(GameState.SelectedArchetype), 0.05f);
         _sprite.Position = new Vector3(0, 0.25f, 0);
         AddChild(_sprite);
 

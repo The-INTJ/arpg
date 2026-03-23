@@ -45,6 +45,7 @@ public partial class CombatManager : Node
         _target.OnCombatStarted();
         _turnManager.SetState(TurnState.Busy);
         _player.SetPhysicsProcess(false);
+        AudioManager.Instance?.StartCombatMusic();
 
         // Snapshot current camera position before zoom (dynamic with orbit camera)
         _cameraRestPosition = _camera.Position;
@@ -104,6 +105,8 @@ public partial class CombatManager : Node
         var result = _target.ResolveIncomingDamage(damage, _player);
         GameState.RecordDamageDone(result.Damage);
         SpawnDamageNumber(_target.GlobalPosition + Vector3.Up * 0.6f, result.Damage, false);
+        if (result.Damage > 0)
+            AudioManager.Instance?.PlayHit();
 
         if (result.RetaliationDamage > 0)
             SpawnDamageNumber(_player.GlobalPosition + Vector3.Up * 0.7f, result.RetaliationDamage, true);
@@ -154,6 +157,8 @@ public partial class CombatManager : Node
 
         var result = _target.ResolveOutgoingDamage(_player);
         SpawnDamageNumber(_player.GlobalPosition + Vector3.Up * 0.7f, result.Damage, true);
+        if (result.Damage > 0)
+            AudioManager.Instance?.PlayPlayerHit();
         if (result.HealingAmount > 0)
             SpawnFloatingText(_target.GlobalPosition + Vector3.Up * 0.6f, $"+{result.HealingAmount}", Palette.HealText);
         EmitCombatFeedback(result.BuildFeedbackText());

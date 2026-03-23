@@ -8,9 +8,27 @@ namespace ARPG;
 /// </summary>
 public static class SpriteFactory
 {
-    // Pixel maps: '.' = transparent, letters = color keys
-    // Player: simple adventurer silhouette
-    private static readonly string[] PlayerPixels =
+    // --- Player sprites per archetype ---
+
+    private static readonly string[] FighterPixels =
+    {
+        "....HH....",
+        "...HHHH...",
+        "...HFFH...",
+        "...HHHH...",
+        "....HH....",
+        "..AABBAA..",
+        "..BBBBBB..",
+        "..BABBAB..",
+        "..BBBBBB..",
+        "..BBBBBB..",
+        "...BB.BB..",
+        "...LL.LL..",
+        "...LL.LL..",
+        "..SSS.SSS.",
+    };
+
+    private static readonly string[] ArcherPixels =
     {
         "....HH....",
         "...HHHH...",
@@ -28,8 +46,28 @@ public static class SpriteFactory
         "..SSS.SSS.",
     };
 
-    // Enemy: squat goblin/imp
-    private static readonly string[] EnemyPixels =
+    private static readonly string[] MagePixels =
+    {
+        "...PPPP...",
+        "..PPPPPP..",
+        "...HFFH...",
+        "...HHHH...",
+        "....HH....",
+        "..RBBBBR..",
+        ".RBBBBBBR.",
+        ".RBABBABR.",
+        ".RBBBBBBR.",
+        "..RBBBBR..",
+        "..RBBRBB..",
+        "...LL.LL..",
+        "...LL.LL..",
+        "..SSS.SSS.",
+    };
+
+    // --- Enemy variants ---
+
+    // Goblin (original)
+    private static readonly string[] GoblinPixels =
     {
         "..EE..EE..",
         "..EEEEEE..",
@@ -46,47 +84,193 @@ public static class SpriteFactory
         ".DDD..DDD.",
     };
 
-    private static Color GetPlayerColor(char c) => c switch
+    // Skeleton
+    private static readonly string[] SkeletonPixels =
     {
-        'H' => new Color(0.55f, 0.40f, 0.25f), // hair/skin
+        "..WWWWWW..",
+        ".WWWWWWWW.",
+        ".WKWWWKWW.",
+        ".WWKKKWWW.",
+        ".WWWWWWWW.",
+        "..WWWWWW..",
+        "...WWWW...",
+        "..WWWWWW..",
+        ".WWWWWWWW.",
+        "..WWWWWW..",
+        "...WW.WW..",
+        "...WW.WW..",
+        "..GGG.GGG.",
+    };
+
+    // Slime
+    private static readonly string[] SlimePixels =
+    {
+        "..........",
+        "..........",
+        "...GGGG...",
+        "..GGGGGG..",
+        ".GGMGGMGG.",
+        ".GGGGGGGG.",
+        ".GGGGGGGG.",
+        "GGGGGGGGGG",
+        "GGGGGGGGGG",
+        "GGGGGGGGGG",
+        ".GGGGGGGG.",
+        "..GGGGGG..",
+        "..........",
+    };
+
+    // Demon
+    private static readonly string[] DemonPixels =
+    {
+        ".RR....RR.",
+        ".RRR..RRR.",
+        "..RRRRRR..",
+        ".RRMRRRMR.",
+        ".RRRRRRRR.",
+        "..RRRRRR..",
+        "..RRRRRR..",
+        ".RRRRRRRR.",
+        ".RRRRRRRR.",
+        "..RR..RR..",
+        "..RR..RR..",
+        ".DDD..DDD.",
+        "..........",
+    };
+
+    // --- Boss sprite (demonic warlord) ---
+    private static readonly string[] BossPixels =
+    {
+        ".CC......CC.",
+        ".CCC....CCC.",
+        "..CCCCCCCC..",
+        ".CCCCCCCCCC.",
+        ".CCMCCCMCCC.",
+        ".CCCCCCCCCC.",
+        "..CCC..CCC..",
+        ".CCCCCCCCCC.",
+        "CCCCCCCCCCCC",
+        "CCCCCCCCCCCC",
+        ".CCCCCCCCCC.",
+        "..CCC..CCC..",
+        "..CCC..CCC..",
+        ".DDDD..DDDD.",
+    };
+
+    // --- Color maps ---
+
+    private static Color GetFighterColor(char c) => c switch
+    {
+        'H' => new Color(0.55f, 0.40f, 0.25f), // hair
         'F' => new Color(0.85f, 0.70f, 0.55f), // face
-        'B' => Palette.PlayerBody,               // body/armor
-        'A' => Palette.Accent,                    // accent/belt
-        'L' => new Color(0.25f, 0.35f, 0.25f),  // legs
-        'S' => new Color(0.35f, 0.22f, 0.12f),  // shoes
+        'B' => new Color(0.35f, 0.35f, 0.45f), // steel armor
+        'A' => new Color(0.75f, 0.60f, 0.20f), // gold trim
+        'L' => new Color(0.25f, 0.25f, 0.30f), // legs
+        'S' => new Color(0.35f, 0.22f, 0.12f), // shoes
         _ => Colors.Transparent,
     };
 
-    private static Color GetEnemyColor(char c) => c switch
+    private static Color GetArcherColor(char c) => c switch
     {
-        'E' => Palette.EnemyBody,                 // body
-        'M' => new Color(0.95f, 0.85f, 0.2f),   // eyes
+        'H' => new Color(0.65f, 0.45f, 0.20f), // auburn hair
+        'F' => new Color(0.85f, 0.70f, 0.55f), // face
+        'B' => new Color(0.28f, 0.45f, 0.22f), // forest green tunic
+        'A' => new Color(0.55f, 0.40f, 0.18f), // leather belt
+        'L' => new Color(0.30f, 0.25f, 0.15f), // brown pants
+        'S' => new Color(0.30f, 0.20f, 0.10f), // boots
+        _ => Colors.Transparent,
+    };
+
+    private static Color GetMageColor(char c) => c switch
+    {
+        'H' => new Color(0.40f, 0.35f, 0.50f), // grey-purple hair
+        'F' => new Color(0.82f, 0.72f, 0.65f), // pale face
+        'P' => new Color(0.30f, 0.18f, 0.50f), // pointed hat
+        'B' => new Color(0.25f, 0.15f, 0.45f), // purple robe
+        'R' => new Color(0.35f, 0.22f, 0.55f), // robe trim
+        'A' => new Color(0.70f, 0.55f, 0.85f), // magic accent
+        'L' => new Color(0.20f, 0.15f, 0.30f), // robe bottom
+        'S' => new Color(0.28f, 0.18f, 0.12f), // sandals
+        _ => Colors.Transparent,
+    };
+
+    private static Color GetGoblinColor(char c) => c switch
+    {
+        'E' => Palette.EnemyBody,
+        'M' => new Color(0.95f, 0.85f, 0.2f),  // eyes
         'D' => new Color(0.40f, 0.20f, 0.10f),  // feet
         _ => Colors.Transparent,
     };
 
-    // Boss: bigger, scarier version
-    private static readonly string[] BossPixels =
+    private static Color GetSkeletonColor(char c) => c switch
     {
-        "..EEE..EEE..",
-        "..EEEEEEEE..",
-        ".EEEEEEEEEE.",
-        ".EEEEMMEEE..",
-        ".EEEEEEEEEE.",
-        ".EEE.EE.EEE.",
-        "..EEEEEEEE..",
-        ".EEEEEEEEEE.",
-        ".EEEEEEEEEE.",
-        ".EEEEEEEEEE.",
-        "..EEEEEEEE..",
-        "..EEE..EEE..",
-        "..EEE..EEE..",
-        ".DDDD.DDDD..",
+        'W' => new Color(0.85f, 0.82f, 0.75f),  // bone white
+        'K' => new Color(0.15f, 0.12f, 0.10f),  // eye sockets
+        'G' => new Color(0.55f, 0.50f, 0.45f),  // grey feet
+        _ => Colors.Transparent,
     };
 
-    public static ImageTexture CreatePlayerTexture() => BuildTexture(PlayerPixels, GetPlayerColor);
-    public static ImageTexture CreateEnemyTexture() => BuildTexture(EnemyPixels, GetEnemyColor);
-    public static ImageTexture CreateBossTexture() => BuildTexture(BossPixels, GetEnemyColor);
+    private static Color GetSlimeColor(char c) => c switch
+    {
+        'G' => new Color(0.25f, 0.70f, 0.30f),  // green body
+        'M' => new Color(0.90f, 0.90f, 0.10f),  // yellow eyes
+        _ => Colors.Transparent,
+    };
+
+    private static Color GetDemonColor(char c) => c switch
+    {
+        'R' => new Color(0.70f, 0.15f, 0.15f),  // red body
+        'M' => new Color(0.95f, 0.80f, 0.10f),  // yellow eyes
+        'D' => new Color(0.30f, 0.10f, 0.10f),  // dark hooves
+        _ => Colors.Transparent,
+    };
+
+    private static Color GetBossColor(char c) => c switch
+    {
+        'C' => new Color(0.55f, 0.10f, 0.50f),  // dark purple
+        'M' => new Color(1.0f, 0.20f, 0.10f),   // glowing red eyes
+        'D' => new Color(0.25f, 0.08f, 0.08f),   // dark hooves
+        _ => Colors.Transparent,
+    };
+
+    // --- Enemy variant arrays for random selection ---
+
+    private static readonly string[][] EnemyVariants = { GoblinPixels, SkeletonPixels, SlimePixels, DemonPixels };
+    private static readonly System.Func<char, Color>[] EnemyColorMaps = { GetGoblinColor, GetSkeletonColor, GetSlimeColor, GetDemonColor };
+    private static readonly string[] EnemyNames = { "Goblin", "Skeleton", "Slime", "Demon" };
+
+    // --- Public API ---
+
+    /// <summary>Returns a random enemy variant index (0-3).</summary>
+    public static int RandomEnemyVariant() => (int)(GD.Randi() % (uint)EnemyVariants.Length);
+
+    /// <summary>Gets the display name for an enemy variant.</summary>
+    public static string EnemyVariantName(int variant) => EnemyNames[variant % EnemyNames.Length];
+
+    public static ImageTexture CreatePlayerTexture(Archetype archetype)
+    {
+        return archetype switch
+        {
+            Archetype.Fighter => BuildTexture(FighterPixels, GetFighterColor),
+            Archetype.Archer => BuildTexture(ArcherPixels, GetArcherColor),
+            Archetype.Mage => BuildTexture(MagePixels, GetMageColor),
+            _ => BuildTexture(FighterPixels, GetFighterColor),
+        };
+    }
+
+    public static ImageTexture CreateEnemyTexture(int variant = 0)
+    {
+        int idx = variant % EnemyVariants.Length;
+        return BuildTexture(EnemyVariants[idx], EnemyColorMaps[idx]);
+    }
+
+    public static ImageTexture CreateBossTexture()
+    {
+        return BuildTexture(BossPixels, GetBossColor);
+    }
+
+    // Backward compat: parameterless version defaults to Fighter
+    public static ImageTexture CreatePlayerTexture() => CreatePlayerTexture(Archetype.Fighter);
 
     private static ImageTexture BuildTexture(string[] pixels, System.Func<char, Color> colorMap)
     {
