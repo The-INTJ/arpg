@@ -22,6 +22,9 @@ public partial class CombatManager : Node
     [Signal]
     public delegate void CombatEndedEventHandler();
 
+    [Signal]
+    public delegate void CombatFeedbackEventHandler(string text);
+
     public Enemy Target => _target;
 
     public void Init(PlayerController player, TurnManager turnManager, Camera3D camera)
@@ -37,6 +40,7 @@ public partial class CombatManager : Node
     public void EnterCombat(Enemy enemy)
     {
         _target = enemy;
+        _target.OnCombatStarted();
         _turnManager.SetState(TurnState.Busy);
         _player.SetPhysicsProcess(false);
 
@@ -90,20 +94,41 @@ public partial class CombatManager : Node
     {
         _turnManager.SetState(TurnState.Busy);
 
-        _target.TakeDamage(damage);
-        SpawnDamageNumber(_target.GlobalPosition + Vector3.Up * 1.2f, damage, false);
-        _shakeTimeLeft = 0.15f;
+        var result = _target.ResolveIncomingDamage(damage, _player);
+        SpawnDamageNumber(_target.GlobalPosition + Vector3.Up * 1.2f, result.Damage, false);
+
+        if (result.RetaliationDamage > 0)
+            SpawnDamageNumber(_player.GlobalPosition + Vector3.Up * 1.5f, result.RetaliationDamage, true);
+
+        EmitCombatFeedback(result.BuildFeedbackText());
+        _shakeTimeLeft = result.Damage > 0 || result.RetaliationDamage > 0 ? 0.15f : 0.08f;
 
         if (tickAbilityCooldown)
             _player.Ability?.TickCooldown();
 
-        if (_target.IsDead)
+        bool targetDied = _target.IsDead;
+        bool playerDied = _player.Hp <= 0;
+
+        if (targetDied)
         {
             LastKillPosition = _target.GlobalPosition;
             _target.Die();
             _target = null;
-            ExitCombat();
             EmitSignal(SignalName.CombatEnded);
+
+            if (playerDied)
+            {
+                _turnManager.SetState(TurnState.Defeat);
+                return;
+            }
+
+            ExitCombat();
+            return;
+        }
+
+        if (playerDied)
+        {
+            _turnManager.SetState(TurnState.Defeat);
             return;
         }
 
@@ -116,11 +141,13 @@ public partial class CombatManager : Node
         if (_target == null || !IsInstanceValid(_target)) return;
 
         _turnManager.SetState(TurnState.EnemyTurn);
+        _target.OnOwnerTurnStarted();
 
-        int damage = _target.AttackDamage;
-        _target.AttackPlayer(_player);
-        SpawnDamageNumber(_player.GlobalPosition + Vector3.Up * 1.5f, damage, true);
-        _shakeTimeLeft = 0.12f;
+        var result = _target.ResolveOutgoingDamage(_player);
+        SpawnDamageNumber(_player.GlobalPosition + Vector3.Up * 1.5f, result.Damage, true);
+        EmitCombatFeedback(result.BuildFeedbackText());
+        _shakeTimeLeft = result.Damage > 0 ? 0.12f : 0.08f;
+        _target.OnOwnerTurnEnded();
 
         if (_player.Hp <= 0)
         {
@@ -174,5 +201,13 @@ public partial class CombatManager : Node
 
         if (instance is DamageNumber dn)
             dn.Setup(amount, isPlayerDamage);
+    }
+
+    private void EmitCombatFeedback(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return;
+
+        EmitSignal(SignalName.CombatFeedback, text);
     }
 }

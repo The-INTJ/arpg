@@ -1,9 +1,15 @@
+using System.Collections.Generic;
 using Godot;
 
 namespace ARPG;
 
 public partial class Enemy : StaticBody3D
 {
+    private readonly List<MonsterEffectInstance> _monsterEffects = new();
+    private readonly Dictionary<string, Label3D> _effectBadges = new();
+    private readonly Dictionary<string, Color> _effectBadgeColors = new();
+    private Node3D _effectBadgeAnchor;
+
     public int MaxHp = 10;
     public int Hp = 10;
     public int AttackDamage = 2;
@@ -14,6 +20,7 @@ public partial class Enemy : StaticBody3D
 
     public float HpPercent => MaxHp > 0 ? (float)Hp / MaxHp : 0f;
     public bool IsDead => Hp <= 0;
+    public IReadOnlyList<MonsterEffectInstance> MonsterEffects => _monsterEffects;
 
     /// <summary>
     /// Scale this enemy's stats for the given room number (1-based).
@@ -45,9 +52,79 @@ public partial class Enemy : StaticBody3D
         Hp = Mathf.Max(0, Hp - amount);
     }
 
+    public void Heal(int amount)
+    {
+        Hp = Mathf.Min(MaxHp, Hp + Mathf.Max(0, amount));
+    }
+
     public void Die()
     {
         QueueFree();
+    }
+
+    public void SetMonsterEffects(MonsterEffectAssignmentPlan plan)
+    {
+        _monsterEffects.Clear();
+        if (plan != null)
+        {
+            foreach (var instance in plan.CreateInstances(this))
+                _monsterEffects.Add(instance);
+        }
+
+        RefreshEffectBadges();
+    }
+
+    public void OnCombatStarted()
+    {
+        foreach (var effect in _monsterEffects)
+            effect.CombatStarted();
+    }
+
+    public void OnOwnerTurnStarted()
+    {
+        foreach (var effect in _monsterEffects)
+            effect.OwnerTurnStarted();
+    }
+
+    public void OnOwnerTurnEnded()
+    {
+        foreach (var effect in _monsterEffects)
+            effect.OwnerTurnEnded();
+
+        CleanupExpiredEffects();
+    }
+
+    public MonsterIncomingDamageContext ResolveIncomingDamage(int amount, PlayerController attacker)
+    {
+        var context = new MonsterIncomingDamageContext(this, attacker, amount);
+        foreach (var effect in _monsterEffects)
+            effect.ApplyIncomingDamage(context);
+
+        context.Damage = Mathf.Max(0, context.Damage);
+        if (context.Damage > 0)
+            TakeDamage(context.Damage);
+
+        if (attacker != null && context.RetaliationDamage > 0)
+            attacker.Hp = Mathf.Max(0, attacker.Hp - context.RetaliationDamage);
+
+        FlashTriggeredBadges(context.Triggers);
+        CleanupExpiredEffects();
+        return context;
+    }
+
+    public MonsterOutgoingDamageContext ResolveOutgoingDamage(PlayerController player)
+    {
+        var context = new MonsterOutgoingDamageContext(this, player, AttackDamage);
+        foreach (var effect in _monsterEffects)
+            effect.ApplyOutgoingDamage(context);
+
+        context.Damage = Mathf.Max(0, context.Damage);
+        if (player != null && context.Damage > 0)
+            player.Hp = Mathf.Max(0, player.Hp - context.Damage);
+
+        FlashTriggeredBadges(context.Triggers);
+        CleanupExpiredEffects();
+        return context;
     }
 
     public void AttackPlayer(PlayerController player)
@@ -80,6 +157,149 @@ public partial class Enemy : StaticBody3D
         var tween = CreateTween();
         tween.TweenInterval(0.6f);
         tween.TweenProperty(label, "modulate:a", 0.0f, 0.3f);
+        tween.TweenCallback(Callable.From(() => label.QueueFree()));
+    }
+
+    private void CleanupExpiredEffects()
+    {
+        var expiredEffectIds = new List<string>();
+        for (int i = _monsterEffects.Count - 1; i >= 0; i--)
+        {
+            if (!_monsterEffects[i].IsExpired)
+                continue;
+
+            expiredEffectIds.Add(_monsterEffects[i].Definition.Id);
+            _monsterEffects.RemoveAt(i);
+        }
+
+        if (expiredEffectIds.Count == 0)
+            return;
+
+        foreach (string effectId in expiredEffectIds)
+            FadeOutEffectBadge(effectId);
+
+        if (!IsInsideTree())
+        {
+            RefreshEffectBadges();
+            return;
+        }
+
+        var timer = GetTree().CreateTimer(0.2f);
+        timer.Timeout += RefreshEffectBadges;
+    }
+
+    private void RefreshEffectBadges()
+    {
+        EnsureEffectBadgeAnchor();
+
+        foreach (Node child in _effectBadgeAnchor.GetChildren())
+            child.QueueFree();
+
+        _effectBadges.Clear();
+        _effectBadgeColors.Clear();
+
+        if (_monsterEffects.Count == 0)
+            return;
+
+        float spacing = IsBoss ? 0.38f : 0.3f;
+        float startX = -spacing * (_monsterEffects.Count - 1) * 0.5f;
+        for (int i = 0; i < _monsterEffects.Count; i++)
+        {
+            var effect = _monsterEffects[i];
+            var label = new Label3D();
+            label.Name = $"EffectBadge_{effect.Definition.Id}";
+            label.Text = effect.Definition.BadgeText;
+            label.FontSize = IsBoss ? 18 : 16;
+            label.Billboard = BaseMaterial3D.BillboardModeEnum.Enabled;
+            label.NoDepthTest = true;
+            label.FixedSize = true;
+            label.PixelSize = IsBoss ? 0.0052f : 0.0048f;
+            label.Modulate = effect.Definition.BadgeColor;
+            label.OutlineSize = 4;
+            label.OutlineModulate = Palette.BgDark;
+            label.Position = new Vector3(startX + i * spacing, 0, 0);
+            _effectBadgeAnchor.AddChild(label);
+
+            _effectBadges[effect.Definition.Id] = label;
+            _effectBadgeColors[effect.Definition.Id] = effect.Definition.BadgeColor;
+        }
+    }
+
+    private void EnsureEffectBadgeAnchor()
+    {
+        if (_effectBadgeAnchor != null && IsInstanceValid(_effectBadgeAnchor))
+        {
+            _effectBadgeAnchor.Position = new Vector3(0, IsBoss ? 1.32f : 1.08f, 0);
+            return;
+        }
+
+        _effectBadgeAnchor = GetNodeOrNull<Node3D>("EffectBadgeAnchor");
+        if (_effectBadgeAnchor == null)
+        {
+            _effectBadgeAnchor = new Node3D();
+            _effectBadgeAnchor.Name = "EffectBadgeAnchor";
+            AddChild(_effectBadgeAnchor);
+        }
+
+        _effectBadgeAnchor.Position = new Vector3(0, IsBoss ? 1.32f : 1.08f, 0);
+    }
+
+    private void FlashTriggeredBadges(IReadOnlyList<MonsterEffectTriggerRecord> triggers)
+    {
+        if (triggers == null || triggers.Count == 0)
+            return;
+
+        var seen = new HashSet<string>();
+        foreach (var trigger in triggers)
+        {
+            if (trigger == null || !seen.Add(trigger.EffectId))
+                continue;
+
+            FlashEffectBadge(trigger.EffectId);
+        }
+    }
+
+    private void FlashEffectBadge(string effectId)
+    {
+        if (!_effectBadges.TryGetValue(effectId, out var label) || !IsInstanceValid(label))
+            return;
+        if (!_effectBadgeColors.TryGetValue(effectId, out var baseColor))
+            baseColor = Palette.TextLight;
+
+        var tween = CreateTween();
+        tween.SetParallel(true);
+        tween.TweenProperty(label, "scale", new Vector3(1.2f, 1.2f, 1.2f), 0.08f)
+            .SetTrans(Tween.TransitionType.Quad)
+            .SetEase(Tween.EaseType.Out);
+        tween.TweenProperty(label, "modulate", Palette.TextLight, 0.08f)
+            .SetTrans(Tween.TransitionType.Quad)
+            .SetEase(Tween.EaseType.Out);
+        tween.SetParallel(false);
+        tween.TweenProperty(label, "scale", Vector3.One, 0.12f)
+            .SetTrans(Tween.TransitionType.Quad)
+            .SetEase(Tween.EaseType.In);
+        tween.TweenProperty(label, "modulate", baseColor, 0.12f)
+            .SetTrans(Tween.TransitionType.Quad)
+            .SetEase(Tween.EaseType.In);
+    }
+
+    private void FadeOutEffectBadge(string effectId)
+    {
+        if (!_effectBadges.TryGetValue(effectId, out var label) || !IsInstanceValid(label))
+            return;
+
+        _effectBadges.Remove(effectId);
+        _effectBadgeColors.Remove(effectId);
+
+        var tween = CreateTween();
+        tween.SetParallel(true);
+        tween.TweenProperty(label, "modulate:a", 0.0f, 0.18f)
+            .SetTrans(Tween.TransitionType.Quad)
+            .SetEase(Tween.EaseType.In);
+        tween.TweenProperty(label, "scale", new Vector3(0.75f, 0.75f, 0.75f), 0.18f)
+            .SetTrans(Tween.TransitionType.Quad)
+            .SetEase(Tween.EaseType.In);
+        tween.SetParallel(false);
         tween.TweenCallback(Callable.From(() => label.QueueFree()));
     }
 }
