@@ -633,6 +633,7 @@ public partial class GameManager : Node3D
     private void OnCombatEnded()
     {
         _killCount++;
+        GameState.RecordKill(_combatManager.LastKillWasBoss);
         _attackButton.Visible = false;
         _abilityButton.Visible = false;
 
@@ -681,6 +682,7 @@ public partial class GameManager : Node3D
 
     private void ShowGameOverScreen()
     {
+        GameState.FinalizeCurrentRun(RunOutcome.Defeat, _player?.Stats);
         GetTree().ChangeSceneToFile("res://scenes/GameOverScreen.tscn");
     }
 
