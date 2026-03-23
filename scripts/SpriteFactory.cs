@@ -65,8 +65,28 @@ public static class SpriteFactory
         _ => Colors.Transparent,
     };
 
+    // Boss: bigger, scarier version
+    private static readonly string[] BossPixels =
+    {
+        "..EEE..EEE..",
+        "..EEEEEEEE..",
+        ".EEEEEEEEEE.",
+        ".EEEEMMEEE..",
+        ".EEEEEEEEEE.",
+        ".EEE.EE.EEE.",
+        "..EEEEEEEE..",
+        ".EEEEEEEEEE.",
+        ".EEEEEEEEEE.",
+        ".EEEEEEEEEE.",
+        "..EEEEEEEE..",
+        "..EEE..EEE..",
+        "..EEE..EEE..",
+        ".DDDD.DDDD..",
+    };
+
     public static ImageTexture CreatePlayerTexture() => BuildTexture(PlayerPixels, GetPlayerColor);
     public static ImageTexture CreateEnemyTexture() => BuildTexture(EnemyPixels, GetEnemyColor);
+    public static ImageTexture CreateBossTexture() => BuildTexture(BossPixels, GetEnemyColor);
 
     private static ImageTexture BuildTexture(string[] pixels, System.Func<char, Color> colorMap)
     {
