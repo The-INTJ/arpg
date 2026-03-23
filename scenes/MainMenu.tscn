@@ -19,7 +19,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="GridContainer" type="GridContainer" parent="Background" unique_id=1802881582]
+[node name="GridContainer2" type="GridContainer" parent="Background" unique_id=633004136]
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
@@ -27,16 +27,27 @@ anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
 offset_left = -21.0
-offset_top = -33.0
+offset_top = -35.0
 offset_right = 21.0
-offset_bottom = 33.0
+offset_bottom = 35.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="PlayButton" type="Button" parent="Background/GridContainer" unique_id=1472625616]
+[node name="RichTextLabel" type="RichTextLabel" parent="Background/GridContainer2" unique_id=371950174]
 layout_mode = 2
+text = "Hero of the Ages"
+fit_content = true
+autowrap_mode = 0
+
+[node name="GridContainer" type="GridContainer" parent="Background/GridContainer2" unique_id=1802881582]
+layout_mode = 2
+
+[node name="PlayButton" type="Button" parent="Background/GridContainer2/GridContainer" unique_id=1472625616]
+layout_mode = 2
+size_flags_horizontal = 3
 text = "Play"
 
-[node name="QuitButton" type="Button" parent="Background/GridContainer" unique_id=2052384792]
+[node name="QuitButton" type="Button" parent="Background/GridContainer2/GridContainer" unique_id=2052384792]
 layout_mode = 2
+size_flags_horizontal = 3
 text = "Quit"
