@@ -18,6 +18,7 @@ public partial class CameraController : Node3D
     private float _pitch = DefaultPitch;
     private float _distance = DefaultDistance;
     private bool _combatMode;
+    private bool _windowFocused = true;
 
     /// <summary>Current yaw in radians, used by PlayerController for camera-relative movement.</summary>
     public float Yaw => _yaw;
@@ -25,8 +26,14 @@ public partial class CameraController : Node3D
     public override void _Ready()
     {
         _camera = GetNode<Camera3D>("Camera3D");
-        Input.MouseMode = Input.MouseModeEnum.Captured;
+        ProcessMode = ProcessModeEnum.Always;
         UpdateCameraTransform();
+        UpdateMouseMode();
+    }
+
+    public override void _Process(double delta)
+    {
+        UpdateMouseMode();
     }
 
     public override void _UnhandledInput(InputEvent @event)
@@ -53,6 +60,21 @@ public partial class CameraController : Node3D
         }
     }
 
+    public override void _Notification(int what)
+    {
+        if (what == NotificationWMWindowFocusIn)
+        {
+            _windowFocused = true;
+        }
+        else if (what == NotificationWMWindowFocusOut)
+        {
+            _windowFocused = false;
+            // Immediately release mouse when window loses focus to prevent
+            // flicker/reload when moving cursor between monitors
+            Input.MouseMode = Input.MouseModeEnum.Visible;
+        }
+    }
+
     /// <summary>
     /// Toggle mouse-look during combat so it doesn't fight with CombatManager camera tweens.
     /// </summary>
@@ -72,6 +94,23 @@ public partial class CameraController : Node3D
     public void RestoreCameraTransform()
     {
         UpdateCameraTransform();
+    }
+
+    private bool ShouldCaptureMouse()
+    {
+        if (!_windowFocused) return false;
+        if (GetTree().Paused) return false;
+        return true;
+    }
+
+    private void UpdateMouseMode()
+    {
+        var desired = ShouldCaptureMouse()
+            ? Input.MouseModeEnum.Captured
+            : Input.MouseModeEnum.Visible;
+
+        if (Input.MouseMode != desired)
+            Input.MouseMode = desired;
     }
 
     private void UpdateCameraTransform()

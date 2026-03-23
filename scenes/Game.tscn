@@ -9,7 +9,7 @@
 [ext_resource type="Script" path="res://scripts/CameraController.cs" id="8_cc"]
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_floor"]
-size = Vector2(200, 200)
+size = Vector2(100, 100)
 
 [sub_resource type="WorldBoundaryShape3D" id="WorldBoundaryShape3D_floor"]
 
@@ -63,7 +63,7 @@ shape = SubResource("WorldBoundaryShape3D_floor")
 script = ExtResource("5_mg")
 
 [node name="Player" type="CharacterBody3D" parent="World"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.25, 80)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.25, 40)
 script = ExtResource("2_pc")
 
 [node name="PlayerMesh" type="MeshInstance3D" parent="World/Player"]
@@ -81,7 +81,7 @@ transform = Transform3D(1, 0, 0, 0, 0.857, 0.515, 0, -0.515, 0.857, 0, 3.1, 4.9)
 [node name="Enemies" type="Node3D" parent="World"]
 
 [node name="ExitDoor" type="Node3D" parent="World"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -95)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -46)
 script = ExtResource("4_ed")
 
 [node name="Barrier" type="MeshInstance3D" parent="World/ExitDoor"]
