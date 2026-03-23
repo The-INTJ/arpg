@@ -12,22 +12,30 @@ public static partial class MonsterEffectGenerator
             throw new ArgumentNullException(nameof(context));
 
         var plan = new MonsterEffectAssignmentPlan();
-        bool allowOptionalRolls = ApplyGuaranteedEffects(context, plan);
+        int guaranteedCount = ApplyGuaranteedEffects(context, plan, out bool allowOptionalRolls);
 
         if (!allowOptionalRolls || plan.Count >= context.MaxTotalEffects)
             return plan;
 
-        if (GD.Randf() > context.Profile.BaseEffectChance)
-            return plan;
-
         int optionalCount = MonsterEffectRoller.RollWeightedInt(
-            context.Profile.GetOptionalCountOptions(context.IsBoss),
+            context.Rules.OptionalCountWeights,
             fallback: 0);
         optionalCount = Math.Min(optionalCount, context.MaxOptionalEffects);
         optionalCount = Math.Min(optionalCount, Math.Max(0, context.MaxTotalEffects - plan.Count));
 
+        float rollChance = context.Rules.OptionalEffectChance;
+        if (guaranteedCount > 0)
+        {
+            rollChance *= Mathf.Pow(
+                context.Rules.GuaranteedEffectOptionalChanceMultiplier,
+                guaranteedCount);
+        }
+
         for (int i = 0; i < optionalCount; i++)
         {
+            if (GD.Randf() > rollChance)
+                break;
+
             MonsterEffectDefinition definition = RollDefinition(context, plan);
             if (definition == null)
                 break;
@@ -41,14 +49,20 @@ public static partial class MonsterEffectGenerator
                 tier,
                 MonsterEffectSource.Optional,
                 consumesThreatBudget: true));
+
+            rollChance *= context.Rules.AdditionalEffectDecay;
         }
 
         return plan;
     }
 
-    private static bool ApplyGuaranteedEffects(MonsterEffectRollContext context, MonsterEffectAssignmentPlan plan)
+    private static int ApplyGuaranteedEffects(
+        MonsterEffectRollContext context,
+        MonsterEffectAssignmentPlan plan,
+        out bool allowOptionalRolls)
     {
-        bool allowOptionalRolls = true;
+        allowOptionalRolls = true;
+        int appliedCount = 0;
 
         foreach (var grant in context.Profile.GuaranteedEffects)
         {
@@ -69,12 +83,13 @@ public static partial class MonsterEffectGenerator
                 tier,
                 MonsterEffectSource.Granted,
                 grant.ConsumesThreatBudget));
+            appliedCount++;
 
             if (!grant.AllowOptionalRollsAfterGrant)
                 allowOptionalRolls = false;
         }
 
-        return allowOptionalRolls;
+        return appliedCount;
     }
 
     private static MonsterEffectDefinition RollDefinition(MonsterEffectRollContext context, MonsterEffectAssignmentPlan plan)
@@ -123,8 +138,11 @@ public static partial class MonsterEffectGenerator
         int maxTier = Math.Min(definition.MaxTier, context.MaxTier);
         var candidates = new List<WeightedIntOption>();
 
-        foreach (var option in context.Profile.GetTierOptions(context.IsBoss, maxTier))
+        foreach (var option in context.Rules.TierWeights)
         {
+            if (option.Value > maxTier)
+                continue;
+
             int threatCost = definition.GetThreatCost(option.Value);
             if (plan.TotalThreat + threatCost > context.ThreatBudget)
                 continue;
@@ -144,8 +162,11 @@ public static partial class MonsterEffectGenerator
         MonsterEffectAssignmentPlan plan)
     {
         int maxTier = Math.Min(definition.MaxTier, context.MaxTier);
-        foreach (var option in context.Profile.GetTierOptions(context.IsBoss, maxTier))
+        foreach (var option in context.Rules.TierWeights)
         {
+            if (option.Value > maxTier)
+                continue;
+
             if (plan.TotalThreat + definition.GetThreatCost(option.Value) <= context.ThreatBudget)
                 return true;
         }
@@ -167,7 +188,7 @@ public static partial class MonsterEffectGenerator
         {
             if (!definition.AllowDuplicates && existing.Definition.Id == definition.Id)
                 return false;
-            if (!definition.IsCompatibleWith(existing.Definition) || !existing.Definition.IsCompatibleWith(definition))
+            if (!definition.AllowsCoexistenceWith(existing.Definition) || !existing.Definition.AllowsCoexistenceWith(definition))
                 return false;
         }
 

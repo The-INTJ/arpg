@@ -6,26 +6,46 @@ namespace ARPG;
 
 public partial class MonsterEffectTriggerRecord
 {
-    public string EffectId { get; }
+    public MonsterEffectInstance Instance { get; }
+    public string EffectId => Instance?.Definition.Id ?? string.Empty;
     public string Message { get; }
 
-    public MonsterEffectTriggerRecord(string effectId, string message)
+    public MonsterEffectTriggerRecord(MonsterEffectInstance instance, string message)
     {
-        EffectId = effectId;
+        Instance = instance;
         Message = message;
     }
 }
 
-public partial class MonsterIncomingDamageContext
+public abstract partial class MonsterEffectResolutionContext
 {
     private readonly List<MonsterEffectTriggerRecord> _triggers = new();
+
+    public IReadOnlyList<MonsterEffectTriggerRecord> Triggers => _triggers;
+
+    public void Trigger(MonsterEffectInstance instance, string message)
+    {
+        if (instance == null || string.IsNullOrWhiteSpace(message))
+            return;
+
+        instance.RecordTrigger();
+        _triggers.Add(new MonsterEffectTriggerRecord(instance, message));
+    }
+
+    public string BuildFeedbackText()
+    {
+        return string.Join("  ", _triggers.Select(trigger => trigger.Message).Distinct());
+    }
+}
+
+public partial class MonsterIncomingDamageContext : MonsterEffectResolutionContext
+{
 
     public Enemy Target { get; }
     public PlayerController Attacker { get; }
     public int BaseDamage { get; }
     public int Damage { get; set; }
     public int RetaliationDamage { get; private set; }
-    public IReadOnlyList<MonsterEffectTriggerRecord> Triggers => _triggers;
 
     public MonsterIncomingDamageContext(Enemy target, PlayerController attacker, int baseDamage)
     {
@@ -39,31 +59,15 @@ public partial class MonsterIncomingDamageContext
     {
         RetaliationDamage += Math.Max(0, amount);
     }
-
-    public void Trigger(MonsterEffectInstance instance, string message)
-    {
-        if (instance == null || string.IsNullOrWhiteSpace(message))
-            return;
-
-        instance.RecordTrigger();
-        _triggers.Add(new MonsterEffectTriggerRecord(instance.Definition.Id, message));
-    }
-
-    public string BuildFeedbackText()
-    {
-        return string.Join("  ", _triggers.Select(trigger => trigger.Message).Distinct());
-    }
 }
 
-public partial class MonsterOutgoingDamageContext
+public partial class MonsterOutgoingDamageContext : MonsterEffectResolutionContext
 {
-    private readonly List<MonsterEffectTriggerRecord> _triggers = new();
-
     public Enemy Attacker { get; }
     public PlayerController Target { get; }
     public int BaseDamage { get; }
     public int Damage { get; set; }
-    public IReadOnlyList<MonsterEffectTriggerRecord> Triggers => _triggers;
+    public int HealingAmount { get; private set; }
 
     public MonsterOutgoingDamageContext(Enemy attacker, PlayerController target, int baseDamage)
     {
@@ -73,17 +77,8 @@ public partial class MonsterOutgoingDamageContext
         Damage = BaseDamage;
     }
 
-    public void Trigger(MonsterEffectInstance instance, string message)
+    public void AddHealing(int amount)
     {
-        if (instance == null || string.IsNullOrWhiteSpace(message))
-            return;
-
-        instance.RecordTrigger();
-        _triggers.Add(new MonsterEffectTriggerRecord(instance.Definition.Id, message));
-    }
-
-    public string BuildFeedbackText()
-    {
-        return string.Join("  ", _triggers.Select(trigger => trigger.Message).Distinct());
+        HealingAmount += Math.Max(0, amount);
     }
 }

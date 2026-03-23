@@ -8,11 +8,13 @@ namespace ARPG;
 public delegate void MonsterEffectLifecycleHook(MonsterEffectInstance instance);
 public delegate void MonsterEffectIncomingDamageHook(MonsterEffectInstance instance, MonsterIncomingDamageContext context);
 public delegate void MonsterEffectOutgoingDamageHook(MonsterEffectInstance instance, MonsterOutgoingDamageContext context);
+public delegate string MonsterEffectDescriptionFormatter(int tier);
 
 public partial class MonsterEffectDefinition
 {
     private readonly int[] _threatByTier;
     private readonly string[] _incompatibleEffectIds;
+    private readonly MonsterEffectDescriptionFormatter _descriptionFormatter;
 
     public string Id { get; }
     public string Name { get; }
@@ -20,6 +22,7 @@ public partial class MonsterEffectDefinition
     public Color BadgeColor { get; }
     public float BaseWeight { get; }
     public MonsterEffectTag Tags { get; }
+    public int ResolutionPriority { get; }
     public bool AllowDuplicates { get; }
     public IReadOnlyList<string> IncompatibleEffectIds => _incompatibleEffectIds;
     public int MaxTier => _threatByTier.Length - 1;
@@ -37,7 +40,9 @@ public partial class MonsterEffectDefinition
         Color badgeColor,
         float baseWeight,
         MonsterEffectTag tags,
+        int resolutionPriority,
         IEnumerable<int> threatByTier,
+        MonsterEffectDescriptionFormatter descriptionFormatter = null,
         bool allowDuplicates = false,
         IEnumerable<string> incompatibleEffectIds = null,
         MonsterEffectLifecycleHook onCombatStarted = null,
@@ -63,7 +68,9 @@ public partial class MonsterEffectDefinition
         BadgeColor = badgeColor;
         BaseWeight = Math.Max(0.0f, baseWeight);
         Tags = tags;
+        ResolutionPriority = resolutionPriority;
         AllowDuplicates = allowDuplicates;
+        _descriptionFormatter = descriptionFormatter;
         _incompatibleEffectIds = incompatibleEffectIds?
             .Where(idValue => !string.IsNullOrWhiteSpace(idValue))
             .Distinct()
@@ -82,7 +89,13 @@ public partial class MonsterEffectDefinition
         return _threatByTier[clampedTier];
     }
 
-    public bool IsCompatibleWith(MonsterEffectDefinition other)
+    public string DescribeTier(int tier)
+    {
+        int clampedTier = Math.Clamp(tier, 0, MaxTier);
+        return _descriptionFormatter?.Invoke(clampedTier) ?? Name;
+    }
+
+    public bool AllowsCoexistenceWith(MonsterEffectDefinition other)
     {
         if (other == null)
             return true;

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using Godot;
 
 namespace ARPG;
@@ -6,13 +7,13 @@ namespace ARPG;
 public partial class Enemy : StaticBody3D
 {
     private readonly List<MonsterEffectInstance> _monsterEffects = new();
-    private readonly Dictionary<string, Label3D> _effectBadges = new();
-    private readonly Dictionary<string, Color> _effectBadgeColors = new();
+    private readonly Dictionary<MonsterEffectInstance, Label3D> _effectBadges = new();
+    private readonly Dictionary<MonsterEffectInstance, Color> _effectBadgeColors = new();
     private Node3D _effectBadgeAnchor;
 
-    public int MaxHp = 10;
-    public int Hp = 10;
-    public int AttackDamage = 2;
+    public int MaxHp = 11;
+    public int Hp = 11;
+    public int AttackDamage = 3;
     public float SightRange = 7.0f;
     public bool IsBoss { get; private set; }
 
@@ -28,8 +29,8 @@ public partial class Enemy : StaticBody3D
     /// </summary>
     public void ScaleForRoom(int room)
     {
-        float hpMult = 1.0f + (room - 1) * 0.5f;   // 1.0, 1.5, 2.0
-        float atkMult = 1.0f + (room - 1) * 0.35f;  // 1.0, 1.35, 1.7
+        float hpMult = 1.0f + (room - 1) * 0.55f;   // 1.0, 1.55, 2.1
+        float atkMult = 1.0f + (room - 1) * 0.4f;   // 1.0, 1.4, 1.8
         MaxHp = (int)(MaxHp * hpMult);
         Hp = MaxHp;
         AttackDamage = (int)(AttackDamage * atkMult);
@@ -55,6 +56,15 @@ public partial class Enemy : StaticBody3D
     public void Heal(int amount)
     {
         Hp = Mathf.Min(MaxHp, Hp + Mathf.Max(0, amount));
+    }
+
+    public string GetEffectInfoText()
+    {
+        if (_monsterEffects.Count == 0)
+            return "Effects: none";
+
+        return string.Join("\n", _monsterEffects.Select(effect =>
+            $"{effect.Definition.BadgeText} T{effect.Tier} {effect.Definition.Name}: {effect.Definition.DescribeTier(effect.Tier)}"));
     }
 
     public void Die()
@@ -121,15 +131,12 @@ public partial class Enemy : StaticBody3D
         context.Damage = Mathf.Max(0, context.Damage);
         if (player != null && context.Damage > 0)
             player.Hp = Mathf.Max(0, player.Hp - context.Damage);
+        if (context.Damage > 0 && context.HealingAmount > 0)
+            Heal(context.HealingAmount);
 
         FlashTriggeredBadges(context.Triggers);
         CleanupExpiredEffects();
         return context;
-    }
-
-    public void AttackPlayer(PlayerController player)
-    {
-        player.Hp -= AttackDamage;
     }
 
     /// <summary>
@@ -162,21 +169,21 @@ public partial class Enemy : StaticBody3D
 
     private void CleanupExpiredEffects()
     {
-        var expiredEffectIds = new List<string>();
+        var expiredEffects = new List<MonsterEffectInstance>();
         for (int i = _monsterEffects.Count - 1; i >= 0; i--)
         {
             if (!_monsterEffects[i].IsExpired)
                 continue;
 
-            expiredEffectIds.Add(_monsterEffects[i].Definition.Id);
+            expiredEffects.Add(_monsterEffects[i]);
             _monsterEffects.RemoveAt(i);
         }
 
-        if (expiredEffectIds.Count == 0)
+        if (expiredEffects.Count == 0)
             return;
 
-        foreach (string effectId in expiredEffectIds)
-            FadeOutEffectBadge(effectId);
+        foreach (var effect in expiredEffects)
+            FadeOutEffectBadge(effect);
 
         if (!IsInsideTree())
         {
@@ -185,11 +192,18 @@ public partial class Enemy : StaticBody3D
         }
 
         var timer = GetTree().CreateTimer(0.2f);
-        timer.Timeout += RefreshEffectBadges;
+        timer.Timeout += () =>
+        {
+            if (IsInsideTree())
+                RefreshEffectBadges();
+        };
     }
 
     private void RefreshEffectBadges()
     {
+        if (!IsInsideTree())
+            return;
+
         EnsureEffectBadgeAnchor();
 
         foreach (Node child in _effectBadgeAnchor.GetChildren())
@@ -208,7 +222,9 @@ public partial class Enemy : StaticBody3D
             var effect = _monsterEffects[i];
             var label = new Label3D();
             label.Name = $"EffectBadge_{effect.Definition.Id}";
-            label.Text = effect.Definition.BadgeText;
+            label.Text = effect.Tier > 0
+                ? $"{effect.Definition.BadgeText}{effect.Tier}"
+                : effect.Definition.BadgeText;
             label.FontSize = IsBoss ? 18 : 16;
             label.Billboard = BaseMaterial3D.BillboardModeEnum.Enabled;
             label.NoDepthTest = true;
@@ -220,8 +236,8 @@ public partial class Enemy : StaticBody3D
             label.Position = new Vector3(startX + i * spacing, 0, 0);
             _effectBadgeAnchor.AddChild(label);
 
-            _effectBadges[effect.Definition.Id] = label;
-            _effectBadgeColors[effect.Definition.Id] = effect.Definition.BadgeColor;
+            _effectBadges[effect] = label;
+            _effectBadgeColors[effect] = effect.Definition.BadgeColor;
         }
     }
 
@@ -249,21 +265,21 @@ public partial class Enemy : StaticBody3D
         if (triggers == null || triggers.Count == 0)
             return;
 
-        var seen = new HashSet<string>();
+        var seen = new HashSet<MonsterEffectInstance>();
         foreach (var trigger in triggers)
         {
-            if (trigger == null || !seen.Add(trigger.EffectId))
+            if (trigger?.Instance == null || !seen.Add(trigger.Instance))
                 continue;
 
-            FlashEffectBadge(trigger.EffectId);
+            FlashEffectBadge(trigger.Instance);
         }
     }
 
-    private void FlashEffectBadge(string effectId)
+    private void FlashEffectBadge(MonsterEffectInstance effect)
     {
-        if (!_effectBadges.TryGetValue(effectId, out var label) || !IsInstanceValid(label))
+        if (effect == null || !_effectBadges.TryGetValue(effect, out var label) || !IsInstanceValid(label))
             return;
-        if (!_effectBadgeColors.TryGetValue(effectId, out var baseColor))
+        if (!_effectBadgeColors.TryGetValue(effect, out var baseColor))
             baseColor = Palette.TextLight;
 
         var tween = CreateTween();
@@ -283,13 +299,13 @@ public partial class Enemy : StaticBody3D
             .SetEase(Tween.EaseType.In);
     }
 
-    private void FadeOutEffectBadge(string effectId)
+    private void FadeOutEffectBadge(MonsterEffectInstance effect)
     {
-        if (!_effectBadges.TryGetValue(effectId, out var label) || !IsInstanceValid(label))
+        if (effect == null || !_effectBadges.TryGetValue(effect, out var label) || !IsInstanceValid(label))
             return;
 
-        _effectBadges.Remove(effectId);
-        _effectBadgeColors.Remove(effectId);
+        _effectBadges.Remove(effect);
+        _effectBadgeColors.Remove(effect);
 
         var tween = CreateTween();
         tween.SetParallel(true);

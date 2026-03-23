@@ -2,34 +2,30 @@
 
 ## Goal
 
-Add a dedicated enemy-side effect system that can:
+Monster effects are an enemy-side combat system that can:
 
-- roll effects on some enemies and leave others clean
-- support room-driven guarantees and weighting later
-- attach tags for future "punish this build gap" systems
-- keep combat logic separate from the player modifier stack
+- leave some enemies clean
+- roll one or more effects on others
+- let rooms boost, guarantee, or bias effect assignment
+- expose tags for future build-countering systems
+- keep all of this separate from player modifiers
 
-This Part 1 implementation ships the foundation plus three live effects:
-
-- `Invulnerable`
-- `Bulwark`
-- `Thorns`
+The current implementation includes Stage 3 content: five live effects, tiered behavior, room-by-room progression, stacked-roll decay, and a room-rule HUD readout.
 
 ## Runtime Model
 
 ### `MonsterEffectDefinition`
 
-Static data for an effect:
+Static effect data:
 
-- `Id`
-- `Name`
-- `BadgeText`
-- `BadgeColor`
-- `BaseWeight`
-- `Tags`
-- `ThreatByTier`
-- duplicate policy
-- incompatible effect ids
+- identity and display metadata
+- badge text and badge color
+- tags
+- base roll weight
+- resolution priority
+- duplicate and incompatibility rules
+- threat by tier
+- per-tier description formatter
 - lifecycle and combat hooks
 
 Definitions live in `scripts/MonsterEffectDefinitions.cs`.
@@ -38,76 +34,81 @@ Definitions live in `scripts/MonsterEffectDefinitions.cs`.
 
 Per-enemy runtime state:
 
-- owning enemy
+- owner
 - chosen tier
-- turns started / ended
+- turn counters
 - trigger count
 - last trigger turn
-- small key/value state dictionary for future custom behavior
+- a small keyed state bag for effect-specific counters and pools
 - expiration flag
-
-Instances are created from a spawn-time assignment plan and then live on the `Enemy`.
 
 ### `MonsterEffectRollContext`
 
 Spawn-time inputs:
 
 - room number
-- room profile
+- active room profile
 - boss flag
 - preferred tags
 - blocked tags
 - blocked effect ids
 
-This is the seam future dynamic systems should use when they want to bias monster effects without bypassing the generator.
+This is the future extension seam for adaptive map logic that wants to punish or bias against specific player build gaps.
 
 ### `RoomMonsterEffectProfile`
 
-Room-scoped generation rules:
+Room-scoped generation config:
 
-- base optional-effect chance
-- optional effect count weights
-- tier weights
+- `NormalRules`
+- `BossRules`
 - guaranteed grant rules
 - effect-id weight multipliers
 - tag weight multipliers
+- player-facing room name and description
+
+Each scope uses `MonsterEffectSpawnRules`, which currently contains:
+
+- optional effect chance
+- decay chance for continuing into another optional effect
+- optional-roll suppression after guaranteed grants
 - threat budget
-- optional/max total effect caps
-
-Part 1 uses a single default profile for all rooms:
-
-- `30%` chance to roll optional effects
-- only one optional effect
-- only tier `0`
-- no guaranteed grants enabled yet
+- max optional effects
+- max total effects
+- max allowed tier
+- optional count weights
+- tier weights
+- boss-safe weighting multipliers
 
 ### `MonsterEffectAssignmentPlan`
 
 Final spawn-time result for one enemy:
 
-- ordered list of assigned effects
-- source per effect (`Granted` or `Optional`)
+- ordered effect assignments
+- source per assignment (`Innate`, `Granted`, `Optional`)
 - total threat consumed
 
-The `Enemy` converts this into live `MonsterEffectInstance`s.
+The `Enemy` converts the plan into live `MonsterEffectInstance`s and sorts them by resolution priority.
 
 ## Assignment Pipeline
 
-1. Start with an empty `MonsterEffectAssignmentPlan`.
+1. Start with an empty assignment plan.
 2. Apply guaranteed room grants first.
-3. Respect threat budget and max-total-effect limits.
-4. Roll whether optional effects happen from the room profile.
-5. Roll a compatible effect by weight.
-6. Roll a valid tier that still fits the budget.
-7. Create runtime instances on the enemy.
+3. Respect threat budget and total-effect caps.
+4. Roll the desired optional effect count.
+5. Attempt each optional slot behind a decaying probability gate.
+6. If guaranteed effects were already applied, further suppress the optional roll chance.
+7. Roll a compatible definition by weight, including tag and boss-safe modifiers.
+8. Roll a tier that fits the active room rules and remaining budget.
+9. Instantiate effects on the enemy in priority order.
 
-The pipeline already supports:
+This supports:
 
 - enemies with zero effects
-- future guaranteed effects on every monster
-- future boss-only effects
-- future random subsets
-- future tag-biased rolling
+- occasional stacked enemies
+- room-wide guaranteed effects
+- boss-only grants
+- random subsets
+- tag-biased future adaptive generation
 
 ## Combat Hooks
 
@@ -119,43 +120,99 @@ Enemy-owned hooks currently exist for:
 - incoming damage resolution
 - outgoing damage resolution
 
-`CombatManager` now asks the enemy to resolve combat through its effects before HP is finalized.
+`CombatManager` resolves damage through these hooks before HP changes are finalized, and effect feedback is pushed back into the combat HUD.
 
-## Part 1 Live Effects
+## Live Effects
 
 ### `Invulnerable`
 
 - badge: `INV`
 - tags: `Defense`, `Opener`, `PunishesBurst`, `BossSafe`
-- behavior: negates the first damaging hit in combat, then expires
+- priority: 10
+- tier 0: negate the first damaging hit
+- tier 1: negate damage during the first two enemy turns
+- tier 2: negate damage on alternating enemy turns
 
 ### `Bulwark`
 
 - badge: `BLW`
 - tags: `Defense`, `Attrition`, `BossSafe`
-- behavior: reduces incoming damage by `1` until the enemy finishes its first turn, then expires
+- priority: 20
+- tier 0: 5 block through the first turn
+- tier 1: 8 block for each of the first two turns
+- tier 2: 12 block for each of the first three turns
 
 ### `Thorns`
 
 - badge: `THN`
 - tags: `Retaliation`, `PunishesBurst`
-- behavior: deals `1` retaliation damage back to the player whenever the enemy is hit
+- priority: 100
+- tier 0: 1 retaliation damage
+- tier 1: 3 retaliation damage
+- tier 2: 5 retaliation damage
+
+### `Enraged`
+
+- badge: `ENR`
+- tags: `Opener`, `PunishesSustain`
+- priority: 60
+- tier 0: +2 damage on the first enemy attack
+- tier 1: +4 damage on the first two enemy attacks
+- tier 2: +6 damage on every enemy attack
+
+### `Leech`
+
+- badge: `LEC`
+- tags: `Attrition`, `PunishesSustain`, `BossSafe`
+- priority: 120
+- tier 0: heal 2 after a successful hit
+- tier 1: heal 5 after a successful hit
+- tier 2: heal 8 after a successful hit
+
+## Room Progression
+
+### Room 1 - `Wild Den`
+
+- 50% optional effect chance
+- tier 0 only
+- occasional second effect, but still plenty of clean enemies
+
+### Room 2 - `Guarded Hall`
+
+- higher optional effect chance
+- tiers 0-1
+- `Defense` effects are weighted up
+- a random subset of enemies is guaranteed `Bulwark` tier 1
+
+### Room 3 - `Pressure Chamber`
+
+- high optional effect pressure
+- tiers 1-2
+- normals can still roll zero, one, or two effects
+- the boss is guaranteed `Bulwark` tier 2 before optional rolls
 
 ## Presentation
 
-- active effects render as `Label3D` badges above the enemy's head
-- badges are spaced so they do not conflict with the aggro indicator or boss label
-- triggered effects flash
-- expiring effects fade out
-- combat feedback text is sent back through `CombatManager` so the HUD status line can explain what happened
+- active effects render as `Label3D` badges above each enemy
+- badges include tier suffixes when the tier is above 0
+- badges flash when triggered and fade on expiry
+- the enemy HP display includes plain-language effect descriptions so players can read what each badge means in-run
+- the HUD includes a dedicated room-rule label using the room profile's name and description
 
-## Next Expansion Path
+## Supporting Balance Tweaks
 
-Part 3 can extend this system by:
+- room-1 baseline monster effect chance is now 50%
+- enemy baseline HP and damage were bumped slightly
+- room scaling for enemy HP and damage was increased
+- player movement speed was nudged up overall
+- movement now ramps up to full speed in 0.30s and ramps down in 0.15s
 
-- adding more definitions and tags
-- expanding `ThreatByTier`
-- turning on real tier weights per room
-- enabling guaranteed room grants
-- raising max total effects on selected enemies or bosses
-- adding room-rule HUD text sourced from `RoomMonsterEffectProfile`
+## Future Expansion Path
+
+Good next steps after playtest feedback:
+
+- innate per-archetype monster effects
+- richer forbidden-pair rules
+- more boss-only weighting and tag policies
+- true hover or inspect affordances for effect badges
+- adaptive room generation that supplies preferred and blocked tags through `MonsterEffectRollContext`
