@@ -16,6 +16,7 @@ public partial class Enemy : StaticBody3D
     public int AttackDamage = 3;
     public float SightRange = 4.0f;
     public bool IsBoss { get; private set; }
+    public string VariantName { get; set; }
 
     public bool HasAggro { get; set; }
 
@@ -149,15 +150,15 @@ public partial class Enemy : StaticBody3D
 
         var label = new Label3D();
         label.Text = IsBoss ? "!!!" : "!";
-        label.FontSize = IsBoss ? 80 : 64;
+        label.FontSize = IsBoss ? 28 : 20;
         label.Billboard = BaseMaterial3D.BillboardModeEnum.Enabled;
-        label.NoDepthTest = true;
+        label.NoDepthTest = false;
         label.FixedSize = true;
-        label.PixelSize = 0.01f;
+        label.PixelSize = 0.005f;
         label.Modulate = new Color(1.0f, 0.3f, 0.2f);
-        label.OutlineSize = 12;
+        label.OutlineSize = 6;
         label.OutlineModulate = new Color(0, 0, 0);
-        label.Position = new Vector3(0, IsBoss ? 1.0f : 0.65f, 0);
+        label.Position = new Vector3(0, IsBoss ? 0.85f : 0.55f, 0);
         label.Name = "AggroIndicator";
         AddChild(label);
 
@@ -215,7 +216,7 @@ public partial class Enemy : StaticBody3D
         if (_monsterEffects.Count == 0)
             return;
 
-        float spacing = IsBoss ? 0.38f : 0.3f;
+        float spacing = IsBoss ? 0.25f : 0.2f;
         float startX = -spacing * (_monsterEffects.Count - 1) * 0.5f;
         for (int i = 0; i < _monsterEffects.Count; i++)
         {
@@ -225,13 +226,13 @@ public partial class Enemy : StaticBody3D
             label.Text = effect.Tier > 0
                 ? $"{effect.Definition.BadgeText}{effect.Tier}"
                 : effect.Definition.BadgeText;
-            label.FontSize = IsBoss ? 18 : 16;
+            label.FontSize = IsBoss ? 12 : 10;
             label.Billboard = BaseMaterial3D.BillboardModeEnum.Enabled;
-            label.NoDepthTest = true;
+            label.NoDepthTest = false;
             label.FixedSize = true;
-            label.PixelSize = IsBoss ? 0.0052f : 0.0048f;
+            label.PixelSize = IsBoss ? 0.003f : 0.0025f;
             label.Modulate = effect.Definition.BadgeColor;
-            label.OutlineSize = 4;
+            label.OutlineSize = 3;
             label.OutlineModulate = Palette.BgDark;
             label.Position = new Vector3(startX + i * spacing, 0, 0);
             _effectBadgeAnchor.AddChild(label);

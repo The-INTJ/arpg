@@ -85,8 +85,15 @@ public partial class GameManager : Node3D
             label.AddThemeColorOverride("font_shadow_color", new Color(0, 0, 0, 0.8f));
         }
 
+        // Textured ground
         var floorMesh = GetNode<MeshInstance3D>("World/Floor/FloorMesh");
-        floorMesh.MaterialOverride = new StandardMaterial3D { AlbedoColor = Palette.Floor };
+        floorMesh.MaterialOverride = MapGenerator.CreateGroundMaterial();
+
+        // Setup environment (sky, sun, ambient)
+        SetupEnvironment();
+
+        // Audio manager (autoload-like singleton)
+        SetupAudioManager();
 
         // Generate map and spawn enemies scaled to room
         var mapGen = GetNode<MapGenerator>("World/MapGenerator");
@@ -107,6 +114,58 @@ public partial class GameManager : Node3D
 
         UpdateHud();
         _statusLabel.Text = GetRoomIntroText();
+
+        // Start explore music
+        AudioManager.Instance?.StartExploreMusic();
+    }
+
+    private void SetupEnvironment()
+    {
+        // WorldEnvironment with sky and ambient light
+        var env = new Godot.Environment();
+        env.BackgroundMode = Godot.Environment.BGMode.Sky;
+
+        var sky = new Sky();
+        var skyMat = new ProceduralSkyMaterial();
+        skyMat.SkyTopColor = new Color(0.35f, 0.55f, 0.82f);
+        skyMat.SkyHorizonColor = new Color(0.65f, 0.75f, 0.85f);
+        skyMat.GroundBottomColor = new Color(0.35f, 0.30f, 0.22f);
+        skyMat.GroundHorizonColor = new Color(0.55f, 0.50f, 0.40f);
+        skyMat.SunAngleMax = 30.0f;
+        sky.SkyMaterial = skyMat;
+        env.Sky = sky;
+
+        env.AmbientLightSource = Godot.Environment.AmbientSource.Sky;
+        env.AmbientLightEnergy = 0.4f;
+        env.AmbientLightColor = new Color(0.8f, 0.85f, 0.95f);
+
+        env.TonemapMode = Godot.Environment.ToneMapper.Filmic;
+        env.SsaoEnabled = false;
+
+        // Subtle fog for depth
+        env.FogEnabled = true;
+        env.FogLightColor = new Color(0.65f, 0.60f, 0.50f);
+        env.FogDensity = 0.003f;
+
+        var worldEnv = new WorldEnvironment();
+        worldEnv.Environment = env;
+        GetNode<Node3D>("World").AddChild(worldEnv);
+
+        // Enhance the existing DirectionalLight3D to act as the sun
+        var sun = GetNode<DirectionalLight3D>("World/DirectionalLight3D");
+        sun.ShadowEnabled = true;
+        sun.LightColor = new Color(1.0f, 0.95f, 0.85f);
+        sun.LightEnergy = 1.2f;
+        sun.DirectionalShadowMode = DirectionalLight3D.ShadowMode.Parallel2Splits;
+    }
+
+    private void SetupAudioManager()
+    {
+        if (AudioManager.Instance != null) return;
+
+        var audio = new AudioManager();
+        audio.Name = "AudioManager";
+        GetTree().Root.AddChild(audio);
     }
 
     private int GetEnemyCount()
@@ -177,7 +236,8 @@ public partial class GameManager : Node3D
         _enemyEffectInfoLabel.HorizontalAlignment = HorizontalAlignment.Center;
         _enemyEffectInfoLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         _enemyEffectInfoLabel.AddThemeColorOverride("font_color", Palette.TextLight);
-        _enemyEffectInfoLabel.AddThemeFontSizeOverride("font_size", 12);
+        // Slightly larger effect info text for readability during combat
+        _enemyEffectInfoLabel.AddThemeFontSizeOverride("font_size", 15);
         container.AddChild(_enemyEffectInfoLabel);
     }
 
@@ -288,23 +348,14 @@ public partial class GameManager : Node3D
             sprite.Position = new Vector3(0, 0.35f, 0);
             enemy.AddChild(sprite);
 
-            // Boss name label
-            var nameLabel = new Label3D();
-            nameLabel.Text = "BOSS";
-            nameLabel.FontSize = 32;
-            nameLabel.Billboard = BaseMaterial3D.BillboardModeEnum.Enabled;
-            nameLabel.NoDepthTest = true;
-            nameLabel.FixedSize = true;
-            nameLabel.PixelSize = 0.008f;
-            nameLabel.Modulate = new Color(1.0f, 0.2f, 0.15f);
-            nameLabel.OutlineSize = 8;
-            nameLabel.OutlineModulate = new Color(0, 0, 0);
-            nameLabel.Position = new Vector3(0, 0.9f, 0);
-            enemy.AddChild(nameLabel);
+            // No more "BOSS" Label3D — boss is visually distinct by sprite alone
         }
         else
         {
-            var sprite = SpriteFactory.CreateSprite(SpriteFactory.CreateEnemyTexture(), 0.05f);
+            // Random enemy variant
+            int variant = SpriteFactory.RandomEnemyVariant();
+            enemy.VariantName = SpriteFactory.EnemyVariantName(variant);
+            var sprite = SpriteFactory.CreateSprite(SpriteFactory.CreateEnemyTexture(variant), 0.05f);
             sprite.Position = new Vector3(0, 0.25f, 0);
             enemy.AddChild(sprite);
         }
@@ -633,9 +684,19 @@ public partial class GameManager : Node3D
     private void OnCombatEnded()
     {
         _killCount++;
-        GameState.RecordKill(_combatManager.LastKillWasBoss);
+        bool wasBoss = _combatManager.LastKillWasBoss;
+        GameState.RecordKill(wasBoss);
         _attackButton.Visible = false;
         _abilityButton.Visible = false;
+
+        // Death sounds
+        if (wasBoss)
+            AudioManager.Instance?.PlayBossDeath();
+        else
+            AudioManager.Instance?.PlayEnemyDeath();
+
+        // Switch back to explore music
+        AudioManager.Instance?.StopCombatMusic();
 
         // Spawn loot at the kill position
         SpawnLoot(_combatManager.LastKillPosition);
@@ -644,6 +705,7 @@ public partial class GameManager : Node3D
         {
             // All enemies cleared — unlock the exit
             _exitDoor.Unlock();
+            AudioManager.Instance?.PlayLevelUp();
 
             if (_room >= GameState.TotalRooms)
                 _statusLabel.Text = "All rooms cleared! Find the exit!";
@@ -700,6 +762,7 @@ public partial class GameManager : Node3D
     {
         string keyName = GameKeys.DisplayName(GameKeys.ItemSlot(slotIndex));
         _statusLabel.Text = $"Picked up {itemName} ({keyName})";
+        AudioManager.Instance?.PlayPickup();
     }
 
     private void OnItemInventoryFull(string itemName)
@@ -723,11 +786,13 @@ public partial class GameManager : Node3D
     {
         // The modifier is already in the backpack (LootPickup does that).
         _modifyScreen.Open(_player.Stats, modifier);
+        AudioManager.Instance?.PlayPickup();
     }
 
     private void OnLootStashed(string description)
     {
         _statusLabel.Text = $"Stashed: {description}";
+        AudioManager.Instance?.PlayPickup();
     }
 
     private void OnViewStatsRequested()
@@ -751,7 +816,7 @@ public partial class GameManager : Node3D
 
         display.Visible = true;
         _enemyHpBar.Value = enemy.HpPercent;
-        string label = enemy.IsBoss ? "BOSS" : "Enemy";
+        string label = enemy.IsBoss ? "BOSS" : (enemy.VariantName ?? "Enemy");
         _enemyHpLabel.Text = $"{label}  {enemy.Hp}/{enemy.MaxHp}";
         _enemyEffectInfoLabel.Text = enemy.GetEffectInfoText();
 

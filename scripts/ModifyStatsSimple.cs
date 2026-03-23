@@ -526,7 +526,10 @@ public partial class ModifyStatsSimple : Control
 			return;
 
 		if (_stats.ApplyBackpackModifier(_pendingPlan))
+		{
+			AudioManager.Instance?.PlayEffectApply();
 			SelectModifier(null);
+		}
 
 		_pendingPlan = null;
 		_confirmPanel.Visible = false;

@@ -40,6 +40,7 @@ public partial class ExitDoor : Node3D
 			return;
 		}
 
+		AudioManager.Instance?.PlayLevelUp();
 		GameState.CurrentRoom++;
 		GetTree().ChangeSceneToFile("res://scenes/Game.tscn");
 	}
