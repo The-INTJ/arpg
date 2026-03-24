@@ -14,9 +14,21 @@ public enum ItemKind
     GiantSeal
 }
 
+public enum ItemVisualId
+{
+    HealingBottle,
+    DeepBottle,
+    EmberBomb,
+    StarfireBomb,
+    SannosShield,
+    MarauderDraught,
+    GiantSeal
+}
+
 public partial class InventoryItem
 {
     public ItemKind Kind { get; }
+    public ItemVisualId VisualId { get; }
     public int HealAmount { get; }
     public int DirectDamage { get; }
     public int NextAttackBonusDamage { get; }
@@ -30,9 +42,11 @@ public partial class InventoryItem
         int directDamage = 0,
         int nextAttackBonusDamage = 0,
         float nextAttackMultiplier = 1.0f,
-        int negateNextHits = 0)
+        int negateNextHits = 0,
+        ItemVisualId? visualId = null)
     {
         Kind = kind;
+        VisualId = visualId ?? ResolveVisualId(kind);
         HealAmount = Math.Max(0, healAmount);
         DirectDamage = Math.Max(0, directDamage);
         NextAttackBonusDamage = Math.Max(0, nextAttackBonusDamage);
@@ -215,6 +229,18 @@ public partial class InventoryItem
         EliteDrop,
         BossDrop
     }
+
+    private static ItemVisualId ResolveVisualId(ItemKind kind) => kind switch
+    {
+        ItemKind.HealingTonic => ItemVisualId.HealingBottle,
+        ItemKind.DeeprootFlask => ItemVisualId.DeepBottle,
+        ItemKind.EmberBomb => ItemVisualId.EmberBomb,
+        ItemKind.StarfireBomb => ItemVisualId.StarfireBomb,
+        ItemKind.SannosShield => ItemVisualId.SannosShield,
+        ItemKind.MarauderDraught => ItemVisualId.MarauderDraught,
+        ItemKind.GiantSeal => ItemVisualId.GiantSeal,
+        _ => ItemVisualId.HealingBottle
+    };
 
     private readonly record struct ItemDropOption(ItemKind Kind, float Weight);
 }

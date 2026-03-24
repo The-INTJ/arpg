@@ -1,4 +1,5 @@
 using Godot;
+using System.Collections.Generic;
 
 namespace ARPG;
 
@@ -248,6 +249,116 @@ public static class SpriteFactory
         ".DDDD..DDDD.",
     };
 
+    // --- Item and chest sprites ---
+
+    private static readonly string[] HealingBottlePixels =
+    {
+        "...CC...",
+        "...WW...",
+        "..WGGW..",
+        "..WGGW..",
+        "..WGGW..",
+        "..WGGW..",
+        "...WW...",
+        "...SS...",
+    };
+
+    private static readonly string[] DeepBottlePixels =
+    {
+        "...CC...",
+        "..WWWW..",
+        "..WLLW..",
+        ".WLLLLW.",
+        ".WLLLLW.",
+        "..WLLW..",
+        "...WW...",
+        "...SS...",
+    };
+
+    private static readonly string[] EmberBombPixels =
+    {
+        "...FF...",
+        "..FYYF..",
+        ".FYYYYF.",
+        ".FYYYYF.",
+        ".FYYYYF.",
+        "..FYYF..",
+        "...FF...",
+        "..CC....",
+    };
+
+    private static readonly string[] StarfireBombPixels =
+    {
+        "...GG...",
+        "..GYYG..",
+        ".GYYYYG.",
+        ".GYYYYG.",
+        ".GYYYYG.",
+        "..GYYG..",
+        "...GG...",
+        "..CC....",
+    };
+
+    private static readonly string[] ShieldPixels =
+    {
+        "...GG...",
+        "..GBBG..",
+        "..BBBB..",
+        "..BBBB..",
+        "..BBBB..",
+        "...BB...",
+        "...BB...",
+        "...SS...",
+    };
+
+    private static readonly string[] DraughtPixels =
+    {
+        "...CC...",
+        "..WWWW..",
+        "..WRRW..",
+        ".WRRRRW.",
+        ".WRRRRW.",
+        "..WRRW..",
+        "...WW...",
+        "...SS...",
+    };
+
+    private static readonly string[] GiantSealPixels =
+    {
+        "..GGGG..",
+        ".GYYYYG.",
+        "GYYCCYYG",
+        "GYCYYCYG",
+        "GYYCCYYG",
+        ".GYYYYG.",
+        "..GGGG..",
+        "...SS...",
+    };
+
+    private static readonly string[] ChestClosedPixels =
+    {
+        ".GGGGGG.",
+        "GBBBBBBG",
+        "GBWWWWBG",
+        "GBWWWWBG",
+        "GBBBBBBG",
+        "GBGGGGBG",
+        "GB....BG",
+        ".GGGGGG.",
+    };
+
+    private static readonly string[] ChestOpenedPixels =
+    {
+        ".GGGGGG.",
+        "GBBBBBBG",
+        "GBG..GBG",
+        "G......G",
+        "GBWWWWBG",
+        "GBWWWWBG",
+        "GB....BG",
+        ".GGGGGG.",
+    };
+
     // --- Color maps ---
 
     private static Color GetFighterColor(char c) => c switch
@@ -367,11 +478,44 @@ public static class SpriteFactory
         _ => Colors.Transparent,
     };
 
+    private static Color GetItemColor(char c, ItemVisualId visualId) => c switch
+    {
+        'C' => new Color(0.90f, 0.86f, 0.72f),
+        'W' => new Color(0.95f, 0.95f, 0.95f),
+        'G' => visualId switch
+        {
+            ItemVisualId.HealingBottle => Palette.ItemHeal,
+            ItemVisualId.DeepBottle => Palette.ItemHealMajor,
+            ItemVisualId.SannosShield => Palette.ItemWard,
+            ItemVisualId.GiantSeal => Palette.ChestMetal,
+            _ => Palette.Accent
+        },
+        'L' => Palette.ItemHealMajor,
+        'Y' => visualId == ItemVisualId.StarfireBomb ? Palette.ItemBombMajor : Palette.ItemBomb,
+        'B' => Palette.ItemWard,
+        'R' => Palette.ItemPower,
+        'F' => Palette.BgDark,
+        'S' => new Color(0, 0, 0, 0.18f),
+        _ => Colors.Transparent,
+    };
+
+    private static Color GetChestColor(char c) => c switch
+    {
+        'G' => Palette.ChestMetal,
+        'B' => Palette.ChestWood,
+        'W' => Palette.Accent,
+        '.' => Colors.Transparent,
+        _ => Colors.Transparent,
+    };
+
     // --- Enemy variant arrays for random selection ---
 
     private static readonly string[][] EnemyVariants = { GoblinPixels, SkeletonPixels, SlimePixels, DemonPixels };
     private static readonly System.Func<char, Color>[] EnemyColorMaps = { GetGoblinColor, GetSkeletonColor, GetSlimeColor, GetDemonColor };
     private static readonly string[] EnemyNames = { "Goblin", "Skeleton", "Slime", "Demon" };
+    private static readonly Dictionary<ItemVisualId, ImageTexture> ItemTextureCache = new();
+    private static ImageTexture _closedChestTexture;
+    private static ImageTexture _openedChestTexture;
 
     // --- Public API ---
 
@@ -418,6 +562,40 @@ public static class SpriteFactory
     public static ImageTexture CreateBossTexture()
     {
         return BuildTexture(BossPixels, GetBossColor);
+    }
+
+    public static ImageTexture CreateItemTexture(ItemVisualId visualId)
+    {
+        if (ItemTextureCache.TryGetValue(visualId, out var cached))
+            return cached;
+
+        var pixels = visualId switch
+        {
+            ItemVisualId.HealingBottle => HealingBottlePixels,
+            ItemVisualId.DeepBottle => DeepBottlePixels,
+            ItemVisualId.EmberBomb => EmberBombPixels,
+            ItemVisualId.StarfireBomb => StarfireBombPixels,
+            ItemVisualId.SannosShield => ShieldPixels,
+            ItemVisualId.MarauderDraught => DraughtPixels,
+            ItemVisualId.GiantSeal => GiantSealPixels,
+            _ => HealingBottlePixels,
+        };
+
+        var texture = BuildTexture(pixels, c => GetItemColor(c, visualId));
+        ItemTextureCache[visualId] = texture;
+        return texture;
+    }
+
+    public static ImageTexture CreateChestTexture(bool opened = false)
+    {
+        if (opened)
+        {
+            _openedChestTexture ??= BuildTexture(ChestOpenedPixels, GetChestColor);
+            return _openedChestTexture;
+        }
+
+        _closedChestTexture ??= BuildTexture(ChestClosedPixels, GetChestColor);
+        return _closedChestTexture;
     }
 
     // Backward compat: parameterless version defaults to Fighter

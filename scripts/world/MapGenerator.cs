@@ -4,220 +4,358 @@ namespace ARPG;
 
 public partial class MapGenerator : Node3D
 {
-    // Scale factor applied to all positions and sizes to fill a 100x100 map
-    private const float S = 2.0f;
+    private const float MapExtent = 60.0f;
+    private const float GroundTop = 0.0f;
+    private const float MidTop = 1.1f;
+    private const float HighTop = 2.1f;
+    private const float FloorThickness = 1.0f;
+    private const float RampThickness = 0.6f;
 
-    private static readonly Vector4[][] Layouts =
+    private static StandardMaterial3D _groundMaterial;
+    private static StandardMaterial3D _midGroundMaterial;
+    private static StandardMaterial3D _highGroundMaterial;
+    private static StandardMaterial3D _caveGroundMaterial;
+    private static StandardMaterial3D _rampMaterial;
+    private static StandardMaterial3D _wallMaterial;
+    private static StandardMaterial3D _boundaryWallMaterial;
+    private static StandardMaterial3D _caveWallMaterial;
+    private static StandardMaterial3D _caveRoofMaterial;
+
+    public GeneratedMapResult Generate()
     {
-        new[] // L-shaped walls
+        ClearGeneratedGeometry();
+
+        int layoutIndex = (int)(GD.Randi() % 3);
+        return layoutIndex switch
         {
-            new Vector4(-10, -7.5f, 15, 0.5f),
-            new Vector4(-10, -7.5f, 0.5f, 10),
-            new Vector4(7.5f, 5, 10, 0.5f),
-        },
-        new[] // Central pillar + side walls
-        {
-            new Vector4(0, 0, 4, 4),
-            new Vector4(-15, -5, 0.5f, 15),
-            new Vector4(15, 2.5f, 0.5f, 12.5f),
-        },
-        new[] // Corridors
-        {
-            new Vector4(-5, -10, 0.5f, 12.5f),
-            new Vector4(5, 0, 0.5f, 12.5f),
-            new Vector4(-12.5f, 7.5f, 10, 0.5f),
-            new Vector4(10, -5, 7.5f, 0.5f),
-        },
-        new[] // Scattered pillars
-        {
-            new Vector4(-7.5f, -10, 2.5f, 2.5f),
-            new Vector4(10, -5, 2.5f, 2.5f),
-            new Vector4(-12.5f, 7.5f, 2.5f, 2.5f),
-            new Vector4(5, 12.5f, 2.5f, 2.5f),
-            new Vector4(0, -2.5f, 2.5f, 2.5f),
-        },
-    };
-
-    private static readonly Vector3[][] SpawnSets =
-    {
-        new[] { new Vector3(12.5f, 0.5f, -12.5f), new Vector3(-15, 0.5f, 7.5f), new Vector3(7.5f, 0.5f, 12.5f), new Vector3(-5, 0.5f, -15), new Vector3(15, 0.5f, 2.5f) },
-        new[] { new Vector3(-7.5f, 0.5f, -12.5f), new Vector3(10, 0.5f, -10), new Vector3(-10, 0.5f, 10), new Vector3(7.5f, 0.5f, 12.5f), new Vector3(12.5f, 0.5f, -2.5f) },
-        new[] { new Vector3(-12.5f, 0.5f, -5), new Vector3(12.5f, 0.5f, 7.5f), new Vector3(0, 0.5f, -15), new Vector3(-10, 0.5f, 12.5f), new Vector3(12.5f, 0.5f, -12.5f) },
-        new[] { new Vector3(15, 0.5f, -12.5f), new Vector3(-15, 0.5f, -7.5f), new Vector3(12.5f, 0.5f, 10), new Vector3(-10, 0.5f, 15), new Vector3(-2.5f, 0.5f, 7.5f) },
-    };
-
-    public Vector3[] Generate()
-    {
-        int idx = (int)(GD.Randi() % Layouts.Length);
-        var layout = Layouts[idx];
-        var spawns = SpawnSets[idx];
-
-        // Boundary walls (scaled to 200x200 arena)
-        PlaceWall(0, -25 * S, 52 * S, 1, 4, Palette.BoundaryWall, true);
-        PlaceWall(0, 25 * S, 52 * S, 1, 4, Palette.BoundaryWall, true);
-        PlaceWall(-25 * S, 0, 1, 52 * S, 4, Palette.BoundaryWall, true);
-        PlaceWall(25 * S, 0, 1, 52 * S, 4, Palette.BoundaryWall, true);
-
-        // Interior walls (scaled positions and sizes)
-        foreach (var wall in layout)
-            PlaceWall(wall.X * S, wall.Y * S, wall.Z * S, wall.W * S, 3f, Palette.Wall, true);
-
-        // Scatter trees
-        PlaceTrees(layout);
-
-        // Shuffle and return spawn positions (scaled)
-        var shuffled = (Vector3[])spawns.Clone();
-        for (int i = shuffled.Length - 1; i > 0; i--)
-        {
-            int j = (int)(GD.Randi() % (i + 1));
-            (shuffled[i], shuffled[j]) = (shuffled[j], shuffled[i]);
-        }
-
-        // Scale X/Z positions, keep Y at ground level
-        for (int i = 0; i < shuffled.Length; i++)
-            shuffled[i] = new Vector3(shuffled[i].X * S, shuffled[i].Y, shuffled[i].Z * S);
-
-        return shuffled;
+            0 => BuildRidgeLayout(caveSide: -1),
+            1 => BuildRidgeLayout(caveSide: 1),
+            _ => BuildMesaLayout(),
+        };
     }
 
-    private void PlaceWall(float x, float z, float w, float d, float h, Color color, bool textured)
+    private GeneratedMapResult BuildRidgeLayout(int caveSide)
+    {
+        int ridgeSide = -caveSide;
+
+        PlaceBoundaryWalls();
+
+        PlacePlatform(0, -2, 34, 114, GroundTop, SurfaceKind.Ground);
+        PlacePlatform(ridgeSide * 24, 0, 18, 90, GroundTop, SurfaceKind.Ground);
+        PlacePlatform(caveSide * 26, 0, 16, 74, GroundTop, SurfaceKind.Ground);
+        PlacePlatform(ridgeSide * 35, 10, 18, 32, MidTop, SurfaceKind.Mid);
+        PlaceRamp(ridgeSide * 25, 10, 14, 12, GroundTop, MidTop, alongX: true, ascendPositive: ridgeSide > 0);
+        PlacePlatform(ridgeSide * 44, -20, 14, 18, HighTop, SurfaceKind.High);
+        PlaceRamp(ridgeSide * 38, -8, 10, 14, MidTop, HighTop, alongX: false, ascendPositive: false);
+        PlacePlatform(ridgeSide * 16, 30, 12, 18, MidTop, SurfaceKind.Mid);
+        PlaceRamp(ridgeSide * 10, 30, 8, 10, GroundTop, MidTop, alongX: true, ascendPositive: ridgeSide > 0);
+
+        PlaceWall(-4, 6, 6, 2, 2.4f, Palette.Wall, true);
+        PlaceWall(6, -12, 2, 12, 3.0f, Palette.Wall, true);
+        PlaceWall(ridgeSide * 14, -32, 10, 2, 2.5f, Palette.Wall, true);
+        PlaceWall(caveSide * 10, 20, 2, 10, 2.0f, Palette.CaveWall, true);
+
+        var caveResult = PlaceCavePocket(caveSide, 10);
+
+        PlaceTree(new Vector3(ridgeSide * 19, 0, 34));
+        PlaceTree(new Vector3(ridgeSide * 26, 0, -36));
+        PlaceTree(new Vector3(caveSide * 18, 0, -30));
+        PlaceTree(new Vector3(8, 0, 44));
+        PlaceTree(new Vector3(-10, 0, -40));
+
+        return new GeneratedMapResult(
+            new[]
+            {
+                SpawnPoint(-8, GroundTop, 22),
+                SpawnPoint(10, GroundTop, -8),
+                SpawnPoint(ridgeSide * 22, GroundTop, 30),
+                SpawnPoint(ridgeSide * 35, MidTop, 10),
+                SpawnPoint(ridgeSide * 44, HighTop, -20),
+                SpawnPoint(caveSide * 16, GroundTop, -20),
+            },
+            caveResult.ChestPosition,
+            caveResult.FallbackItemPosition);
+    }
+
+    private GeneratedMapResult BuildMesaLayout()
+    {
+        PlaceBoundaryWalls();
+
+        PlacePlatform(0, -2, 32, 114, GroundTop, SurfaceKind.Ground);
+        PlacePlatform(-24, 8, 18, 84, GroundTop, SurfaceKind.Ground);
+        PlacePlatform(24, 4, 18, 86, GroundTop, SurfaceKind.Ground);
+        PlacePlatform(0, -6, 20, 32, MidTop, SurfaceKind.Mid);
+        PlaceRamp(0, 16, 12, 14, GroundTop, MidTop, alongX: false, ascendPositive: false);
+        PlacePlatform(28, 20, 14, 18, HighTop, SurfaceKind.High);
+        PlaceRamp(18, 18, 10, 12, MidTop, HighTop, alongX: true, ascendPositive: true);
+        PlacePlatform(-30, 26, 14, 18, MidTop, SurfaceKind.Mid);
+        PlaceRamp(-18, 26, 10, 12, GroundTop, MidTop, alongX: true, ascendPositive: false);
+
+        PlaceWall(0, -28, 14, 2, 2.5f, Palette.Wall, true);
+        PlaceWall(-8, 10, 2, 10, 2.2f, Palette.Wall, true);
+        PlaceWall(12, -14, 2, 12, 3.0f, Palette.Wall, true);
+        PlaceWall(26, -6, 8, 2, 2.0f, Palette.CaveWall, true);
+
+        var caveResult = PlaceCavePocket(side: 1, centerZ: -2);
+
+        PlaceTree(new Vector3(-22, 0, 42));
+        PlaceTree(new Vector3(-26, 0, -30));
+        PlaceTree(new Vector3(18, 0, 34));
+        PlaceTree(new Vector3(22, 0, -36));
+        PlaceTree(new Vector3(-6, 0, 48));
+
+        return new GeneratedMapResult(
+            new[]
+            {
+                SpawnPoint(-12, GroundTop, 24),
+                SpawnPoint(10, GroundTop, -8),
+                SpawnPoint(0, MidTop, -6),
+                SpawnPoint(-30, MidTop, 26),
+                SpawnPoint(28, HighTop, 20),
+                SpawnPoint(-18, GroundTop, -22),
+            },
+            caveResult.ChestPosition,
+            caveResult.FallbackItemPosition);
+    }
+
+    private CavePocketResult PlaceCavePocket(int side, float centerZ)
+    {
+        float caveCenterX = side * 48.0f;
+        float shelfCenterX = side * 53.0f;
+
+        PlacePlatform(caveCenterX, centerZ, 20, 30, GroundTop, SurfaceKind.Cave);
+        PlacePlatform(shelfCenterX, centerZ, 8, 10, MidTop, SurfaceKind.Mid);
+
+        PlaceWall(caveCenterX + side * 9.0f, centerZ, 2, 30, 3.4f, Palette.CaveWall, true);
+        PlaceWall(caveCenterX, centerZ - 14.0f, 20, 2, 3.1f, Palette.CaveWall, true);
+        PlaceWall(caveCenterX, centerZ + 14.0f, 20, 2, 3.1f, Palette.CaveWall, true);
+        PlaceWall(caveCenterX - side * 9.0f, centerZ - 10.0f, 2, 8, 2.9f, Palette.CaveWall, true);
+        PlaceWall(caveCenterX - side * 9.0f, centerZ + 10.0f, 2, 8, 2.9f, Palette.CaveWall, true);
+
+        PlaceCeiling(caveCenterX, centerZ, 22, 32, 2.7f, 0.6f);
+        PlaceLamp(new Vector3(caveCenterX + side * 3.0f, 2.15f, centerZ), new Color(1.0f, 0.84f, 0.62f), 7.0f, 1.9f);
+
+        return new CavePocketResult(
+            new Vector3(shelfCenterX, MidTop, centerZ),
+            new Vector3(caveCenterX - side * 3.0f, GroundTop, centerZ));
+    }
+
+    private void PlaceBoundaryWalls()
+    {
+        PlaceWall(0, -MapExtent, 124, 2, 5.5f, Palette.BoundaryWall, true);
+        PlaceWall(0, MapExtent, 124, 2, 5.5f, Palette.BoundaryWall, true);
+        PlaceWall(-MapExtent, 0, 2, 124, 5.5f, Palette.BoundaryWall, true);
+        PlaceWall(MapExtent, 0, 2, 124, 5.5f, Palette.BoundaryWall, true);
+    }
+
+    private void ClearGeneratedGeometry()
+    {
+        foreach (Node child in GetChildren())
+            child.QueueFree();
+    }
+
+    private void PlacePlatform(float x, float z, float width, float depth, float topHeight, SurfaceKind surfaceKind)
     {
         var body = new StaticBody3D();
+        body.Position = new Vector3(x, topHeight - FloorThickness / 2.0f, z);
         AddChild(body);
-        body.Position = new Vector3(x, h / 2, z);
 
         var mesh = new MeshInstance3D();
-        var box = new BoxMesh { Size = new Vector3(w, h, d) };
-
-        StandardMaterial3D mat;
-        if (textured)
+        var box = new BoxMesh
         {
-            mat = CreateStoneMaterial(color);
-            // UV mapping: triplanar for good texture on all faces
-            mat.Uv1Triplanar = true;
-            mat.Uv1TriplanarSharpness = 1.0f;
-            mat.Uv1Scale = new Vector3(0.5f, 0.5f, 0.5f);
-        }
-        else
-        {
-            mat = new StandardMaterial3D { AlbedoColor = color };
-        }
-
-        box.Material = mat;
+            Size = new Vector3(width, FloorThickness, depth),
+            Material = GetSurfaceMaterial(surfaceKind),
+        };
         mesh.Mesh = box;
         body.AddChild(mesh);
 
         var shape = new CollisionShape3D();
-        var boxShape = new BoxShape3D { Size = new Vector3(w, h, d) };
-        shape.Shape = boxShape;
+        shape.Shape = new BoxShape3D { Size = new Vector3(width, FloorThickness, depth) };
         body.AddChild(shape);
     }
 
-    private void PlaceTrees(Vector4[] wallLayout)
+    private void PlaceRamp(
+        float x,
+        float z,
+        float width,
+        float horizontalRun,
+        float lowTop,
+        float highTop,
+        bool alongX,
+        bool ascendPositive)
     {
-        int treeCount = (int)(GD.Randi() % 8) + 12; // 12-19 trees
-        float mapExtent = 22 * S; // Stay inside boundary walls
+        float heightDelta = Mathf.Abs(highTop - lowTop);
+        float angle = Mathf.Atan2(heightDelta, horizontalRun);
+        float slopedLength = Mathf.Sqrt(horizontalRun * horizontalRun + heightDelta * heightDelta);
+        float averageTop = (lowTop + highTop) * 0.5f;
+        float centerY = averageTop - RampThickness * 0.5f * Mathf.Cos(angle);
 
-        for (int i = 0; i < treeCount; i++)
+        var size = alongX
+            ? new Vector3(slopedLength, RampThickness, width)
+            : new Vector3(width, RampThickness, slopedLength);
+
+        var body = new StaticBody3D();
+        body.Position = new Vector3(x, centerY, z);
+        body.Rotation = alongX
+            ? new Vector3(0, 0, ascendPositive ? angle : -angle)
+            : new Vector3(ascendPositive ? -angle : angle, 0, 0);
+        AddChild(body);
+
+        var mesh = new MeshInstance3D();
+        mesh.Mesh = new BoxMesh
         {
-            float x = (float)GD.RandRange(-mapExtent, mapExtent);
-            float z = (float)GD.RandRange(-mapExtent, mapExtent);
+            Size = size,
+            Material = GetSurfaceMaterial(SurfaceKind.Ramp),
+        };
+        body.AddChild(mesh);
 
-            // Skip if too close to player start or exit door
-            if (new Vector2(x, z - 40).Length() < 6) continue;
-            if (new Vector2(x, z + 46).Length() < 6) continue;
-
-            // Skip if overlapping a wall
-            bool overlaps = false;
-            foreach (var wall in wallLayout)
-            {
-                float wx = wall.X * S, wz = wall.Y * S;
-                float ww = wall.Z * S, wd = wall.W * S;
-                if (x > wx - ww / 2 - 2 && x < wx + ww / 2 + 2 &&
-                    z > wz - wd / 2 - 2 && z < wz + wd / 2 + 2)
-                {
-                    overlaps = true;
-                    break;
-                }
-            }
-            if (overlaps) continue;
-
-            PlaceTree(x, z);
-        }
+        var shape = new CollisionShape3D();
+        shape.Shape = new BoxShape3D { Size = size };
+        body.AddChild(shape);
     }
 
-    private void PlaceTree(float x, float z)
+    private void PlaceWall(float x, float z, float width, float depth, float height, Color color, bool textured, float baseTop = 0.0f)
+    {
+        var body = new StaticBody3D();
+        body.Position = new Vector3(x, baseTop + height / 2.0f, z);
+        AddChild(body);
+
+        var mesh = new MeshInstance3D();
+        var box = new BoxMesh { Size = new Vector3(width, height, depth) };
+        box.Material = textured ? GetWallMaterial(color) : new StandardMaterial3D { AlbedoColor = color };
+        mesh.Mesh = box;
+        body.AddChild(mesh);
+
+        var shape = new CollisionShape3D();
+        shape.Shape = new BoxShape3D { Size = new Vector3(width, height, depth) };
+        body.AddChild(shape);
+    }
+
+    private void PlaceCeiling(float x, float z, float width, float depth, float centerY, float thickness)
+    {
+        var mesh = new MeshInstance3D();
+        mesh.Position = new Vector3(x, centerY, z);
+        mesh.Mesh = new BoxMesh
+        {
+            Size = new Vector3(width, thickness, depth),
+            Material = GetCaveRoofMaterial(),
+        };
+        AddChild(mesh);
+    }
+
+    private void PlaceLamp(Vector3 position, Color color, float range, float energy)
+    {
+        var light = new OmniLight3D();
+        light.Position = position;
+        light.LightColor = color;
+        light.OmniRange = range;
+        light.LightEnergy = energy;
+        light.ShadowEnabled = false;
+        AddChild(light);
+    }
+
+    private void PlaceTree(Vector3 position)
     {
         var tree = new StaticBody3D();
-        tree.Position = new Vector3(x, 0, z);
+        tree.Position = position;
         AddChild(tree);
 
-        // Trunk
-        float trunkHeight = (float)GD.RandRange(1.5, 3.0);
-        float trunkRadius = (float)GD.RandRange(0.15, 0.3);
+        float trunkHeight = (float)GD.RandRange(1.7, 2.8);
+        float trunkRadius = (float)GD.RandRange(0.16, 0.26);
         var trunkMesh = new MeshInstance3D();
-        var cylinder = new CylinderMesh
+        trunkMesh.Mesh = new CylinderMesh
         {
-            TopRadius = trunkRadius * 0.7f,
+            TopRadius = trunkRadius * 0.72f,
             BottomRadius = trunkRadius,
             Height = trunkHeight,
+            Material = new StandardMaterial3D
+            {
+                AlbedoColor = new Color(0.40f, 0.28f, 0.15f),
+                Roughness = 0.9f,
+            },
         };
-        var trunkMat = new StandardMaterial3D
-        {
-            AlbedoColor = new Color(0.40f, 0.28f, 0.15f),
-            Roughness = 0.9f,
-        };
-        cylinder.Material = trunkMat;
-        trunkMesh.Mesh = cylinder;
-        trunkMesh.Position = new Vector3(0, trunkHeight / 2, 0);
+        trunkMesh.Position = new Vector3(0, trunkHeight / 2.0f, 0);
         tree.AddChild(trunkMesh);
 
-        // Canopy — random between cone (pine) and sphere (deciduous)
         bool isPine = GD.Randi() % 2 == 0;
         var canopyMesh = new MeshInstance3D();
-
-        float green = (float)GD.RandRange(0.25, 0.55);
-        var canopyMat = new StandardMaterial3D
+        var canopyMaterial = new StandardMaterial3D
         {
-            AlbedoColor = new Color(0.15f, green, 0.12f),
+            AlbedoColor = new Color(0.14f, (float)GD.RandRange(0.30, 0.52), 0.12f),
             Roughness = 0.85f,
         };
 
         if (isPine)
         {
-            float coneHeight = (float)GD.RandRange(1.5, 3.0);
-            float coneRadius = (float)GD.RandRange(0.8, 1.4);
-            var cone = new CylinderMesh
+            float coneHeight = (float)GD.RandRange(1.6, 2.6);
+            float coneRadius = (float)GD.RandRange(0.85, 1.3);
+            canopyMesh.Mesh = new CylinderMesh
             {
-                TopRadius = 0,
+                TopRadius = 0.0f,
                 BottomRadius = coneRadius,
                 Height = coneHeight,
+                Material = canopyMaterial,
             };
-            cone.Material = canopyMat;
-            canopyMesh.Mesh = cone;
-            canopyMesh.Position = new Vector3(0, trunkHeight + coneHeight / 2 - 0.2f, 0);
+            canopyMesh.Position = new Vector3(0, trunkHeight + coneHeight / 2.0f - 0.2f, 0);
         }
         else
         {
-            float sphereRadius = (float)GD.RandRange(0.8, 1.5);
-            var sphere = new SphereMesh { Radius = sphereRadius, Height = sphereRadius * 2 };
-            sphere.Material = canopyMat;
-            canopyMesh.Mesh = sphere;
-            canopyMesh.Position = new Vector3(0, trunkHeight + sphereRadius * 0.5f, 0);
+            float sphereRadius = (float)GD.RandRange(0.9, 1.4);
+            canopyMesh.Mesh = new SphereMesh
+            {
+                Radius = sphereRadius,
+                Height = sphereRadius * 2.0f,
+                Material = canopyMaterial,
+            };
+            canopyMesh.Position = new Vector3(0, trunkHeight + sphereRadius * 0.55f, 0);
         }
 
         tree.AddChild(canopyMesh);
 
-        // Simple collision (cylinder around trunk)
         var shape = new CollisionShape3D();
         shape.Shape = new CylinderShape3D { Radius = trunkRadius + 0.1f, Height = trunkHeight };
-        shape.Position = new Vector3(0, trunkHeight / 2, 0);
+        shape.Position = new Vector3(0, trunkHeight / 2.0f, 0);
         tree.AddChild(shape);
     }
 
-    /// <summary>
-    /// Creates a stone-like material with procedural noise texture.
-    /// </summary>
+    private static Vector3 SpawnPoint(float x, float surfaceTop, float z)
+    {
+        return new Vector3(x, surfaceTop + 0.5f, z);
+    }
+
+    private static StandardMaterial3D GetSurfaceMaterial(SurfaceKind surfaceKind)
+    {
+        return surfaceKind switch
+        {
+            SurfaceKind.Ground => _groundMaterial ??= CreateGroundMaterial(Palette.Floor, 0.028f, 0.11f),
+            SurfaceKind.Mid => _midGroundMaterial ??= CreateGroundMaterial(Palette.FloorMid, 0.032f, 0.12f),
+            SurfaceKind.High => _highGroundMaterial ??= CreateGroundMaterial(Palette.FloorHigh, 0.036f, 0.13f),
+            SurfaceKind.Cave => _caveGroundMaterial ??= CreateGroundMaterial(Palette.CaveFloor, 0.05f, 0.18f),
+            _ => _rampMaterial ??= CreateGroundMaterial(Palette.Ramp, 0.035f, 0.12f),
+        };
+    }
+
+    private static StandardMaterial3D GetWallMaterial(Color color)
+    {
+        if (color == Palette.BoundaryWall)
+            return _boundaryWallMaterial ??= CreateStoneMaterial(Palette.BoundaryWall);
+        if (color == Palette.CaveWall)
+            return _caveWallMaterial ??= CreateStoneMaterial(Palette.CaveWall);
+        if (color == Palette.Wall)
+            return _wallMaterial ??= CreateStoneMaterial(Palette.Wall);
+
+        return CreateStoneMaterial(color);
+    }
+
+    private static StandardMaterial3D GetCaveRoofMaterial()
+    {
+        return _caveRoofMaterial ??= new StandardMaterial3D
+        {
+            AlbedoColor = Palette.CaveShadow,
+            Roughness = 0.98f,
+        };
+    }
+
     private static StandardMaterial3D CreateStoneMaterial(Color baseColor)
     {
         var noise = new FastNoiseLite();
@@ -235,12 +373,12 @@ public partial class MapGenerator : Node3D
         mat.AlbedoTexture = noiseTex;
         mat.AlbedoColor = baseColor;
         mat.Roughness = 0.85f;
+        mat.Uv1Triplanar = true;
+        mat.Uv1TriplanarSharpness = 1.0f;
+        mat.Uv1Scale = new Vector3(0.5f, 0.5f, 0.5f);
         return mat;
     }
 
-    /// <summary>
-    /// Creates a gradient from dark to light variants of the base color.
-    /// </summary>
     private static Gradient CreateStoneGradient(Color baseColor)
     {
         var gradient = new Gradient();
@@ -249,14 +387,16 @@ public partial class MapGenerator : Node3D
         return gradient;
     }
 
-    /// <summary>
-    /// Creates a textured ground material with noise.
-    /// </summary>
     public static StandardMaterial3D CreateGroundMaterial()
+    {
+        return GetSurfaceMaterial(SurfaceKind.Ground);
+    }
+
+    private static StandardMaterial3D CreateGroundMaterial(Color baseColor, float noiseFrequency, float uvScale)
     {
         var noise = new FastNoiseLite();
         noise.NoiseType = FastNoiseLite.NoiseTypeEnum.Simplex;
-        noise.Frequency = 0.03f;
+        noise.Frequency = noiseFrequency;
         noise.FractalOctaves = 4;
 
         var noiseTex = new NoiseTexture2D();
@@ -265,16 +405,27 @@ public partial class MapGenerator : Node3D
         noiseTex.Height = 128;
 
         var gradient = new Gradient();
-        gradient.SetColor(0, Palette.Floor.Darkened(0.2f));
-        gradient.SetColor(1, Palette.Floor.Lightened(0.1f));
+        gradient.SetColor(0, baseColor.Darkened(0.2f));
+        gradient.SetColor(1, baseColor.Lightened(0.1f));
         noiseTex.ColorRamp = gradient;
 
         var mat = new StandardMaterial3D();
         mat.AlbedoTexture = noiseTex;
-        mat.AlbedoColor = Palette.Floor;
-        mat.Roughness = 0.95f;
+        mat.AlbedoColor = baseColor;
+        mat.Roughness = 0.96f;
         mat.Uv1Triplanar = true;
-        mat.Uv1Scale = new Vector3(0.1f, 0.1f, 0.1f);
+        mat.Uv1Scale = new Vector3(uvScale, uvScale, uvScale);
         return mat;
     }
+
+    private enum SurfaceKind
+    {
+        Ground,
+        Mid,
+        High,
+        Cave,
+        Ramp
+    }
+
+    private readonly record struct CavePocketResult(Vector3 ChestPosition, Vector3 FallbackItemPosition);
 }

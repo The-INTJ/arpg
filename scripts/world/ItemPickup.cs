@@ -7,6 +7,9 @@ public partial class ItemPickup : Area3D
     private InventoryItem _item;
     private Label3D _nameLabel;
     private Label3D _promptLabel;
+    private Node3D _visualRoot;
+    private Sprite3D _itemSprite;
+    private MeshInstance3D _glowMesh;
     private PlayerController _nearbyPlayer;
     private bool _inventoryFullShown;
 
@@ -21,14 +24,20 @@ public partial class ItemPickup : Area3D
         _item = item;
 
         // Apply runtime properties to scene nodes
-        var mesh = GetNode<MeshInstance3D>("OrbMesh");
-        var sphere = (SphereMesh)mesh.Mesh;
-        sphere.Material = new StandardMaterial3D
+        _visualRoot = GetNode<Node3D>("VisualRoot");
+        _itemSprite = GetNode<Sprite3D>("VisualRoot/ItemSprite");
+        _itemSprite.Texture = SpriteFactory.CreateItemTexture(item.VisualId);
+        _itemSprite.Modulate = Colors.White;
+
+        _glowMesh = GetNode<MeshInstance3D>("VisualRoot/GlowMesh");
+        _glowMesh.MaterialOverride = new StandardMaterial3D
         {
             AlbedoColor = item.DisplayColor,
             EmissionEnabled = true,
             Emission = item.DisplayColor,
-            EmissionEnergyMultiplier = 2.0f,
+            EmissionEnergyMultiplier = 1.4f,
+            Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+            AlbedoTextureForceSrgb = true,
         };
 
         _nameLabel = GetNode<Label3D>("NameLabel");
@@ -44,10 +53,25 @@ public partial class ItemPickup : Area3D
         _promptLabel.Visible = false;
 
         var tween = CreateTween().SetLoops();
-        tween.TweenProperty(mesh, "position:y", 0.48f, 0.8f)
+        tween.TweenProperty(_visualRoot, "position:y", 0.52f, 0.9f)
             .SetTrans(Tween.TransitionType.Sine)
             .SetEase(Tween.EaseType.InOut);
-        tween.TweenProperty(mesh, "position:y", 0.3f, 0.8f)
+        tween.TweenProperty(_visualRoot, "position:y", 0.34f, 0.9f)
+            .SetTrans(Tween.TransitionType.Sine)
+            .SetEase(Tween.EaseType.InOut);
+        tween.SetParallel(true);
+        tween.TweenProperty(_itemSprite, "rotation_degrees:y", 8.0f, 0.9f)
+            .SetTrans(Tween.TransitionType.Sine)
+            .SetEase(Tween.EaseType.InOut);
+        tween.TweenProperty(_glowMesh, "rotation_degrees:y", 20.0f, 0.9f)
+            .SetTrans(Tween.TransitionType.Sine)
+            .SetEase(Tween.EaseType.InOut);
+        tween.SetParallel(false);
+        tween.TweenProperty(_itemSprite, "rotation_degrees:y", -8.0f, 0.9f)
+            .SetTrans(Tween.TransitionType.Sine)
+            .SetEase(Tween.EaseType.InOut);
+        tween.SetParallel(true);
+        tween.TweenProperty(_glowMesh, "rotation_degrees:y", -20.0f, 0.9f)
             .SetTrans(Tween.TransitionType.Sine)
             .SetEase(Tween.EaseType.InOut);
 

@@ -1,10 +1,22 @@
-[gd_scene format=3 uid="uid://dg7x2kp4nwf8r"]
+[gd_scene load_steps=6 format=3 uid="uid://dg7x2kp4nwf8r"]
 
 [ext_resource type="Script" path="res://scripts/world/ItemPickup.cs" id="1_ip"]
 
-[sub_resource type="SphereMesh" id="SphereMesh_orb"]
-radius = 0.18
-height = 0.36
+[sub_resource type="CylinderMesh" id="CylinderMesh_glow"]
+top_radius = 0.14
+bottom_radius = 0.22
+height = 0.05
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_shadow"]
+top_radius = 0.20
+bottom_radius = 0.28
+height = 0.03
+
+[sub_resource type="StandardMaterial3D" id="Material_shadow"]
+albedo_color = Color(0, 0, 0, 0.28)
+transparency = 1
+roughness = 1.0
+shading_mode = 0
 
 [sub_resource type="SphereShape3D" id="SphereShape3D_trigger"]
 radius = 1.25
@@ -12,12 +24,30 @@ radius = 1.25
 [node name="ItemPickup" type="Area3D"]
 script = ExtResource("1_ip")
 
-[node name="OrbMesh" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.3, 0)
-mesh = SubResource("SphereMesh_orb")
+[node name="VisualRoot" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.34, 0)
+
+[node name="ShadowMesh" type="MeshInstance3D" parent="VisualRoot"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.02, 0)
+mesh = SubResource("CylinderMesh_shadow")
+surface_material_override/0 = SubResource("Material_shadow")
+cast_shadow = 0
+
+[node name="GlowMesh" type="MeshInstance3D" parent="VisualRoot"]
+transform = Transform3D(1, 0, 0, 0, 0.965926, -0.258819, 0, 0.258819, 0.965926, 0, 0.08, 0)
+mesh = SubResource("CylinderMesh_glow")
+cast_shadow = 0
+
+[node name="ItemSprite" type="Sprite3D" parent="VisualRoot"]
+transform = Transform3D(1, 0, 0, 0, 0.997564, -0.0697565, 0, 0.0697565, 0.997564, 0, 0.26, 0)
+billboard = 1
+pixel_size = 0.05
+texture_filter = 0
+alpha_cut = 1
+shaded = false
 
 [node name="NameLabel" type="Label3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.72, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.84, 0)
 visible = false
 billboard = 1
 no_depth_test = false
@@ -27,7 +57,7 @@ font_size = 14
 outline_size = 4
 
 [node name="PromptLabel" type="Label3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.10, 0)
 visible = false
 billboard = 1
 no_depth_test = false

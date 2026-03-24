@@ -5,6 +5,7 @@ public static partial class Scenes
 	private const string Root = "res://scenes/";
 
 	public const string ArchetypeSelect = Root + "ArchetypeSelect.tscn";
+	public const string CaveChest = Root + "CaveChest.tscn";
 	public const string DamageNumber = Root + "DamageNumber.tscn";
 	public const string Game = Root + "Game.tscn";
 	public const string ItemPickup = Root + "ItemPickup.tscn";

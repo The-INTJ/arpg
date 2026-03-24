@@ -22,28 +22,32 @@ public static class GameHudBuilder
 
     public record EnemyHpDisplay(ProgressBar Bar, Label HpLabel, Label EffectInfoLabel, VBoxContainer Container);
 
-    public static (Control[] slots, Label[] labels, StyleBoxFlat[] styles) BindItemBar(HBoxContainer hbox)
+    public static (Control[] slots, TextureRect[] icons, Label[] labels, StyleBoxFlat[] styles) BindItemBar(HBoxContainer hbox)
     {
         int slotCount = Mathf.Min(GameKeys.ItemSlots.Length, hbox.GetChildCount());
         var slots = new Control[slotCount];
+        var icons = new TextureRect[slotCount];
         var labels = new Label[slotCount];
         var styles = new StyleBoxFlat[slotCount];
 
         for (int i = 0; i < slotCount; i++)
         {
             var panel = hbox.GetChild<Panel>(i);
-            var label = panel.GetNode<Label>("Label");
+            var icon = panel.GetNode<TextureRect>("Content/Icon");
+            var label = panel.GetNode<Label>("Content/Label");
             var style = CreateItemSlotStyle();
             panel.AddThemeStyleboxOverride("panel", style);
             panel.CustomMinimumSize = new Vector2(228, 72);
             label.AddThemeFontSizeOverride("font_size", 17);
+            icon.TextureFilter = CanvasItem.TextureFilterEnum.Nearest;
 
             slots[i] = panel;
+            icons[i] = icon;
             labels[i] = label;
             styles[i] = style;
         }
 
-        return (slots, labels, styles);
+        return (slots, icons, labels, styles);
     }
 
     public static StyleBoxFlat CreateItemSlotStyle()

@@ -47,7 +47,7 @@ public partial class CombatManager : Node
         LastKillItemDrop = null;
         _target.OnCombatStarted();
         _turnManager.SetState(TurnState.Busy);
-        _player.SetPhysicsProcess(false);
+        _player.SetMovementLocked(true);
         AudioManager.Instance?.StartCombatMusic();
 
         // Snapshot current camera position before zoom (dynamic with orbit camera)
@@ -222,7 +222,7 @@ public partial class CombatManager : Node
             _cameraController?.SetCombatMode(false);
             _cameraController?.RestoreCameraTransform();
             _turnManager.SetState(TurnState.Exploring);
-            _player.SetPhysicsProcess(true);
+            _player.SetMovementLocked(false);
         }));
     }
 

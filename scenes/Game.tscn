@@ -238,14 +238,28 @@ theme_override_constants/separation = 12
 layout_mode = 2
 custom_minimum_size = Vector2(228, 72)
 
-[node name="Label" type="Label" parent="CanvasLayer/ItemBarCenter/ItemBarHBox/Slot1"]
+[node name="Content" type="HBoxContainer" parent="CanvasLayer/ItemBarCenter/ItemBarHBox/Slot1"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-horizontal_alignment = 1
+theme_override_constants/separation = 10
+
+[node name="Icon" type="TextureRect" parent="CanvasLayer/ItemBarCenter/ItemBarHBox/Slot1/Content"]
+layout_mode = 2
+custom_minimum_size = Vector2(38, 38)
+size_flags_vertical = 4
+expand_mode = 1
+stretch_mode = 5
+texture_filter = 0
+
+[node name="Label" type="Label" parent="CanvasLayer/ItemBarCenter/ItemBarHBox/Slot1/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+horizontal_alignment = 0
 vertical_alignment = 1
 autowrap_mode = 2
 theme_override_font_sizes/font_size = 17
@@ -254,14 +268,28 @@ theme_override_font_sizes/font_size = 17
 layout_mode = 2
 custom_minimum_size = Vector2(228, 72)
 
-[node name="Label" type="Label" parent="CanvasLayer/ItemBarCenter/ItemBarHBox/Slot2"]
+[node name="Content" type="HBoxContainer" parent="CanvasLayer/ItemBarCenter/ItemBarHBox/Slot2"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-horizontal_alignment = 1
+theme_override_constants/separation = 10
+
+[node name="Icon" type="TextureRect" parent="CanvasLayer/ItemBarCenter/ItemBarHBox/Slot2/Content"]
+layout_mode = 2
+custom_minimum_size = Vector2(38, 38)
+size_flags_vertical = 4
+expand_mode = 1
+stretch_mode = 5
+texture_filter = 0
+
+[node name="Label" type="Label" parent="CanvasLayer/ItemBarCenter/ItemBarHBox/Slot2/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+horizontal_alignment = 0
 vertical_alignment = 1
 autowrap_mode = 2
 theme_override_font_sizes/font_size = 17
@@ -270,14 +298,28 @@ theme_override_font_sizes/font_size = 17
 layout_mode = 2
 custom_minimum_size = Vector2(228, 72)
 
-[node name="Label" type="Label" parent="CanvasLayer/ItemBarCenter/ItemBarHBox/Slot3"]
+[node name="Content" type="HBoxContainer" parent="CanvasLayer/ItemBarCenter/ItemBarHBox/Slot3"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-horizontal_alignment = 1
+theme_override_constants/separation = 10
+
+[node name="Icon" type="TextureRect" parent="CanvasLayer/ItemBarCenter/ItemBarHBox/Slot3/Content"]
+layout_mode = 2
+custom_minimum_size = Vector2(38, 38)
+size_flags_vertical = 4
+expand_mode = 1
+stretch_mode = 5
+texture_filter = 0
+
+[node name="Label" type="Label" parent="CanvasLayer/ItemBarCenter/ItemBarHBox/Slot3/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+horizontal_alignment = 0
 vertical_alignment = 1
 autowrap_mode = 2
 theme_override_font_sizes/font_size = 17
@@ -286,14 +328,28 @@ theme_override_font_sizes/font_size = 17
 layout_mode = 2
 custom_minimum_size = Vector2(228, 72)
 
-[node name="Label" type="Label" parent="CanvasLayer/ItemBarCenter/ItemBarHBox/Slot4"]
+[node name="Content" type="HBoxContainer" parent="CanvasLayer/ItemBarCenter/ItemBarHBox/Slot4"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-horizontal_alignment = 1
+theme_override_constants/separation = 10
+
+[node name="Icon" type="TextureRect" parent="CanvasLayer/ItemBarCenter/ItemBarHBox/Slot4/Content"]
+layout_mode = 2
+custom_minimum_size = Vector2(38, 38)
+size_flags_vertical = 4
+expand_mode = 1
+stretch_mode = 5
+texture_filter = 0
+
+[node name="Label" type="Label" parent="CanvasLayer/ItemBarCenter/ItemBarHBox/Slot4/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+horizontal_alignment = 0
 vertical_alignment = 1
 autowrap_mode = 2
 theme_override_font_sizes/font_size = 17
@@ -302,14 +358,28 @@ theme_override_font_sizes/font_size = 17
 layout_mode = 2
 custom_minimum_size = Vector2(228, 72)
 
-[node name="Label" type="Label" parent="CanvasLayer/ItemBarCenter/ItemBarHBox/Slot5"]
+[node name="Content" type="HBoxContainer" parent="CanvasLayer/ItemBarCenter/ItemBarHBox/Slot5"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-horizontal_alignment = 1
+theme_override_constants/separation = 10
+
+[node name="Icon" type="TextureRect" parent="CanvasLayer/ItemBarCenter/ItemBarHBox/Slot5/Content"]
+layout_mode = 2
+custom_minimum_size = Vector2(38, 38)
+size_flags_vertical = 4
+expand_mode = 1
+stretch_mode = 5
+texture_filter = 0
+
+[node name="Label" type="Label" parent="CanvasLayer/ItemBarCenter/ItemBarHBox/Slot5/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+horizontal_alignment = 0
 vertical_alignment = 1
 autowrap_mode = 2
 theme_override_font_sizes/font_size = 17
@@ -318,14 +388,28 @@ theme_override_font_sizes/font_size = 17
 layout_mode = 2
 custom_minimum_size = Vector2(228, 72)
 
-[node name="Label" type="Label" parent="CanvasLayer/ItemBarCenter/ItemBarHBox/Slot6"]
+[node name="Content" type="HBoxContainer" parent="CanvasLayer/ItemBarCenter/ItemBarHBox/Slot6"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-horizontal_alignment = 1
+theme_override_constants/separation = 10
+
+[node name="Icon" type="TextureRect" parent="CanvasLayer/ItemBarCenter/ItemBarHBox/Slot6/Content"]
+layout_mode = 2
+custom_minimum_size = Vector2(38, 38)
+size_flags_vertical = 4
+expand_mode = 1
+stretch_mode = 5
+texture_filter = 0
+
+[node name="Label" type="Label" parent="CanvasLayer/ItemBarCenter/ItemBarHBox/Slot6/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+horizontal_alignment = 0
 vertical_alignment = 1
 autowrap_mode = 2
 theme_override_font_sizes/font_size = 17
@@ -334,14 +418,28 @@ theme_override_font_sizes/font_size = 17
 layout_mode = 2
 custom_minimum_size = Vector2(228, 72)
 
-[node name="Label" type="Label" parent="CanvasLayer/ItemBarCenter/ItemBarHBox/Slot7"]
+[node name="Content" type="HBoxContainer" parent="CanvasLayer/ItemBarCenter/ItemBarHBox/Slot7"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-horizontal_alignment = 1
+theme_override_constants/separation = 10
+
+[node name="Icon" type="TextureRect" parent="CanvasLayer/ItemBarCenter/ItemBarHBox/Slot7/Content"]
+layout_mode = 2
+custom_minimum_size = Vector2(38, 38)
+size_flags_vertical = 4
+expand_mode = 1
+stretch_mode = 5
+texture_filter = 0
+
+[node name="Label" type="Label" parent="CanvasLayer/ItemBarCenter/ItemBarHBox/Slot7/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+horizontal_alignment = 0
 vertical_alignment = 1
 autowrap_mode = 2
 theme_override_font_sizes/font_size = 17

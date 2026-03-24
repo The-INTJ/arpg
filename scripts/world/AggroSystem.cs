@@ -11,6 +11,7 @@ public partial class AggroSystem : Node
     private Enemy _aggroEnemy;
     private float _aggroTimer;
     private const float AggroDelay = 0.6f;
+    private const float MaxVerticalDelta = 2.4f;
 
     [Signal]
     public delegate void AggroTriggeredEventHandler(Enemy enemy);
@@ -52,8 +53,7 @@ public partial class AggroSystem : Node
         {
             if (node is Enemy enemy && !enemy.HasAggro)
             {
-                float dist = _player.GlobalPosition.DistanceTo(enemy.GlobalPosition);
-                if (dist <= enemy.SightRange)
+                if (CanEngage(enemy, enemy.SightRange))
                 {
                     enemy.ShowAggroIndicator();
                     _aggroEnemy = enemy;
@@ -75,8 +75,8 @@ public partial class AggroSystem : Node
         {
             if (node is Enemy enemy)
             {
-                float dist = _player.GlobalPosition.DistanceTo(enemy.GlobalPosition);
-                if (dist <= range && dist < nearestDist)
+                float dist = GetHorizontalDistance(enemy);
+                if (CanEngage(enemy, range) && dist < nearestDist)
                 {
                     nearestDist = dist;
                     nearest = enemy;
@@ -85,5 +85,40 @@ public partial class AggroSystem : Node
         }
 
         return nearest;
+    }
+
+    private bool CanEngage(Enemy enemy, float horizontalRange)
+    {
+        if (enemy == null || !IsInstanceValid(enemy))
+            return false;
+
+        if (Mathf.Abs(enemy.GlobalPosition.Y - _player.GlobalPosition.Y) > MaxVerticalDelta)
+            return false;
+
+        if (GetHorizontalDistance(enemy) > horizontalRange)
+            return false;
+
+        return HasLineOfSight(enemy);
+    }
+
+    private float GetHorizontalDistance(Enemy enemy)
+    {
+        Vector3 delta = enemy.GlobalPosition - _player.GlobalPosition;
+        return new Vector2(delta.X, delta.Z).Length();
+    }
+
+    private bool HasLineOfSight(Enemy enemy)
+    {
+        var spaceState = _player.GetWorld3D().DirectSpaceState;
+        Vector3 origin = _player.GlobalPosition + new Vector3(0, 0.65f, 0);
+        Vector3 target = enemy.GlobalPosition + new Vector3(0, 0.35f, 0);
+
+        var query = PhysicsRayQueryParameters3D.Create(origin, target);
+        query.CollideWithAreas = false;
+        query.CollideWithBodies = true;
+        query.Exclude = new Godot.Collections.Array<Rid> { _player.GetRid(), enemy.GetRid() };
+
+        var result = spaceState.IntersectRay(query);
+        return result.Count == 0;
     }
 }

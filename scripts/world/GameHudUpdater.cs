@@ -26,6 +26,7 @@ public partial class GameHudUpdater : Node
     private Label _enemyEffectInfoLabel;
     private VBoxContainer _enemyHpDisplay;
     private Control[] _itemSlotControls;
+    private TextureRect[] _itemSlotIcons;
     private Label[] _itemSlotLabels;
     private StyleBoxFlat[] _itemSlotStyles;
 
@@ -54,6 +55,7 @@ public partial class GameHudUpdater : Node
         Button abilityButton,
         GameHudBuilder.EnemyHpDisplay enemyHp,
         Control[] itemSlotControls,
+        TextureRect[] itemSlotIcons,
         Label[] itemSlotLabels,
         StyleBoxFlat[] itemSlotStyles)
     {
@@ -75,6 +77,7 @@ public partial class GameHudUpdater : Node
         _enemyEffectInfoLabel = enemyHp.EffectInfoLabel;
         _enemyHpDisplay = enemyHp.Container;
         _itemSlotControls = itemSlotControls;
+        _itemSlotIcons = itemSlotIcons;
         _itemSlotLabels = itemSlotLabels;
         _itemSlotStyles = itemSlotStyles;
     }
@@ -123,6 +126,8 @@ public partial class GameHudUpdater : Node
 
             if (item == null)
             {
+                _itemSlotIcons[i].Texture = null;
+                _itemSlotIcons[i].Visible = false;
                 _itemSlotLabels[i].Text = $"{keyName}\n(empty)";
                 _itemSlotLabels[i].AddThemeColorOverride("font_color", Palette.TextDisabled);
                 _itemSlotStyles[i].BgColor = new Color(Palette.BgDark, 0.9f);
@@ -130,6 +135,8 @@ public partial class GameHudUpdater : Node
                 continue;
             }
 
+            _itemSlotIcons[i].Texture = SpriteFactory.CreateItemTexture(item.VisualId);
+            _itemSlotIcons[i].Visible = true;
             _itemSlotLabels[i].Text = $"{keyName}  {item.Name}\n{item.Description}";
             _itemSlotLabels[i].AddThemeColorOverride("font_color", Palette.TextLight);
             _itemSlotStyles[i].BgColor = new Color(Palette.ButtonBg, 0.92f);

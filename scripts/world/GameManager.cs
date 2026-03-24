@@ -90,38 +90,39 @@ public partial class GameManager : Node3D
             GetViewport().GetVisibleRect().Size.Y);
 
         var itemBarHBox = GetNode<HBoxContainer>("CanvasLayer/ItemBarCenter/ItemBarHBox");
-        var (itemSlots, itemLabels, itemStyles) = GameHudBuilder.BindItemBar(itemBarHBox);
+        var (itemSlots, itemIcons, itemLabels, itemStyles) = GameHudBuilder.BindItemBar(itemBarHBox);
 
         // HUD updater
         _hudUpdater = new GameHudUpdater();
         AddChild(_hudUpdater);
         _hudUpdater.Init(_player, _turnManager, _combatManager, _aggroSystem, _actionHandler, camera, canvas,
             hpLabel, statsLabel, killLabel, statusLabel, attackButton, abilityButton,
-            enemyHp, itemSlots, itemLabels, itemStyles);
+            enemyHp, itemSlots, itemIcons, itemLabels, itemStyles);
 
         // Screens
         _modifyScreen = GetNode<ModifyStatsSimple>("CanvasLayer/ModifyStatsSimple");
         _pauseScreen = GetNode<PauseScreen>("CanvasLayer/PauseScreen");
         _pauseScreen.ViewStatsRequested += () => _modifyScreen.Open(_player.Stats);
 
-        // Textured ground
+        // The old flat floor stays only as an inert scene anchor. Terrain is now generated.
         var floorMesh = GetNode<MeshInstance3D>("World/Floor/FloorMesh");
-        floorMesh.MaterialOverride = MapGenerator.CreateGroundMaterial();
+        floorMesh.Visible = false;
+        var floorCollision = GetNode<CollisionShape3D>("World/Floor/FloorCollision");
+        floorCollision.Disabled = true;
 
         SetupEnvironment();
         SetupAudioManager();
 
         // Generate map and spawn enemies
         var mapGen = GetNode<MapGenerator>("World/MapGenerator");
-        var spawnPositions = mapGen.Generate();
+        var generatedMap = mapGen.Generate();
         var enemiesContainer = GetNode<Node3D>("World/Enemies");
         var encounter = EnemySpawner.BuildEncounter(_room);
 
-        for (int i = 0; i < encounter.Length && i < spawnPositions.Length; i++)
-            EnemySpawner.Spawn(enemiesContainer, spawnPositions[i], encounter[i], _room, monsterEffectProfile);
+        for (int i = 0; i < encounter.Length && i < generatedMap.EnemySpawnPoints.Length; i++)
+            EnemySpawner.Spawn(enemiesContainer, generatedMap.EnemySpawnPoints[i], encounter[i], _room, monsterEffectProfile);
 
-        if (encounter.Length < spawnPositions.Length)
-            SpawnMapItem(spawnPositions[encounter.Length]);
+        SpawnCaveChest(generatedMap.CaveChestPosition);
 
         _totalEnemies = encounter.Length;
         _hudUpdater.StatusText = GetRoomIntroText();
@@ -280,11 +281,6 @@ public partial class GameManager : Node3D
 
     // --- Items and loot ---
 
-    private void SpawnMapItem(Vector3 position)
-    {
-        SpawnInventoryItem(position, InventoryItem.CreateForRoom(_room));
-    }
-
     private void SpawnInventoryItem(Vector3 position, InventoryItem item)
     {
         if (item == null)
@@ -304,6 +300,19 @@ public partial class GameManager : Node3D
             _hudUpdater.StatusText = $"Inventory full for {itemName}.";
         };
         GetNode<Node3D>("World").AddChild(pickup);
+    }
+
+    private void SpawnCaveChest(Vector3 position)
+    {
+        var chest = GD.Load<PackedScene>(Scenes.CaveChest).Instantiate<CaveChest>();
+        chest.Position = position;
+        chest.Init(InventoryItem.CreateForRoom(_room));
+        chest.Opened += itemName =>
+        {
+            _hudUpdater.StatusText = $"Opened cave cache: {itemName}.";
+            AudioManager.Instance?.PlayPickup();
+        };
+        GetNode<Node3D>("World").AddChild(chest);
     }
 
     private void SpawnLoot(Vector3 position)

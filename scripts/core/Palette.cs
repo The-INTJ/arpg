@@ -15,8 +15,16 @@ public static class Palette
 
 	// World
 	public static readonly Color Floor = new(0.65f, 0.55f, 0.35f);
+	public static readonly Color FloorMid = new(0.58f, 0.48f, 0.31f);
+	public static readonly Color FloorHigh = new(0.52f, 0.44f, 0.28f);
 	public static readonly Color Wall = new(0.42f, 0.31f, 0.24f);
 	public static readonly Color BoundaryWall = new(0.35f, 0.25f, 0.18f);
+	public static readonly Color CaveFloor = new(0.31f, 0.26f, 0.24f);
+	public static readonly Color CaveWall = new(0.24f, 0.21f, 0.20f);
+	public static readonly Color CaveShadow = new(0.14f, 0.12f, 0.12f);
+	public static readonly Color Ramp = new(0.48f, 0.39f, 0.28f);
+	public static readonly Color ChestWood = new(0.46f, 0.27f, 0.12f);
+	public static readonly Color ChestMetal = new(0.86f, 0.72f, 0.30f);
 
 	// Characters
 	public static readonly Color PlayerBody = new(0.18f, 0.55f, 0.43f);
