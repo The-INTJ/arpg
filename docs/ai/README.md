@@ -7,6 +7,7 @@ This folder is the living system map for AI contributors.
 This folder explains how the game is actually put together today:
 
 - `architecture.md`: current scene graph, code boundaries, shared systems, and state ownership
+- `../assets-pipeline.md`: asset creation, import, wrapper-scene ownership, and physics-vs-visual rules
 - `rooms-and-slices.md`: current room-building contract, scene-slice rules, and world-authoring seams
 - `patterns.md`: repo conventions, Godot usage patterns, and current implementation habits
 - `flows.md`: runtime flows from boot through combat, loot, rooms, pause, and victory
@@ -19,11 +20,12 @@ Read these in this order before making broad or cross-cutting changes:
 
 1. `AGENTS.md`
 2. `docs/ai/architecture.md`
-3. `docs/ai/rooms-and-slices.md` if your change touches room building, reusable world geometry, or level-authoring seams
-4. `docs/ai/flows.md`
-5. `docs/ai/inventory-and-items.md` if your change touches item flow, inventory, or hotkeys
-6. `docs/ai/patterns.md`
-7. `docs/ai/abstraction-watchlist.md`
+3. `docs/assets-pipeline.md` if your change touches models, materials, world slices, actor visuals, or collision ownership
+4. `docs/ai/rooms-and-slices.md` if your change touches room building, reusable world geometry, or level-authoring seams
+5. `docs/ai/flows.md`
+6. `docs/ai/inventory-and-items.md` if your change touches item flow, inventory, or hotkeys
+7. `docs/ai/patterns.md`
+8. `docs/ai/abstraction-watchlist.md`
 
 For small local changes, read `AGENTS.md` plus the doc most related to the area you are touching.
 

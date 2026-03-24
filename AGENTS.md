@@ -33,6 +33,7 @@ Multiplayer is a core consideration from day one. This doesn't mean every featur
 - **Hardcode gameplay values** in scripts for now — data-driven content comes later when we have enough systems to justify it
 - **Prefer scene-authored UI** — AI contributors should update or add `.tscn` files for UI by default, and only build UI in code when that is clearly the Godot best-practice solution for the task
 - **Prefer scene-authored world slices for reusable environment pieces** — if a room feature is meant to be edited in the Godot editor and reused, author it as a `.tscn` under `scenes/world_slices/` and have builders instance it instead of rebuilding the same geometry in C#
+- **Physics/collision roots must own visuals, never the reverse** — for actors and interactables, keep `CharacterBody3D` / `StaticBody3D` / `Area3D` as the gameplay root, keep collision shapes under that root, and put meshes/sprites under a separate visual child such as `VisualRoot`. If you see code or a scene where the visual owns the collision, call it out explicitly. Flipping or mirroring the visual by `-1` must not affect physics.
 
 ## Godot C# Patterns
 
@@ -43,6 +44,7 @@ Multiplayer is a core consideration from day one. This doesn't mean every featur
 - Signal connections: prefer editor or `Connect()` in `_Ready()`
 - Node references: `GetNode<Type>("path")` or `[Export] private NodePath`
 - Dynamic node creation: use `new Enemy()` directly so the C# type is correct, not `SetScript()`
+- For characters, props, pickups, and other gameplay-facing assets, treat the physics body as the owner and the visual subtree as replaceable presentation. Do not parent collision under sprites or imported model roots
 - For menus, HUD, overlays, and reusable controls, prefer authored scenes over programmatic control trees even if the scene edit is more tedious
 - For reusable world set pieces, prefer scene slices with `SceneSliceAnchor` markers so builders can place scenes and read back gameplay anchors without hardcoding the full geometry in C#
 

@@ -46,6 +46,8 @@ GameManager
   - Floor
   - MapGenerator
   - Player (PlayerController)
+    - PlayerCollision
+    - VisualRoot        (created in code, owns presentation only)
     - CameraRig
       - Camera3D
   - Enemies
@@ -83,6 +85,7 @@ GameManager
 ### Player Build, Loot, And Inventory
 
 - `PlayerController` owns movement and initializes persistent stats for the run.
+- `PlayerController` currently keeps visuals separate from physics: the player body remains the gameplay root and presentation is built under a runtime `VisualRoot` child so visual flipping and tweening do not affect collision.
 - `PlayerStats` computes effective stats from base values, weapon slots, and modifier lists.
 - `PlayerInventory` is currently a fixed-slot run inventory owned by `PlayerStats`.
 - `InventoryItem` is the current item model for the item bar.

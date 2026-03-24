@@ -20,6 +20,13 @@
 - `GameKeys` is intended to be the single input-display source.
 - `GameState` is the single cross-scene run-state holder.
 
+### Physics Owns Visuals
+
+- Gameplay-facing nodes should use a physics or interaction root that owns presentation children.
+- Collision must not be parented under a sprite, imported model root, or other visual-first node.
+- Visual flipping, mirroring, squash-and-stretch, and swap-outs should happen on a `VisualRoot`-style subtree without changing physics.
+- If you find code or a scene where the visual owns the collision, call it out explicitly as a correctness risk.
+
 ### Domain Model Separation
 
 The repo already has a useful split between:
@@ -102,6 +109,8 @@ Prefer `.tscn` scenes when a thing benefits from editor ownership, reusable stru
 - encounter rooms
 - reusable world slices and set pieces under `scenes/world_slices/`
 - nearly all UI
+
+When those scenes are gameplay-facing, keep the visual subtree replaceable and the physics root authoritative.
 
 ### Keep Builders As The Decision Makers
 
