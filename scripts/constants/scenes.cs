@@ -2,16 +2,16 @@ namespace ARPG;
 
 public static partial class Scenes
 {
-    private const string Root = "res://scenes/";
+	private const string Root = "res://scenes/";
 
-    public const string ArchetypeSelect = Root + "ArchetypeSelect.tscn";
-    public const string DamageNumber = Root + "DamageNumber.tscn";
-    public const string Game = Root + "Game.tscn";
-    public const string GameOverScreen = Root + "GameOverScreen.tscn";
-    public const string LootPickup = Root + "LootPickup.tscn";
-    public const string MainMenu = Root + "MainMenu.tscn";
-    public const string ModifyStatsSimple = Root + "ModifyStatsSimple.tscn";
-    public const string PauseScreen = Root + "PauseScreen.tscn";
-    public const string RunHistorySnippet = Root + "RunHistorySnippet.tscn";
-    public const string VictoryScreen = Root + "VictoryScreen.tscn";
+	public const string ArchetypeSelect = Root + "ArchetypeSelect.tscn";
+	public const string DamageNumber = Root + "DamageNumber.tscn";
+	public const string Game = Root + "Game.tscn";
+	public const string GameOverScreen = Root + "GameOverScreen.tscn";
+	public const string LootPickup = Root + "LootPickup.tscn";
+	public const string MainMenu = Root + "MainMenu.tscn";
+	public const string ModifyStatsSimple = Root + "ModifyStatsSimple.tscn";
+	public const string PauseScreen = Root + "PauseScreen.tscn";
+	public const string RunHistorySnippet = Root + "RunHistorySnippet.tscn";
+	public const string VictoryScreen = Root + "VictoryScreen.tscn";
 }
