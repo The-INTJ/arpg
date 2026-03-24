@@ -97,10 +97,8 @@ public partial class GameManager : Node3D
         _hudUpdater = new GameHudUpdater();
         AddChild(_hudUpdater);
         _hudUpdater.Init(_player, _turnManager, _combatManager, _aggroSystem, _actionHandler, camera, canvas,
-            hpLabel, statsLabel, killLabel, statusLabel, attackButton, abilityButton,
-            enemyHp, itemSlots, itemIcons, itemLabels, itemStyles);
             hpLabel, statsLabel, darkEnergyLabel, darkEnergyBar, statusLabel, attackButton, abilityButton,
-            enemyHp, itemSlots, itemLabels, itemStyles);
+            enemyHp, itemSlots, itemIcons, itemLabels, itemStyles);
 
         _player.EdgeFall += () => _hudUpdater.StatusText = "Too close to the edge! -5 HP";
 
@@ -120,7 +118,6 @@ public partial class GameManager : Node3D
         // Generate map, chunk scenery, and spawn enemies
         var mapGen = GetNode<MapGenerator>("World/MapGenerator");
         var generatedMap = mapGen.Generate();
-        var spawnPositions = mapGen.Generate();
         GetNode<Node3D>("World").AddChild(DistantChunkGenerator.Generate(_room));
         var enemiesContainer = GetNode<Node3D>("World/Enemies");
         var encounter = EnemySpawner.BuildEncounter(_room);

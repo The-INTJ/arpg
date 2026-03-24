@@ -5,11 +5,14 @@ namespace ARPG;
 
 public partial class MapGenerator : Node3D
 {
-    private const float MapExtent = 60.0f;
-    private const float SafetyFloorTop = -0.2f;
+    private const float ChunkWidth = 110.0f;
+    private const float ChunkDepth = 112.0f;
+    private const float ChunkThickness = 18.0f;
+    private const float PlayWidth = 104.0f;
+    private const float PlayDepth = 106.0f;
     private const float GroundTop = 0.0f;
-    private const float MidTop = 0.9f;
-    private const float HighTop = 1.8f;
+    private const float MidTop = 1.15f;
+    private const float HighTop = 2.25f;
     private const float FloorThickness = 1.0f;
     private const float RampThickness = 0.6f;
 
@@ -18,112 +21,108 @@ public partial class MapGenerator : Node3D
     private static StandardMaterial3D _highGroundMaterial;
     private static StandardMaterial3D _caveGroundMaterial;
     private static StandardMaterial3D _rampMaterial;
-    private static StandardMaterial3D _wallMaterial;
-    private static StandardMaterial3D _boundaryWallMaterial;
-    private static StandardMaterial3D _caveWallMaterial;
+    private static StandardMaterial3D _rockMaterial;
+    private static StandardMaterial3D _caveRockMaterial;
     private static StandardMaterial3D _caveRoofMaterial;
     private readonly List<SurfaceRect> _spawnSurfaces = new();
 
     public GeneratedMapResult Generate()
     {
         ClearGeneratedGeometry();
+        BuildChunkShell();
 
         int layoutIndex = (int)(GD.Randi() % 3);
         return layoutIndex switch
         {
             0 => BuildRidgeLayout(caveSide: -1),
             1 => BuildRidgeLayout(caveSide: 1),
-            _ => BuildMesaLayout(),
+            _ => BuildMesaLayout(caveSide: GD.Randi() % 2 == 0 ? -1 : 1),
         };
+    }
+
+    private void BuildChunkShell()
+    {
+        var shell = new Node3D();
+        shell.Name = "ChunkShell";
+        AddChild(shell);
+        ChunkBuilder.BuildChunk(shell, ChunkWidth, ChunkDepth, ChunkThickness);
+
+        // Keep the main floor slightly larger than the edge-fall bounds so the player
+        // gets snapped back while still above solid ground instead of dropping into the void.
+        PlacePlatform(0, 0, PlayWidth, PlayDepth, GroundTop, SurfaceKind.Ground);
     }
 
     private GeneratedMapResult BuildRidgeLayout(int caveSide)
     {
         int ridgeSide = -caveSide;
-        new[] { new Vector3(12.5f, 0.5f, -12.5f), new Vector3(-15, 0.5f, 7.5f), new Vector3(7.5f, 0.5f, 12.5f), new Vector3(-5, 0.5f, -15), new Vector3(15, 0.5f, 2.5f), new Vector3(-12.5f, 0.5f, -5), new Vector3(5, 0.5f, -5), new Vector3(-7.5f, 0.5f, 15) },
-        new[] { new Vector3(-7.5f, 0.5f, -12.5f), new Vector3(10, 0.5f, -10), new Vector3(-10, 0.5f, 10), new Vector3(7.5f, 0.5f, 12.5f), new Vector3(12.5f, 0.5f, -2.5f), new Vector3(-15, 0.5f, -5), new Vector3(5, 0.5f, 5), new Vector3(-5, 0.5f, -7.5f) },
-        new[] { new Vector3(-12.5f, 0.5f, -5), new Vector3(12.5f, 0.5f, 7.5f), new Vector3(0, 0.5f, -15), new Vector3(-10, 0.5f, 12.5f), new Vector3(12.5f, 0.5f, -12.5f), new Vector3(-15, 0.5f, 2.5f), new Vector3(7.5f, 0.5f, -7.5f), new Vector3(-5, 0.5f, 5) },
-        new[] { new Vector3(15, 0.5f, -12.5f), new Vector3(-15, 0.5f, -7.5f), new Vector3(12.5f, 0.5f, 10), new Vector3(-10, 0.5f, 15), new Vector3(-2.5f, 0.5f, 7.5f), new Vector3(10, 0.5f, -2.5f), new Vector3(-5, 0.5f, -12.5f), new Vector3(7.5f, 0.5f, 5) },
-    };
 
-        PlaceSafetyFloor();
-        PlaceBoundaryWalls();
+        PlacePlatform(ridgeSide * 19.0f, -4.0f, 20.0f, 78.0f, MidTop, SurfaceKind.Mid);
+        PlaceRamp(ridgeSide * 13.0f, 24.0f, 10.0f, 12.0f, GroundTop, MidTop, alongX: true, ascendPositive: ridgeSide > 0);
+        PlaceRamp(ridgeSide * 13.0f, -28.0f, 10.0f, 12.0f, GroundTop, MidTop, alongX: true, ascendPositive: ridgeSide > 0);
 
-        PlacePlatform(0, -2, 34, 114, GroundTop, SurfaceKind.Ground);
-        PlacePlatform(ridgeSide * 24, 0, 18, 90, GroundTop, SurfaceKind.Ground);
-        PlacePlatform(caveSide * 26, 0, 16, 74, GroundTop, SurfaceKind.Ground);
-        PlacePlatform(ridgeSide * 35, 10, 18, 32, MidTop, SurfaceKind.Mid);
-        PlaceRamp(ridgeSide * 25, 10, 14, 12, GroundTop, MidTop, alongX: true, ascendPositive: ridgeSide > 0);
-        PlacePlatform(ridgeSide * 44, -20, 14, 18, HighTop, SurfaceKind.High);
-        PlaceRamp(ridgeSide * 38, -8, 10, 14, MidTop, HighTop, alongX: false, ascendPositive: false);
-        PlacePlatform(ridgeSide * 16, 30, 12, 18, MidTop, SurfaceKind.Mid);
-        PlaceRamp(ridgeSide * 10, 30, 8, 10, GroundTop, MidTop, alongX: true, ascendPositive: ridgeSide > 0);
+        PlacePlatform(ridgeSide * 31.0f, -16.0f, 14.0f, 20.0f, HighTop, SurfaceKind.High);
+        PlaceRamp(ridgeSide * 25.0f, -16.0f, 10.0f, 12.0f, MidTop, HighTop, alongX: true, ascendPositive: ridgeSide > 0);
 
-        PlaceWall(-4, 6, 6, 2, 2.4f, Palette.Wall, true);
-        PlaceWall(6, -12, 2, 12, 3.0f, Palette.Wall, true);
-        PlaceWall(ridgeSide * 14, -32, 10, 2, 2.5f, Palette.Wall, true);
-        PlaceWall(caveSide * 10, 20, 2, 10, 2.0f, Palette.CaveWall, true);
+        PlacePlatform(-ridgeSide * 10.0f, 26.0f, 16.0f, 18.0f, MidTop, SurfaceKind.Mid);
+        PlaceRamp(-ridgeSide * 4.0f, 26.0f, 10.0f, 12.0f, GroundTop, MidTop, alongX: true, ascendPositive: -ridgeSide > 0);
 
-        var caveResult = PlaceCavePocket(caveSide, 10);
+        var caveResult = PlaceCavePocket(caveSide, 10.0f);
 
-        PlaceTree(new Vector3(ridgeSide * 19, 0, 34));
-        PlaceTree(new Vector3(ridgeSide * 26, 0, -36));
-        PlaceTree(new Vector3(caveSide * 18, 0, -30));
-        PlaceTree(new Vector3(8, 0, 44));
-        PlaceTree(new Vector3(-10, 0, -40));
+        PlaceTree(new Vector3(ridgeSide * 34.0f, 0, 30.0f));
+        PlaceTree(new Vector3(ridgeSide * 7.0f, 0, 40.0f));
+        PlaceTree(new Vector3(-ridgeSide * 18.0f, 0, -28.0f));
+        PlaceTree(new Vector3(caveSide * 12.0f, 0, -34.0f));
+        PlaceTree(new Vector3(-caveSide * 24.0f, 0, 12.0f));
 
         return new GeneratedMapResult(
             new[]
             {
-                SpawnPoint(-8, GroundTop, 22),
-                SpawnPoint(10, GroundTop, -8),
-                SpawnPoint(ridgeSide * 22, GroundTop, 30),
-                SpawnPoint(ridgeSide * 35, MidTop, 10),
-                SpawnPoint(ridgeSide * 44, HighTop, -20),
-                SpawnPoint(caveSide * 16, GroundTop, -20),
+                SpawnPoint(-14.0f, GroundTop, 30.0f),
+                SpawnPoint(16.0f, GroundTop, 18.0f),
+                SpawnPoint(ridgeSide * 19.0f, MidTop, 18.0f),
+                SpawnPoint(ridgeSide * 19.0f, MidTop, -22.0f),
+                SpawnPoint(ridgeSide * 31.0f, HighTop, -16.0f),
+                SpawnPoint(caveSide * 10.0f, GroundTop, -24.0f),
+                SpawnPoint(-caveSide * 8.0f, GroundTop, 4.0f),
+                SpawnPoint(-ridgeSide * 10.0f, MidTop, 26.0f),
             },
             caveResult.ChestPosition,
             caveResult.FallbackItemPosition);
     }
 
-    private GeneratedMapResult BuildMesaLayout()
+    private GeneratedMapResult BuildMesaLayout(int caveSide)
     {
-        PlaceSafetyFloor();
-        PlaceBoundaryWalls();
+        int highSide = -caveSide;
 
-        // Floating chunk geometry (visible cliff sides + bottom)
-        float chunkWidth = 50 * S;
-        float chunkDepth = 50 * S;
-        ChunkBuilder.BuildChunk(this, chunkWidth, chunkDepth);
+        PlacePlatform(0, -6.0f, 34.0f, 32.0f, MidTop, SurfaceKind.Mid);
+        PlaceRamp(-14.0f, -6.0f, 12.0f, 12.0f, GroundTop, MidTop, alongX: true, ascendPositive: true);
+        PlaceRamp(14.0f, -6.0f, 12.0f, 12.0f, GroundTop, MidTop, alongX: true, ascendPositive: false);
 
-        // Invisible low collision walls at edges (knee-height so player can see over)
-        float edgeH = 1.0f;
-        PlaceInvisibleWall(0, -25 * S, 52 * S, 1, edgeH);
-        PlaceInvisibleWall(0, 25 * S, 52 * S, 1, edgeH);
-        PlaceInvisibleWall(-25 * S, 0, 1, 52 * S, edgeH);
-        PlaceInvisibleWall(25 * S, 0, 1, 52 * S, edgeH);
+        PlacePlatform(highSide * 16.0f, -20.0f, 16.0f, 18.0f, HighTop, SurfaceKind.High);
+        PlaceRamp(highSide * 10.0f, -20.0f, 10.0f, 12.0f, MidTop, HighTop, alongX: true, ascendPositive: highSide > 0);
 
-        // Interior walls (scaled positions and sizes)
-        foreach (var wall in layout)
-            PlaceWall(wall.X * S, wall.Y * S, wall.Z * S, wall.W * S, 3f, Palette.Wall, true);
+        PlacePlatform(caveSide * -24.0f, 22.0f, 14.0f, 20.0f, MidTop, SurfaceKind.Mid);
+        PlaceRamp(caveSide * -18.0f, 22.0f, 10.0f, 12.0f, GroundTop, MidTop, alongX: true, ascendPositive: -caveSide > 0);
 
-        var caveResult = PlaceCavePocket(side: 1, centerZ: -2);
+        var caveResult = PlaceCavePocket(caveSide, 16.0f);
 
-        PlaceTree(new Vector3(-22, 0, 42));
-        PlaceTree(new Vector3(-26, 0, -30));
-        PlaceTree(new Vector3(18, 0, 34));
-        PlaceTree(new Vector3(22, 0, -36));
-        PlaceTree(new Vector3(-6, 0, 48));
+        PlaceTree(new Vector3(-28.0f, 0, 34.0f));
+        PlaceTree(new Vector3(30.0f, 0, 28.0f));
+        PlaceTree(new Vector3(highSide * 32.0f, 0, -30.0f));
+        PlaceTree(new Vector3(-highSide * 10.0f, 0, -36.0f));
+        PlaceTree(new Vector3(caveSide * -30.0f, 0, 6.0f));
 
         return new GeneratedMapResult(
             new[]
             {
-                SpawnPoint(-12, GroundTop, 24),
-                SpawnPoint(10, GroundTop, -8),
-                SpawnPoint(0, MidTop, -6),
-                SpawnPoint(-30, MidTop, 26),
-                SpawnPoint(28, HighTop, 20),
-                SpawnPoint(-18, GroundTop, -22),
+                SpawnPoint(-22.0f, GroundTop, 30.0f),
+                SpawnPoint(22.0f, GroundTop, 22.0f),
+                SpawnPoint(0, MidTop, -2.0f),
+                SpawnPoint(-10.0f, MidTop, -10.0f),
+                SpawnPoint(10.0f, MidTop, -4.0f),
+                SpawnPoint(highSide * 16.0f, HighTop, -20.0f),
+                SpawnPoint(caveSide * -24.0f, MidTop, 22.0f),
+                SpawnPoint(caveSide * 8.0f, GroundTop, -28.0f),
             },
             caveResult.ChestPosition,
             caveResult.FallbackItemPosition);
@@ -131,45 +130,23 @@ public partial class MapGenerator : Node3D
 
     private CavePocketResult PlaceCavePocket(int side, float centerZ)
     {
-        float caveCenterX = side * 48.0f;
-        float shelfCenterX = side * 53.0f;
+        float caveFloorX = side * 34.0f;
+        float shelfX = side * 44.0f;
 
-        PlacePlatform(caveCenterX, centerZ, 20, 30, GroundTop, SurfaceKind.Cave);
-        PlacePlatform(shelfCenterX, centerZ, 8, 10, MidTop, SurfaceKind.Mid);
-        PlaceRamp(caveCenterX + side * 2.5f, centerZ, 8, 7, GroundTop, MidTop, alongX: true, ascendPositive: side > 0);
+        PlacePlatform(caveFloorX, centerZ, 18.0f, 24.0f, GroundTop, SurfaceKind.Cave);
+        PlacePlatform(shelfX, centerZ, 10.0f, 12.0f, MidTop, SurfaceKind.Mid);
+        PlaceRamp(side * 39.0f, centerZ, 8.0f, 10.0f, GroundTop, MidTop, alongX: true, ascendPositive: side > 0);
 
-        PlaceWall(caveCenterX + side * 9.0f, centerZ, 2, 30, 3.4f, Palette.CaveWall, true);
-        PlaceWall(caveCenterX, centerZ - 14.0f, 20, 2, 3.1f, Palette.CaveWall, true);
-        PlaceWall(caveCenterX, centerZ + 14.0f, 20, 2, 3.1f, Palette.CaveWall, true);
-        PlaceWall(caveCenterX - side * 9.0f, centerZ - 10.0f, 2, 8, 2.9f, Palette.CaveWall, true);
-        PlaceWall(caveCenterX - side * 9.0f, centerZ + 10.0f, 2, 8, 2.9f, Palette.CaveWall, true);
-
-        PlaceCeiling(caveCenterX, centerZ, 22, 32, 2.7f, 0.6f);
-        PlaceLamp(new Vector3(caveCenterX + side * 3.0f, 2.15f, centerZ), new Color(1.0f, 0.84f, 0.62f), 7.0f, 1.9f);
+        // Rock masses shape the cave alcove while keeping the new open-chunk layout.
+        PlaceRockMass(side * 47.5f, centerZ, 5.0f, 28.0f, 3.8f, caveRock: true);
+        PlaceRockMass(side * 40.0f, centerZ - 11.0f, 16.0f, 4.0f, 3.0f, caveRock: true);
+        PlaceRockMass(side * 40.0f, centerZ + 11.0f, 16.0f, 4.0f, 3.0f, caveRock: true);
+        PlaceCeiling(side * 40.5f, centerZ, 18.0f, 26.0f, 2.55f, 0.7f);
+        PlaceLamp(new Vector3(side * 40.0f, 2.0f, centerZ), new Color(1.0f, 0.82f, 0.65f), 7.5f, 1.7f);
 
         return new CavePocketResult(
-            new Vector3(shelfCenterX, MidTop, centerZ),
-            new Vector3(caveCenterX - side * 3.0f, GroundTop, centerZ));
-    }
-
-    private void PlaceInvisibleWall(float x, float z, float w, float d, float h)
-    {
-        var body = new StaticBody3D();
-        AddChild(body);
-        body.Position = new Vector3(x, h / 2, z);
-
-        var shape = new CollisionShape3D();
-        shape.Shape = new BoxShape3D { Size = new Vector3(w, h, d) };
-        body.AddChild(shape);
-    }
-
-    private void PlaceWall(float x, float z, float w, float d, float h, Color color, bool textured)
-    private void PlaceBoundaryWalls()
-    {
-        PlaceWall(0, -MapExtent, 124, 2, 5.7f, Palette.BoundaryWall, true, SafetyFloorTop);
-        PlaceWall(0, MapExtent, 124, 2, 5.7f, Palette.BoundaryWall, true, SafetyFloorTop);
-        PlaceWall(-MapExtent, 0, 2, 124, 5.7f, Palette.BoundaryWall, true, SafetyFloorTop);
-        PlaceWall(MapExtent, 0, 2, 124, 5.7f, Palette.BoundaryWall, true, SafetyFloorTop);
+            new Vector3(shelfX, MidTop, centerZ),
+            new Vector3(caveFloorX - side * 2.0f, GroundTop, centerZ));
     }
 
     private void ClearGeneratedGeometry()
@@ -179,11 +156,6 @@ public partial class MapGenerator : Node3D
             child.QueueFree();
     }
 
-    private void PlaceSafetyFloor()
-    {
-        PlacePlatform(0, 0, 118, 118, SafetyFloorTop, SurfaceKind.Ground);
-    }
-
     private void PlacePlatform(float x, float z, float width, float depth, float topHeight, SurfaceKind surfaceKind)
     {
         var body = new StaticBody3D();
@@ -191,12 +163,11 @@ public partial class MapGenerator : Node3D
         AddChild(body);
 
         var mesh = new MeshInstance3D();
-        var box = new BoxMesh
+        mesh.Mesh = new BoxMesh
         {
             Size = new Vector3(width, FloorThickness, depth),
             Material = GetSurfaceMaterial(surfaceKind),
         };
-        mesh.Mesh = box;
         body.AddChild(mesh);
 
         var shape = new CollisionShape3D();
@@ -246,16 +217,18 @@ public partial class MapGenerator : Node3D
         body.AddChild(shape);
     }
 
-    private void PlaceWall(float x, float z, float width, float depth, float height, Color color, bool textured, float baseTop = 0.0f)
+    private void PlaceRockMass(float x, float z, float width, float depth, float height, bool caveRock)
     {
         var body = new StaticBody3D();
-        body.Position = new Vector3(x, baseTop + height / 2.0f, z);
+        body.Position = new Vector3(x, height / 2.0f, z);
         AddChild(body);
 
         var mesh = new MeshInstance3D();
-        var box = new BoxMesh { Size = new Vector3(width, height, depth) };
-        box.Material = textured ? GetWallMaterial(color) : new StandardMaterial3D { AlbedoColor = color };
-        mesh.Mesh = box;
+        mesh.Mesh = new BoxMesh
+        {
+            Size = new Vector3(width, height, depth),
+            Material = caveRock ? GetCaveRockMaterial() : GetRockMaterial(),
+        };
         body.AddChild(mesh);
 
         var shape = new CollisionShape3D();
@@ -388,16 +361,14 @@ public partial class MapGenerator : Node3D
         };
     }
 
-    private static StandardMaterial3D GetWallMaterial(Color color)
+    private static StandardMaterial3D GetRockMaterial()
     {
-        if (color == Palette.BoundaryWall)
-            return _boundaryWallMaterial ??= CreateStoneMaterial(Palette.BoundaryWall);
-        if (color == Palette.CaveWall)
-            return _caveWallMaterial ??= CreateStoneMaterial(Palette.CaveWall);
-        if (color == Palette.Wall)
-            return _wallMaterial ??= CreateStoneMaterial(Palette.Wall);
+        return _rockMaterial ??= CreateStoneMaterial(Palette.ChunkEdge);
+    }
 
-        return CreateStoneMaterial(color);
+    private static StandardMaterial3D GetCaveRockMaterial()
+    {
+        return _caveRockMaterial ??= CreateStoneMaterial(Palette.CaveWall);
     }
 
     private static StandardMaterial3D GetCaveRoofMaterial()
@@ -425,10 +396,10 @@ public partial class MapGenerator : Node3D
         var mat = new StandardMaterial3D();
         mat.AlbedoTexture = noiseTex;
         mat.AlbedoColor = baseColor;
-        mat.Roughness = 0.85f;
+        mat.Roughness = 0.88f;
         mat.Uv1Triplanar = true;
         mat.Uv1TriplanarSharpness = 1.0f;
-        mat.Uv1Scale = new Vector3(0.5f, 0.5f, 0.5f);
+        mat.Uv1Scale = new Vector3(0.45f, 0.45f, 0.45f);
         return mat;
     }
 
@@ -440,10 +411,6 @@ public partial class MapGenerator : Node3D
         return gradient;
     }
 
-    /// <summary>
-    /// Creates a textured ground material. Uses res://assets/textures/chunk_top.png if
-    /// real art exists there, otherwise falls back to procedural noise.
-    /// </summary>
     public static StandardMaterial3D CreateGroundMaterial()
     {
         var mat = new StandardMaterial3D();
@@ -479,6 +446,7 @@ public partial class MapGenerator : Node3D
         gradient.SetColor(1, baseColor.Lightened(0.1f));
         noiseTex.ColorRamp = gradient;
 
+        var mat = new StandardMaterial3D();
         mat.AlbedoTexture = noiseTex;
         mat.AlbedoColor = baseColor;
         mat.Roughness = 0.96f;
@@ -493,10 +461,11 @@ public partial class MapGenerator : Node3D
         Mid,
         High,
         Cave,
-        Ramp
+        Ramp,
     }
 
     private readonly record struct CavePocketResult(Vector3 ChestPosition, Vector3 FallbackItemPosition);
+
     private readonly record struct SurfaceRect(float CenterX, float CenterZ, float Width, float Depth, float TopHeight)
     {
         public bool Contains(float x, float z)
