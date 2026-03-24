@@ -1,3 +1,4 @@
+using System;
 using Godot;
 
 namespace ARPG;
@@ -11,6 +12,7 @@ public partial class PlayerController : CharacterBody3D
     private const float GravityStrength = 18.0f;
     private const float JumpVelocity = 7.0f;
     private const float CoyoteTime = 0.12f;
+    private const float VoidFallGracePeriod = 1.0f;
     private static readonly Vector3 BobRootBasePosition = new(0, 0.25f, 0);
 
     public PlayerStats Stats { get; private set; }
@@ -23,8 +25,7 @@ public partial class PlayerController : CharacterBody3D
     [Signal]
     public delegate void EdgeFallEventHandler();
 
-    private const float ChunkBoundsLimit = 48f;
-    private float _edgeFallCooldown;
+    private float _voidFallTimer;
     private float _regenAccumulator;
     private float _presentationTime;
     private float _coyoteTimer;
@@ -40,11 +41,16 @@ public partial class PlayerController : CharacterBody3D
     private Node3D _weaponPivot;
     private Sprite3D _weaponSprite;
     private Tween _visualTween;
+    private Aabb[] _zoneBounds = Array.Empty<Aabb>();
+    private Vector3 _lastGroundedPosition;
+    private bool _hasLastGroundedPosition;
 
     public override void _Ready()
     {
         FloorSnapLength = 0.45f;
         _wasGrounded = true;
+        _lastGroundedPosition = GlobalPosition;
+        _hasLastGroundedPosition = true;
 
         // Reuse persistent stats across rooms, or create fresh for room 1
         if (GameState.PersistentStats != null)
@@ -141,7 +147,11 @@ public partial class PlayerController : CharacterBody3D
             Velocity = new Vector3(horizontalVelocity.X, Velocity.Y, horizontalVelocity.Z);
 
         MoveAndSlide();
-        CheckChunkBounds((float)delta);
+
+        // Outside a zone is only dangerous if the player actually spends time falling.
+        bool groundedNow = IsOnFloor();
+        if (UpdateVoidFallRecovery(dt, groundedNow))
+            groundedNow = true;
 
         // Flip sprite based on camera-relative horizontal movement
         var facingVelocity = new Vector3(Velocity.X, 0, Velocity.Z);
@@ -151,7 +161,6 @@ public partial class PlayerController : CharacterBody3D
             _sprite.FlipH = facingVelocity.Dot(cameraRight) < 0;
         }
 
-        bool groundedNow = IsOnFloor();
         if (!_wasGrounded && groundedNow)
             _landingImpact = Mathf.Clamp(Mathf.Abs(verticalVelocityBeforeMove) * 0.08f + 0.2f, 0.2f, 1.0f);
 
@@ -159,22 +168,56 @@ public partial class PlayerController : CharacterBody3D
         UpdatePresentation(dt, facingVelocity, input, speed, groundedNow);
     }
 
-    private void CheckChunkBounds(float delta)
+    public void SetZoneBounds(Aabb[] zoneBounds)
     {
-        _edgeFallCooldown -= delta;
-        if (_edgeFallCooldown > 0) return;
+        _zoneBounds = zoneBounds ?? Array.Empty<Aabb>();
+    }
 
-        var pos = GlobalPosition;
-        if (Mathf.Abs(pos.X) <= ChunkBoundsLimit && Mathf.Abs(pos.Z) <= ChunkBoundsLimit)
-            return;
+    private bool UpdateVoidFallRecovery(float delta, bool grounded)
+    {
+        if (grounded)
+        {
+            _lastGroundedPosition = GlobalPosition;
+            _hasLastGroundedPosition = true;
+            _voidFallTimer = 0.0f;
+            return false;
+        }
 
-        // Player went past chunk edge — deal damage and snap back
-        Hp -= 5;
-        _edgeFallCooldown = 1.0f; // prevent rapid damage
-        GlobalPosition = new Vector3(
-            Mathf.Clamp(pos.X, -ChunkBoundsLimit + 2, ChunkBoundsLimit - 2),
-            pos.Y,
-            Mathf.Clamp(pos.Z, -ChunkBoundsLimit + 2, ChunkBoundsLimit - 2));
+        if (IsInsideZoneBounds(GlobalPosition))
+        {
+            _voidFallTimer = 0.0f;
+            return false;
+        }
+
+        _voidFallTimer += delta;
+        if (_voidFallTimer < VoidFallGracePeriod)
+            return false;
+
+        RecoverFromVoidFall();
+        return true;
+    }
+
+    private bool IsInsideZoneBounds(Vector3 worldPosition)
+    {
+        for (int i = 0; i < _zoneBounds.Length; i++)
+        {
+            if (_zoneBounds[i].HasPoint(worldPosition))
+                return true;
+        }
+
+        return false;
+    }
+
+    private void RecoverFromVoidFall()
+    {
+        Hp = Mathf.Max(0, Hp - 5);
+        Velocity = Vector3.Zero;
+        _voidFallTimer = 0.0f;
+        _coyoteTimer = 0.0f;
+
+        if (_hasLastGroundedPosition)
+            GlobalPosition = _lastGroundedPosition + new Vector3(0, 0.1f, 0);
+
         EmitSignal(SignalName.EdgeFall);
     }
 

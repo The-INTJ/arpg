@@ -20,6 +20,7 @@ public partial class Enemy : StaticBody3D
     public bool IsElite { get; private set; }
     public string VariantName { get; set; }
     public InventoryItem ItemDrop { get; private set; }
+    public int ZoneRoom { get; set; } = 1;
 
     public bool HasAggro { get; set; }
 

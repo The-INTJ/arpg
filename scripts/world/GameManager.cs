@@ -4,8 +4,19 @@ namespace ARPG;
 
 public partial class GameManager : Node3D
 {
+    private static readonly Vector3[] ZoneOrigins =
+    {
+        new(0, 0, 0),
+        new(0, 5.5f, -128f),
+        new(0, 1.5f, -256f),
+    };
+
+    private static readonly Vector3 PlayerSpawnOffset = new(0, 0.25f, 40f);
+    private static readonly Vector3 ZoneExitOffset = new(0, MapGenerator.GroundTop, -(MapGenerator.PlayDepth * 0.5f));
+    private static readonly Vector3 ZoneEntryOffset = new(0, MapGenerator.GroundTop, MapGenerator.PlayDepth * 0.5f);
+    private static readonly Vector3 ZoneBoundsPadding = new(0, 40f, 0);
+
     private PlayerController _player;
-    private BridgePoint _bridgePoint;
     private TurnManager _turnManager;
     private CombatManager _combatManager;
     private AggroSystem _aggroSystem;
@@ -13,23 +24,29 @@ public partial class GameManager : Node3D
     private PlayerActionHandler _actionHandler;
     private ModifyStatsSimple _modifyScreen;
     private PauseScreen _pauseScreen;
+    private Node3D _worldRoot;
+    private Node3D _zonesRoot;
+    private Node3D _bridgePointsRoot;
+    private Label _roomLabel;
+    private Label _ruleLabel;
 
-    private DarkEnergy _darkEnergy;
-    private int _totalEnemies;
+    private DarkEnergy[] _zoneEnergy;
+    private RoomMonsterEffectProfile[] _zoneProfiles;
+    private string[] _zoneNames;
+    private Aabb[] _zoneBounds;
+    private BridgePoint[] _zoneBridges;
+    private int _activeZoneRoom = 1;
     private bool _isEndingRun;
-
-    private int _room => GameState.CurrentRoom;
-    private bool _isBossRoom => _room == GameState.BossRoom;
 
     public override void _Ready()
     {
         _player = GetNode<PlayerController>("World/Player");
-        _bridgePoint = GetNode<BridgePoint>("World/ExitDoor");
+        _worldRoot = GetNode<Node3D>("World");
+        _zonesRoot = EnsureWorldChild("Zones");
+        _bridgePointsRoot = EnsureWorldChild("BridgePoints");
         var camera = _player.GetNode<Camera3D>("CameraRig/Camera3D");
         var canvas = GetNode<CanvasLayer>("CanvasLayer");
-        var monsterEffectProfile = MonsterEffectRoomProfiles.ForRoom(_room);
 
-        // Turn and combat systems
         _turnManager = new TurnManager();
         AddChild(_turnManager);
         _turnManager.TurnChanged += OnTurnChanged;
@@ -40,7 +57,6 @@ public partial class GameManager : Node3D
         _combatManager.CombatEnded += OnCombatEnded;
         _combatManager.CombatFeedback += text => _hudUpdater.StatusText = text;
 
-        // Aggro system
         _aggroSystem = new AggroSystem();
         AddChild(_aggroSystem);
         _aggroSystem.Init(_player);
@@ -54,13 +70,11 @@ public partial class GameManager : Node3D
             _hudUpdater.StatusText = message;
         };
 
-        // Action handler
         _actionHandler = new PlayerActionHandler();
         AddChild(_actionHandler);
         _actionHandler.Init(_player, _turnManager, _combatManager, _aggroSystem);
         _actionHandler.StatusMessage += text => _hudUpdater.StatusText = text;
 
-        // HUD elements from scene
         var attackButton = GetNode<Button>("CanvasLayer/AttackButton");
         attackButton.Pressed += _actionHandler.OnAttackPressed;
         attackButton.Visible = false;
@@ -76,10 +90,8 @@ public partial class GameManager : Node3D
             GetNode<Label>("CanvasLayer/EnemyHpDisplay/EffectInfoLabel"),
             GetNode<VBoxContainer>("CanvasLayer/EnemyHpDisplay"));
 
-        var roomLabel = GetNode<Label>("CanvasLayer/RoomLabel");
-        roomLabel.Text = $"{ChunkNames.RandomName()}  ({_room}/{GameState.TotalRooms})";
-        var ruleLabel = GetNode<Label>("CanvasLayer/RuleLabel");
-        ruleLabel.Text = $"{monsterEffectProfile.DisplayName}\n{monsterEffectProfile.Description}";
+        _roomLabel = GetNode<Label>("CanvasLayer/RoomLabel");
+        _ruleLabel = GetNode<Label>("CanvasLayer/RuleLabel");
 
         var hpLabel = GetNode<Label>("CanvasLayer/HUD/HpLabel");
         var statsLabel = GetNode<Label>("CanvasLayer/HUD/StatsLabel");
@@ -93,77 +105,202 @@ public partial class GameManager : Node3D
         var itemBarHBox = GetNode<HBoxContainer>("CanvasLayer/ItemBarCenter/ItemBarHBox");
         var (itemSlots, itemIcons, itemLabels, itemStyles) = GameHudBuilder.BindItemBar(itemBarHBox);
 
-        // HUD updater
         _hudUpdater = new GameHudUpdater();
         AddChild(_hudUpdater);
         _hudUpdater.Init(_player, _turnManager, _combatManager, _aggroSystem, _actionHandler, camera, canvas,
             hpLabel, statsLabel, darkEnergyLabel, darkEnergyBar, statusLabel, attackButton, abilityButton,
             enemyHp, itemSlots, itemIcons, itemLabels, itemStyles);
 
-        _player.EdgeFall += () => _hudUpdater.StatusText = "Too close to the edge! -5 HP";
+        _player.EdgeFall += () => _hudUpdater.StatusText = "Fell into the abyss! -5 HP";
 
-        // Screens
         _modifyScreen = GetNode<ModifyStatsSimple>("CanvasLayer/ModifyStatsSimple");
         _pauseScreen = GetNode<PauseScreen>("CanvasLayer/PauseScreen");
         _pauseScreen.ViewStatsRequested += () => _modifyScreen.Open(_player.Stats);
 
-        // The old flat floor stays only as an inert scene anchor. Terrain is now generated.
         var floorMesh = GetNode<MeshInstance3D>("World/Floor/FloorMesh");
         floorMesh.Visible = false;
         var floorCollision = GetNode<CollisionShape3D>("World/Floor/FloorCollision");
         floorCollision.Disabled = true;
 
+        GetNodeOrNull<Node>("World/MapGenerator")?.QueueFree();
+        GetNodeOrNull<Node>("World/Enemies")?.QueueFree();
+        GetNodeOrNull<Node>("World/ExitDoor")?.QueueFree();
+
         SetupAudioManager();
+        BuildRunWorld();
 
-        // Generate map, chunk scenery, and spawn enemies
-        var mapGen = GetNode<MapGenerator>("World/MapGenerator");
-        var generatedMap = mapGen.Generate();
-        GetNode<Node3D>("World").AddChild(DistantChunkGenerator.Generate(_room));
-        var enemiesContainer = GetNode<Node3D>("World/Enemies");
-        var encounter = EnemySpawner.BuildEncounter(_room);
-
-        for (int i = 0; i < encounter.Length && i < generatedMap.EnemySpawnPoints.Length; i++)
-            EnemySpawner.Spawn(enemiesContainer, generatedMap.EnemySpawnPoints[i], encounter[i], _room, monsterEffectProfile);
-
-        SpawnCaveChest(generatedMap.CaveChestPosition);
-
-        _totalEnemies = encounter.Length;
-        _darkEnergy = new DarkEnergy(DarkEnergy.ThresholdForRoom(_room), GameState.DarkEnergyCarryOver);
+        _player.GlobalPosition = ZoneOrigins[0] + PlayerSpawnOffset;
+        _player.SetZoneBounds(BuildZoneBoundsArray());
         GameState.DarkEnergyCarryOver = 0;
-        _hudUpdater.StatusText = GetRoomIntroText();
+        SetActiveZone(1, force: true);
 
         AudioManager.Instance?.StartExploreMusic();
     }
 
-
-
     private void SetupAudioManager()
     {
-        if (AudioManager.Instance != null) return;
+        if (AudioManager.Instance != null)
+            return;
 
         var audio = new AudioManager();
         audio.Name = "AudioManager";
         GetTree().Root.AddChild(audio);
     }
 
-    private string GetRoomIntroText()
+    private Node3D EnsureWorldChild(string name)
     {
-        if (_isBossRoom)
-            return "Boss chunk! Harvest dark energy to build the final bridge!";
-        return "Harvest dark energy from enemies to bridge to the next chunk";
+        var existing = _worldRoot.GetNodeOrNull<Node3D>(name);
+        if (existing != null)
+            return existing;
+
+        var node = new Node3D();
+        node.Name = name;
+        _worldRoot.AddChild(node);
+        return node;
+    }
+
+    private void BuildRunWorld()
+    {
+        _zoneEnergy = new DarkEnergy[GameState.TotalRooms + 1];
+        _zoneProfiles = new RoomMonsterEffectProfile[GameState.TotalRooms + 1];
+        _zoneNames = new string[GameState.TotalRooms + 1];
+        _zoneBounds = new Aabb[GameState.TotalRooms + 1];
+        _zoneBridges = new BridgePoint[GameState.TotalRooms + 1];
+
+        _worldRoot.AddChild(DistantChunkGenerator.Generate(1));
+
+        int openingEnergy = GameState.DarkEnergyCarryOver;
+        for (int room = 1; room <= GameState.TotalRooms; room++)
+            BuildZone(room, room == 1 ? openingEnergy : 0);
+    }
+
+    private void BuildZone(int room, int startingEnergy)
+    {
+        Vector3 zoneOrigin = ZoneOrigins[room - 1];
+
+        var zoneRoot = new Node3D();
+        zoneRoot.Name = $"Zone{room}";
+        zoneRoot.Position = zoneOrigin;
+        _zonesRoot.AddChild(zoneRoot);
+
+        var mapGen = new MapGenerator();
+        mapGen.Name = "MapGenerator";
+        zoneRoot.AddChild(mapGen);
+        var generatedMap = mapGen.Generate();
+
+        var profile = MonsterEffectRoomProfiles.ForRoom(room);
+        _zoneProfiles[room] = profile;
+        _zoneNames[room] = ChunkNames.RandomName();
+        _zoneEnergy[room] = new DarkEnergy(DarkEnergy.ThresholdForRoom(room), startingEnergy);
+        _zoneBounds[room] = CreateZoneBounds(zoneOrigin);
+
+        var enemiesContainer = new Node3D();
+        enemiesContainer.Name = "Enemies";
+        zoneRoot.AddChild(enemiesContainer);
+
+        var encounter = EnemySpawner.BuildEncounter(room);
+        for (int i = 0; i < encounter.Length && i < generatedMap.EnemySpawnPoints.Length; i++)
+        {
+            var enemy = EnemySpawner.Spawn(enemiesContainer, generatedMap.EnemySpawnPoints[i], encounter[i], room, profile);
+            enemy.ZoneRoom = room;
+        }
+
+        SpawnCaveChest(zoneOrigin + generatedMap.CaveChestPosition, room);
+
+        if (room >= GameState.TotalRooms)
+            return;
+
+        var bridge = new BridgePoint();
+        bridge.Name = $"Bridge{room}To{room + 1}";
+        bridge.Position = zoneOrigin + ZoneExitOffset;
+        bridge.Configure(ZoneOrigins[room] + ZoneEntryOffset);
+        _bridgePointsRoot.AddChild(bridge);
+        _zoneBridges[room] = bridge;
+
+        if (_zoneEnergy[room].IsThresholdMet)
+            bridge.SetEnergyReady();
+    }
+
+    private static Aabb CreateZoneBounds(Vector3 zoneOrigin)
+    {
+        return new Aabb(
+            zoneOrigin + new Vector3(-MapGenerator.PlayWidth * 0.5f, -ZoneBoundsPadding.Y, -MapGenerator.PlayDepth * 0.5f),
+            new Vector3(MapGenerator.PlayWidth, ZoneBoundsPadding.Y * 2.0f, MapGenerator.PlayDepth));
+    }
+
+    private Aabb[] BuildZoneBoundsArray()
+    {
+        var bounds = new Aabb[GameState.TotalRooms];
+        for (int room = 1; room <= GameState.TotalRooms; room++)
+            bounds[room - 1] = _zoneBounds[room];
+
+        return bounds;
+    }
+
+    private int FindZoneForPosition(Vector3 worldPosition)
+    {
+        for (int room = 1; room <= GameState.TotalRooms; room++)
+        {
+            if (_zoneBounds[room].HasPoint(worldPosition))
+                return room;
+        }
+
+        return 0;
+    }
+
+    private void SetActiveZone(int room, bool force = false)
+    {
+        if (!force && room == _activeZoneRoom)
+            return;
+
+        _activeZoneRoom = room;
+        GameState.CurrentRoom = room;
+        _roomLabel.Text = $"{_zoneNames[room]}  ({room}/{GameState.TotalRooms})";
+
+        var profile = _zoneProfiles[room];
+        _ruleLabel.Text = $"{profile.DisplayName}\n{profile.Description}";
+
+        if (!_isEndingRun && _turnManager.IsExploring)
+            _hudUpdater.StatusText = GetZoneIntroText(room);
+    }
+
+    private string GetZoneIntroText(int room)
+    {
+        if (room == GameState.BossRoom)
+            return "Boss zone! Defeat the boss to finish the run.";
+
+        var bridge = _zoneBridges[room];
+        if (bridge != null && bridge.IsBuilt)
+            return "Bridge is built. Cross to the next zone when you're ready.";
+
+        if (_zoneEnergy[room].IsThresholdMet)
+            return "Enough dark energy! Find the bridge point to cross!";
+
+        return "Defeat enemies to gather dark energy for the bridge.";
+    }
+
+    private bool TryBuildCurrentBridge()
+    {
+        if (!_turnManager.IsExploring || _activeZoneRoom >= GameState.TotalRooms)
+            return false;
+
+        var bridge = _zoneBridges[_activeZoneRoom];
+        return bridge != null && bridge.TryBuild();
     }
 
     public override void _UnhandledInput(InputEvent @event)
     {
         if (@event.IsActionPressed(GameKeys.Attack))
         {
-            if (_bridgePoint.IsReadyAndPlayerNear && _turnManager.IsExploring)
-                _bridgePoint.TryBuild();
+            if (TryBuildCurrentBridge())
+                _hudUpdater.StatusText = "Bridge formed. Cross to the next zone.";
             else
                 _actionHandler.OnAttackPressed();
         }
         else if (@event.IsActionPressed(GameKeys.Ability))
+        {
             _actionHandler.OnAbilityPressed();
+        }
 
         for (int i = 0; i < _player.Stats.Inventory.Capacity && i < GameKeys.ItemSlots.Length; i++)
         {
@@ -178,8 +315,17 @@ public partial class GameManager : Node3D
 
     public override void _Process(double delta)
     {
-        _hudUpdater.UpdateAll(_darkEnergy);
-        GameState.DarkEnergyCarryOver = _darkEnergy.Excess;
+        int detectedZone = FindZoneForPosition(_player.GlobalPosition);
+        if (detectedZone != 0)
+            SetActiveZone(detectedZone);
+
+        _hudUpdater.UpdateAll(_zoneEnergy[_activeZoneRoom]);
+
+        if (!_isEndingRun && _player.Hp <= 0 && _turnManager.State != TurnState.Defeat)
+        {
+            _turnManager.SetState(TurnState.Defeat);
+            return;
+        }
 
         if (_turnManager.IsExploring)
         {
@@ -188,14 +334,14 @@ public partial class GameManager : Node3D
         }
     }
 
-    // --- Combat callbacks ---
-
     private void OnCombatEnded()
     {
+        int room = Mathf.Clamp(_combatManager.LastKillRoom, 1, GameState.TotalRooms);
         bool wasBoss = _combatManager.LastKillWasBoss;
         bool wasElite = _combatManager.LastKillWasElite;
         int energy = DarkEnergy.EnergyForKill(wasBoss, wasElite);
-        _darkEnergy.Add(energy);
+        bool thresholdWasMet = _zoneEnergy[room].IsThresholdMet;
+        _zoneEnergy[room].Add(energy);
         GameState.RecordKill(wasBoss);
         _hudUpdater.AttackButton.Visible = false;
         _hudUpdater.AbilityButton.Visible = false;
@@ -206,22 +352,32 @@ public partial class GameManager : Node3D
             AudioManager.Instance?.PlayEnemyDeath();
 
         AudioManager.Instance?.StopCombatMusic();
+
+        if (_player.Hp <= 0)
+        {
+            _turnManager.SetState(TurnState.Defeat);
+            return;
+        }
+
+        if (wasBoss && room == GameState.BossRoom)
+        {
+            _hudUpdater.StatusText = "Boss defeated! The path home is clear.";
+            BeginVictory();
+            return;
+        }
+
         SpawnLoot(_combatManager.LastKillPosition);
         var droppedItem = _combatManager.LastKillItemDrop;
         if (droppedItem != null)
             SpawnInventoryItem(_combatManager.LastKillPosition + new Vector3(0.75f, 0, 0.4f), droppedItem);
 
-        if (_darkEnergy.IsThresholdMet)
+        if (room < GameState.TotalRooms && !thresholdWasMet && _zoneEnergy[room].IsThresholdMet)
         {
-            _bridgePoint.SetEnergyReady();
+            _zoneBridges[room]?.SetEnergyReady();
             AudioManager.Instance?.PlayLevelUp();
-
-            string clearText = _room >= GameState.TotalRooms
-                ? "Energy overflowing! Find the bridge point!"
-                : "Enough dark energy! Find the bridge point to cross!";
             _hudUpdater.StatusText = droppedItem == null
-                ? clearText
-                : $"{clearText} {droppedItem.Name} dropped nearby.";
+                ? "Enough dark energy! Find the bridge point to cross!"
+                : $"Enough dark energy! Find the bridge point to cross! {droppedItem.Name} dropped nearby.";
         }
         else
         {
@@ -231,8 +387,6 @@ public partial class GameManager : Node3D
                 : $"Enemy defeated! {energyText}. {droppedItem.Name} dropped nearby.";
         }
 
-        if (_player.Hp <= 0)
-            _turnManager.SetState(TurnState.Defeat);
     }
 
     private void OnTurnChanged(int newState)
@@ -251,13 +405,32 @@ public partial class GameManager : Node3D
         CallDeferred(nameof(ShowGameOverScreen));
     }
 
+    private void BeginVictory()
+    {
+        if (_isEndingRun)
+            return;
+
+        _isEndingRun = true;
+        _hudUpdater.HideAllCombatUI();
+        _player.SetPhysicsProcess(false);
+        _pauseScreen.Visible = false;
+        _modifyScreen.Visible = false;
+        GetTree().Paused = false;
+
+        CallDeferred(nameof(ShowVictoryScreen));
+    }
+
     private void ShowGameOverScreen()
     {
         GameState.FinalizeCurrentRun(RunOutcome.Defeat, _player?.Stats);
         GetTree().ChangeSceneToFile(Scenes.GameOverScreen);
     }
 
-    // --- Items and loot ---
+    private void ShowVictoryScreen()
+    {
+        GameState.FinalizeCurrentRun(RunOutcome.Victory, _player?.Stats);
+        GetTree().ChangeSceneToFile(Scenes.VictoryScreen);
+    }
 
     private void SpawnInventoryItem(Vector3 position, InventoryItem item)
     {
@@ -277,20 +450,20 @@ public partial class GameManager : Node3D
         {
             _hudUpdater.StatusText = $"Inventory full for {itemName}.";
         };
-        GetNode<Node3D>("World").AddChild(pickup);
+        _worldRoot.AddChild(pickup);
     }
 
-    private void SpawnCaveChest(Vector3 position)
+    private void SpawnCaveChest(Vector3 position, int room)
     {
         var chest = GD.Load<PackedScene>(Scenes.CaveChest).Instantiate<CaveChest>();
         chest.Position = position;
-        chest.Init(InventoryItem.CreateForRoom(_room));
+        chest.Init(InventoryItem.CreateForRoom(room));
         chest.Opened += itemName =>
         {
             _hudUpdater.StatusText = $"Opened cave cache: {itemName}.";
             AudioManager.Instance?.PlayPickup();
         };
-        GetNode<Node3D>("World").AddChild(chest);
+        _worldRoot.AddChild(chest);
     }
 
     private void SpawnLoot(Vector3 position)
@@ -308,6 +481,6 @@ public partial class GameManager : Node3D
             _hudUpdater.StatusText = $"Stashed: {description}";
             AudioManager.Instance?.PlayPickup();
         };
-        GetNode<Node3D>("World").AddChild(pickup);
+        _worldRoot.AddChild(pickup);
     }
 }

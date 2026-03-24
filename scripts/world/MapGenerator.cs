@@ -5,12 +5,12 @@ namespace ARPG;
 
 public partial class MapGenerator : Node3D
 {
-    private const float ChunkWidth = 110.0f;
-    private const float ChunkDepth = 112.0f;
+    public const float ChunkWidth = 110.0f;
+    public const float ChunkDepth = 112.0f;
     private const float ChunkThickness = 18.0f;
-    private const float PlayWidth = 104.0f;
-    private const float PlayDepth = 106.0f;
-    private const float GroundTop = 0.0f;
+    public const float PlayWidth = 104.0f;
+    public const float PlayDepth = 106.0f;
+    public const float GroundTop = 0.0f;
     private const float MidTop = 1.15f;
     private const float HighTop = 2.25f;
     private const float FloorThickness = 1.0f;

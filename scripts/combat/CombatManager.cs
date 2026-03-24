@@ -23,6 +23,7 @@ public partial class CombatManager : Node
     public bool LastKillWasBoss { get; private set; }
     public bool LastKillWasElite { get; private set; }
     public InventoryItem LastKillItemDrop { get; private set; }
+    public int LastKillRoom { get; private set; }
 
     [Signal]
     public delegate void CombatEndedEventHandler();
@@ -46,6 +47,7 @@ public partial class CombatManager : Node
     {
         _target = enemy;
         LastKillItemDrop = null;
+        LastKillRoom = 0;
         _target.OnCombatStarted();
         _turnManager.SetState(TurnState.Busy);
         _player.SetMovementLocked(true);
@@ -115,6 +117,7 @@ public partial class CombatManager : Node
         LastKillWasBoss = false;
         LastKillWasElite = false;
         LastKillItemDrop = null;
+        LastKillRoom = 0;
 
         var result = _target.ResolveIncomingDamage(damage, _player);
         GameState.RecordDamageDone(result.Damage);
@@ -149,6 +152,7 @@ public partial class CombatManager : Node
             LastKillWasBoss = _target.IsBoss;
             LastKillWasElite = _target.IsElite;
             LastKillItemDrop = _target.ItemDrop;
+            LastKillRoom = _target.ZoneRoom;
             _target.Die();
             _target = null;
             EmitSignal(SignalName.CombatEnded);
