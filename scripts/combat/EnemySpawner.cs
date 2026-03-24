@@ -7,26 +7,52 @@ namespace ARPG;
 /// </summary>
 public static class EnemySpawner
 {
-    public static int GetEnemyCount(int room)
+    public static EnemySpawnPlan[] BuildEncounter(int room)
     {
         return room switch
         {
-            1 => 3,
-            2 => 4,
-            3 => 4, // 1 boss + 3 normal
-            _ => 3
+            1 => new[]
+            {
+                EnemySpawnPlan.Normal(),
+                EnemySpawnPlan.Normal(),
+                EnemySpawnPlan.Elite(InventoryItem.CreateEnemyDrop(room)),
+            },
+            2 => new[]
+            {
+                EnemySpawnPlan.Normal(),
+                EnemySpawnPlan.Elite(InventoryItem.CreateEnemyDrop(room)),
+                EnemySpawnPlan.Normal(),
+                EnemySpawnPlan.Normal(),
+            },
+            3 => new[]
+            {
+                EnemySpawnPlan.Boss(InventoryItem.CreateEnemyDrop(room, fromBoss: true)),
+                EnemySpawnPlan.Elite(InventoryItem.CreateEnemyDrop(room)),
+                EnemySpawnPlan.Normal(),
+                EnemySpawnPlan.Normal(),
+            },
+            _ => new[]
+            {
+                EnemySpawnPlan.Normal(),
+                EnemySpawnPlan.Normal(),
+                EnemySpawnPlan.Elite(InventoryItem.CreateEnemyDrop(room)),
+            },
         };
     }
 
-    public static Enemy Spawn(Node3D container, Vector3 position, bool isBoss, int room, RoomMonsterEffectProfile profile)
+    public static Enemy Spawn(Node3D container, Vector3 position, EnemySpawnPlan plan, int room, RoomMonsterEffectProfile profile)
     {
         var enemy = new Enemy();
         enemy.Position = position;
         enemy.AddToGroup("enemies");
 
         enemy.ScaleForRoom(room);
+        enemy.AssignItemDrop(plan.ItemDrop);
 
-        if (isBoss)
+        if (plan.IsElite)
+            enemy.MakeElite();
+
+        if (plan.IsBoss)
         {
             enemy.MakeBoss();
             var sprite = SpriteFactory.CreateSprite(SpriteFactory.CreateBossTexture(), 0.07f);
@@ -36,15 +62,26 @@ public static class EnemySpawner
         else
         {
             int variant = SpriteFactory.RandomEnemyVariant();
-            enemy.VariantName = SpriteFactory.EnemyVariantName(variant);
-            var sprite = SpriteFactory.CreateSprite(SpriteFactory.CreateEnemyTexture(variant), 0.05f);
+            string baseName = SpriteFactory.EnemyVariantName(variant);
+            enemy.VariantName = baseName;
+            var sprite = SpriteFactory.CreateSprite(SpriteFactory.CreateEnemyTexture(variant), plan.IsElite ? 0.055f : 0.05f);
             sprite.Position = new Vector3(0, 0.25f, 0);
             enemy.AddChild(sprite);
+
+            if (plan.IsElite)
+                AddEliteMarker(enemy);
         }
 
         var shape = new CollisionShape3D();
-        shape.Shape = new BoxShape3D { Size = new Vector3(0.3f, 0.5f, 0.3f) };
-        shape.Position = new Vector3(0, 0.25f, 0);
+        shape.Shape = new BoxShape3D
+        {
+            Size = plan.IsBoss
+                ? new Vector3(0.42f, 0.72f, 0.42f)
+                : plan.IsElite
+                    ? new Vector3(0.34f, 0.58f, 0.34f)
+                    : new Vector3(0.3f, 0.5f, 0.3f)
+        };
+        shape.Position = new Vector3(0, plan.IsBoss ? 0.34f : plan.IsElite ? 0.29f : 0.25f, 0);
         enemy.AddChild(shape);
 
         container.AddChild(enemy);
@@ -56,5 +93,34 @@ public static class EnemySpawner
         enemy.SetMonsterEffects(effectPlan);
 
         return enemy;
+    }
+
+    private static void AddEliteMarker(Enemy enemy)
+    {
+        var mesh = new MeshInstance3D();
+        mesh.Name = "EliteMarker";
+        mesh.CastShadow = GeometryInstance3D.ShadowCastingSetting.Off;
+        mesh.Position = new Vector3(0, 0.03f, 0);
+        mesh.Mesh = new CylinderMesh
+        {
+            TopRadius = 0.26f,
+            BottomRadius = 0.31f,
+            Height = 0.04f,
+            RadialSegments = 18,
+        };
+
+        var markerColor = Palette.Accent;
+        markerColor.A = 0.82f;
+        mesh.MaterialOverride = new StandardMaterial3D
+        {
+            AlbedoColor = markerColor,
+            Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+            EmissionEnabled = true,
+            Emission = Palette.Accent,
+            EmissionEnergyMultiplier = 1.25f,
+            Roughness = 0.25f,
+        };
+
+        enemy.AddChild(mesh);
     }
 }

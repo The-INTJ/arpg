@@ -73,45 +73,83 @@ public partial class PlayerActionHandler : Node
             return;
         }
 
-        switch (item.Kind)
-        {
-            case ItemKind.HealingTonic:
-                UseHealingItem(slotIndex, item);
-                break;
-            case ItemKind.EmberBomb:
-                UseEmberBomb(slotIndex, item);
-                break;
-        }
-    }
-
-    private void UseHealingItem(int slotIndex, InventoryItem item)
-    {
-        if (_player.Hp >= _player.Stats.MaxHp)
-        {
-            EmitSignal(SignalName.StatusMessage, "Already at full HP.");
-            return;
-        }
-
-        int oldHp = _player.Hp;
-        _player.Hp = Mathf.Min(_player.Hp + item.Power, _player.Stats.MaxHp);
-        int healed = _player.Hp - oldHp;
-        _player.Stats.Inventory.RemoveAt(slotIndex);
-        EmitSignal(SignalName.StatusMessage, $"Used {item.Name}: +{healed} HP");
-
-        if (_turnManager.IsPlayerTurn)
-            _combatManager.PlayerUseUtilityItem();
-    }
-
-    private void UseEmberBomb(int slotIndex, InventoryItem item)
-    {
-        if (!_turnManager.IsPlayerTurn || _combatManager.Target == null || !IsInstanceValid(_combatManager.Target))
+        if (item.RequiresCombatTarget && (!_turnManager.IsPlayerTurn || _combatManager.Target == null || !IsInstanceValid(_combatManager.Target)))
         {
             EmitSignal(SignalName.StatusMessage, $"{item.Name} needs a combat target.");
             return;
         }
 
+        UseItem(slotIndex, item);
+    }
+
+    private void UseItem(int slotIndex, InventoryItem item)
+    {
+        bool used = false;
+        bool triggeredDamageAction = false;
+        string summary = string.Empty;
+
+        if (item.HealAmount > 0 && _player.Hp < _player.Stats.MaxHp)
+        {
+            int oldHp = _player.Hp;
+            _player.Hp = Mathf.Min(_player.Hp + item.HealAmount, _player.Stats.MaxHp);
+            int healed = _player.Hp - oldHp;
+
+            if (healed > 0)
+            {
+                summary = AppendSummary(summary, $"+{healed} HP");
+                used = true;
+            }
+        }
+
+        if (item.NegateNextHits > 0)
+        {
+            _player.Stats.QueueWard(item.NegateNextHits);
+            summary = AppendSummary(summary, "next hit blocked");
+            used = true;
+        }
+
+        if (item.NextAttackBonusDamage > 0)
+        {
+            _player.Stats.QueueAttackBonusDamage(item.NextAttackBonusDamage);
+            summary = AppendSummary(summary, $"+{item.NextAttackBonusDamage} next attack");
+            used = true;
+        }
+
+        if (item.NextAttackMultiplier > 1.001f)
+        {
+            summary = AppendSummary(summary, $"x{item.NextAttackMultiplier:0.#} next attack");
+            _player.Stats.QueueAttackMultiplier(item.NextAttackMultiplier);
+            used = true;
+        }
+
+        if (item.DirectDamage > 0)
+        {
+            summary = AppendSummary(summary, $"{item.DirectDamage} damage");
+            _combatManager.PlayerUseDamageItem(item.DirectDamage);
+            used = true;
+            triggeredDamageAction = true;
+        }
+
+        if (!used)
+        {
+            EmitSignal(SignalName.StatusMessage, item.HealAmount > 0
+                ? "Already at full HP."
+                : $"{item.Name} has no effect right now.");
+            return;
+        }
+
         _player.Stats.Inventory.RemoveAt(slotIndex);
-        EmitSignal(SignalName.StatusMessage, $"Used {item.Name} for {item.Power} damage!");
-        _combatManager.PlayerUseDamageItem(item.Power);
+        EmitSignal(SignalName.StatusMessage, $"Used {item.Name}: {summary}");
+
+        if (_turnManager.IsPlayerTurn && !triggeredDamageAction)
+            _combatManager.PlayerUseUtilityItem();
+    }
+
+    private static string AppendSummary(string summary, string addition)
+    {
+        if (string.IsNullOrWhiteSpace(summary))
+            return addition;
+
+        return $"{summary}, {addition}";
     }
 }

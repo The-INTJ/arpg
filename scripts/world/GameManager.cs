@@ -115,18 +115,15 @@ public partial class GameManager : Node3D
         var mapGen = GetNode<MapGenerator>("World/MapGenerator");
         var spawnPositions = mapGen.Generate();
         var enemiesContainer = GetNode<Node3D>("World/Enemies");
+        var encounter = EnemySpawner.BuildEncounter(_room);
 
-        int enemyCount = EnemySpawner.GetEnemyCount(_room);
-        for (int i = 0; i < enemyCount && i < spawnPositions.Length; i++)
-        {
-            bool isBoss = _isBossRoom && i == 0;
-            EnemySpawner.Spawn(enemiesContainer, spawnPositions[i], isBoss, _room, monsterEffectProfile);
-        }
+        for (int i = 0; i < encounter.Length && i < spawnPositions.Length; i++)
+            EnemySpawner.Spawn(enemiesContainer, spawnPositions[i], encounter[i], _room, monsterEffectProfile);
 
-        if (enemyCount < spawnPositions.Length)
-            SpawnMapItem(spawnPositions[enemyCount]);
+        if (encounter.Length < spawnPositions.Length)
+            SpawnMapItem(spawnPositions[encounter.Length]);
 
-        _totalEnemies = enemyCount;
+        _totalEnemies = encounter.Length;
         _hudUpdater.StatusText = GetRoomIntroText();
 
         AudioManager.Instance?.StartExploreMusic();
@@ -231,20 +228,28 @@ public partial class GameManager : Node3D
 
         AudioManager.Instance?.StopCombatMusic();
         SpawnLoot(_combatManager.LastKillPosition);
+        var droppedItem = _combatManager.LastKillItemDrop;
+        if (droppedItem != null)
+            SpawnInventoryItem(_combatManager.LastKillPosition + new Vector3(0.75f, 0, 0.4f), droppedItem);
 
         if (_killCount >= _totalEnemies)
         {
             _exitDoor.Unlock();
             AudioManager.Instance?.PlayLevelUp();
 
-            _hudUpdater.StatusText = _room >= GameState.TotalRooms
+            string clearText = _room >= GameState.TotalRooms
                 ? "All rooms cleared! Find the exit!"
                 : "Room cleared! Find the exit to proceed!";
+            _hudUpdater.StatusText = droppedItem == null
+                ? clearText
+                : $"{clearText} {droppedItem.Name} dropped nearby.";
         }
         else
         {
             int remaining = _totalEnemies - _killCount;
-            _hudUpdater.StatusText = $"Enemy defeated! {remaining} remaining";
+            _hudUpdater.StatusText = droppedItem == null
+                ? $"Enemy defeated! {remaining} remaining"
+                : $"Enemy defeated! {remaining} remaining. {droppedItem.Name} dropped nearby.";
         }
 
         if (_player.Hp <= 0)
@@ -277,9 +282,17 @@ public partial class GameManager : Node3D
 
     private void SpawnMapItem(Vector3 position)
     {
+        SpawnInventoryItem(position, InventoryItem.CreateForRoom(_room));
+    }
+
+    private void SpawnInventoryItem(Vector3 position, InventoryItem item)
+    {
+        if (item == null)
+            return;
+
         var pickup = GD.Load<PackedScene>(Scenes.ItemPickup).Instantiate<ItemPickup>();
         pickup.Position = position;
-        pickup.Init(InventoryItem.CreateForRoom(_room));
+        pickup.Init(item);
         pickup.Collected += (itemName, slotIndex) =>
         {
             string keyName = GameKeys.DisplayName(GameKeys.ItemSlot(slotIndex));

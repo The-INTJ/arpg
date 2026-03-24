@@ -52,7 +52,8 @@ When multiple humans and AIs are working here, prefer narrow ownership:
 
 - Treat `scripts/GameManager.cs` as a coordination hotspot. Avoid mixing unrelated features in the same change.
 - Treat `scripts/PlayerStats.cs`, `scripts/GameState.cs`, and `scripts/CombatManager.cs` as shared core systems. Read their current callers before editing them.
-- If you add runtime-created UI or nodes in code, document where they are created and who owns them.
+- Prefer `.tscn` scene files for UI work. Only create UI controls in code when that is genuinely the best Godot pattern for the job, and document that choice if you do it.
+- If you add runtime-created nodes in code, document where they are created and who owns them.
 - If you add a reusable system, give it a single obvious home instead of splitting logic across many temporary helpers.
 
 ## Current Stage

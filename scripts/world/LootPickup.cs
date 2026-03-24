@@ -41,11 +41,13 @@ public partial class LootPickup : Area3D
         _nameLabel.Text = modifier.Description;
         _nameLabel.Modulate = Palette.Accent;
         _nameLabel.OutlineModulate = Palette.OutlineBlack;
+        _nameLabel.Visible = false;
 
         _promptLabel = GetNode<Label3D>("PromptLabel");
         _promptLabel.Text = $"({GameKeys.DisplayName(GameKeys.Attack)}) Equip  |  ({GameKeys.DisplayName(GameKeys.Ability)}) Backpack";
         _promptLabel.Modulate = Palette.TextLight;
         _promptLabel.OutlineModulate = Palette.OutlineBlack;
+        _promptLabel.Visible = false;
 
         var tween = CreateTween().SetLoops();
         tween.TweenProperty(mesh, "position:y", 0.5f, 0.8f)
@@ -90,6 +92,7 @@ public partial class LootPickup : Area3D
         {
             _playerInRange = true;
             _nearbyPlayer = player;
+            _nameLabel.Visible = true;
             _promptLabel.Visible = true;
         }
     }
@@ -100,6 +103,7 @@ public partial class LootPickup : Area3D
         {
             _playerInRange = false;
             _nearbyPlayer = null;
+            _nameLabel.Visible = false;
             _promptLabel.Visible = false;
         }
     }

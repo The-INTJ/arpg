@@ -1,3 +1,4 @@
+using System.Linq;
 using Godot;
 
 namespace ARPG;
@@ -20,6 +21,7 @@ public partial class CombatManager : Node
     /// <summary>Where the last killed enemy stood — used for loot spawning.</summary>
     public Vector3 LastKillPosition { get; private set; }
     public bool LastKillWasBoss { get; private set; }
+    public InventoryItem LastKillItemDrop { get; private set; }
 
     [Signal]
     public delegate void CombatEndedEventHandler();
@@ -42,6 +44,7 @@ public partial class CombatManager : Node
     public void EnterCombat(Enemy enemy)
     {
         _target = enemy;
+        LastKillItemDrop = null;
         _target.OnCombatStarted();
         _turnManager.SetState(TurnState.Busy);
         _player.SetPhysicsProcess(false);
@@ -66,7 +69,8 @@ public partial class CombatManager : Node
     public void PlayerAttack()
     {
         if (!_turnManager.IsPlayerTurn || _target == null) return;
-        ResolveDamageAction(_player.AttackDamage, true);
+        int damage = _player.Stats.ConsumePreparedAttackDamage(_player.AttackDamage, out string feedback);
+        ResolveDamageAction(damage, true, feedback);
     }
 
     public void PlayerAbility()
@@ -78,7 +82,8 @@ public partial class CombatManager : Node
 
         int damage = (int)(_player.AttackDamage * ability.DamageMultiplier);
         ability.Use();
-        ResolveDamageAction(damage, true);
+        damage = _player.Stats.ConsumePreparedAttackDamage(damage, out string feedback);
+        ResolveDamageAction(damage, true, feedback);
     }
 
     public void PlayerUseDamageItem(int damage)
@@ -97,10 +102,11 @@ public partial class CombatManager : Node
         timer.Timeout += OnEnemyRetaliate;
     }
 
-    private void ResolveDamageAction(int damage, bool tickAbilityCooldown)
+    private void ResolveDamageAction(int damage, bool tickAbilityCooldown, string extraFeedback = null)
     {
         _turnManager.SetState(TurnState.Busy);
         LastKillWasBoss = false;
+        LastKillItemDrop = null;
 
         var result = _target.ResolveIncomingDamage(damage, _player);
         GameState.RecordDamageDone(result.Damage);
@@ -111,7 +117,7 @@ public partial class CombatManager : Node
         if (result.RetaliationDamage > 0)
             SpawnDamageNumber(_player.GlobalPosition + Vector3.Up * 0.7f, result.RetaliationDamage, true);
 
-        EmitCombatFeedback(result.BuildFeedbackText());
+        EmitCombatFeedback(CombineFeedback(extraFeedback, result.BuildFeedbackText()));
         _shakeTimeLeft = result.Damage > 0 || result.RetaliationDamage > 0 ? 0.15f : 0.08f;
 
         if (tickAbilityCooldown)
@@ -124,6 +130,7 @@ public partial class CombatManager : Node
         {
             LastKillPosition = _target.GlobalPosition;
             LastKillWasBoss = _target.IsBoss;
+            LastKillItemDrop = _target.ItemDrop;
             _target.Die();
             _target = null;
             EmitSignal(SignalName.CombatEnded);
@@ -156,7 +163,8 @@ public partial class CombatManager : Node
         _target.OnOwnerTurnStarted();
 
         var result = _target.ResolveOutgoingDamage(_player);
-        SpawnDamageNumber(_player.GlobalPosition + Vector3.Up * 0.7f, result.Damage, true);
+        if (result.Damage > 0)
+            SpawnDamageNumber(_player.GlobalPosition + Vector3.Up * 0.7f, result.Damage, true);
         if (result.Damage > 0)
             AudioManager.Instance?.PlayPlayerHit();
         if (result.HealingAmount > 0)
@@ -237,5 +245,12 @@ public partial class CombatManager : Node
             return;
 
         EmitSignal(SignalName.CombatFeedback, text);
+    }
+
+    private static string CombineFeedback(params string[] parts)
+    {
+        return string.Join("  ", parts
+            .Where(part => !string.IsNullOrWhiteSpace(part))
+            .Distinct());
     }
 }

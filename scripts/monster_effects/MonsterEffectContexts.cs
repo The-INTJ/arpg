@@ -20,6 +20,7 @@ public partial class MonsterEffectTriggerRecord
 public abstract partial class MonsterEffectResolutionContext
 {
     private readonly List<MonsterEffectTriggerRecord> _triggers = new();
+    private readonly List<string> _notes = new();
 
     public IReadOnlyList<MonsterEffectTriggerRecord> Triggers => _triggers;
 
@@ -32,9 +33,18 @@ public abstract partial class MonsterEffectResolutionContext
         _triggers.Add(new MonsterEffectTriggerRecord(instance, message));
     }
 
+    public void AddNote(string message)
+    {
+        if (!string.IsNullOrWhiteSpace(message))
+            _notes.Add(message);
+    }
+
     public string BuildFeedbackText()
     {
-        return string.Join("  ", _triggers.Select(trigger => trigger.Message).Distinct());
+        return string.Join("  ", _triggers.Select(trigger => trigger.Message)
+            .Concat(_notes)
+            .Where(message => !string.IsNullOrWhiteSpace(message))
+            .Distinct());
     }
 }
 
@@ -58,6 +68,11 @@ public partial class MonsterIncomingDamageContext : MonsterEffectResolutionConte
     public void AddRetaliationDamage(int amount)
     {
         RetaliationDamage += Math.Max(0, amount);
+    }
+
+    public void SetRetaliationDamage(int amount)
+    {
+        RetaliationDamage = Math.Max(0, amount);
     }
 }
 

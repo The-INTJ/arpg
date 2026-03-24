@@ -9,6 +9,7 @@ Today it works like this:
 - the player has a small run inventory owned by `PlayerStats`
 - inventory capacity starts at 2 slots
 - one item pickup is spawned per room
+- elite enemies can also drop item pickups on death
 - pickups auto-store into the first open slot
 - hotkeys are reserved from `Z` through `M`, but only the first two slots are active by default because capacity is 2
 
@@ -40,6 +41,7 @@ The item bar is built in code by `GameManager`, and the currently reachable slot
 
 - the first `N` positions are used for enemies
 - the next free position is used for the room's one `ItemPickup`
+- tougher enemies may also spawn an `ItemPickup` next to their normal modifier loot when they die
 
 `ItemPickup` is auto-collect, not button-confirmed:
 
@@ -52,16 +54,26 @@ If the player frees a slot while still standing inside the pickup, the pickup re
 
 ## Current Item Types
 
-The current MVP includes two consumables:
+Current consumables now include:
 
 - `HealingTonic`
   - restores HP immediately
   - can be used in exploration
-  - if used on the player turn during combat, it still consumes the turn
 - `EmberBomb`
   - deals direct damage to the current combat target
   - can only be used when there is an active combat target on the player turn
   - consumes the turn
+- `DeeprootFlask`
+  - larger heal than `HealingTonic`
+- `StarfireBomb`
+  - larger direct-damage bomb than `EmberBomb`
+- `SannosShield`
+  - the next incoming hit on the player deals 0 damage
+  - can be prepared in exploration and carried into combat
+- `MarauderDraught`
+  - the player's next attack gains flat bonus damage
+- `GiantSeal`
+  - the player's next attack gains a damage multiplier
 
 The item bar shows:
 
@@ -77,6 +89,8 @@ The item bar shows:
 - `PlayerUseUtilityItem()`
 
 These are intentionally small for now. They exist so item use can plug into the current combat loop without bypassing turn handoff.
+
+Prepared items such as `SannosShield`, `MarauderDraught`, and `GiantSeal` are stored on `PlayerStats` as pending combat boons so they can persist across exploration and into the next fight.
 
 ## Important Design Intent
 

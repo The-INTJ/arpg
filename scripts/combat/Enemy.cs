@@ -16,13 +16,20 @@ public partial class Enemy : StaticBody3D
     public int AttackDamage = 3;
     public float SightRange = 4.0f;
     public bool IsBoss { get; private set; }
+    public bool IsElite { get; private set; }
     public string VariantName { get; set; }
+    public InventoryItem ItemDrop { get; private set; }
 
     public bool HasAggro { get; set; }
 
     public float HpPercent => MaxHp > 0 ? (float)Hp / MaxHp : 0f;
     public bool IsDead => Hp <= 0;
     public IReadOnlyList<MonsterEffectInstance> MonsterEffects => _monsterEffects;
+    public string DisplayName => IsBoss
+        ? "Boss"
+        : IsElite
+            ? $"Elite {VariantName ?? "Enemy"}"
+            : (VariantName ?? "Enemy");
 
     /// <summary>
     /// Scale this enemy's stats for the given room number (1-based).
@@ -47,6 +54,20 @@ public partial class Enemy : StaticBody3D
         Hp = MaxHp;
         AttackDamage = (int)(AttackDamage * 1.8f);
         SightRange = 6.0f;
+    }
+
+    public void MakeElite()
+    {
+        IsElite = true;
+        MaxHp = (int)(MaxHp * 1.7f);
+        Hp = MaxHp;
+        AttackDamage = (int)(AttackDamage * 1.4f);
+        SightRange = 5.0f;
+    }
+
+    public void AssignItemDrop(InventoryItem item)
+    {
+        ItemDrop = item;
     }
 
     public void TakeDamage(int amount)
@@ -116,7 +137,13 @@ public partial class Enemy : StaticBody3D
             TakeDamage(context.Damage);
 
         if (attacker != null && context.RetaliationDamage > 0)
-            attacker.Hp = Mathf.Max(0, attacker.Hp - context.RetaliationDamage);
+        {
+            int finalRetaliationDamage = attacker.Stats.ResolveIncomingDamage(context.RetaliationDamage, out string wardFeedback);
+            context.SetRetaliationDamage(finalRetaliationDamage);
+            context.AddNote(wardFeedback);
+            if (finalRetaliationDamage > 0)
+                attacker.Hp = Mathf.Max(0, attacker.Hp - finalRetaliationDamage);
+        }
 
         FlashTriggeredBadges(context.Triggers);
         CleanupExpiredEffects();
@@ -130,8 +157,15 @@ public partial class Enemy : StaticBody3D
             effect.ApplyOutgoingDamage(context);
 
         context.Damage = Mathf.Max(0, context.Damage);
-        if (player != null && context.Damage > 0)
-            player.Hp = Mathf.Max(0, player.Hp - context.Damage);
+        if (player != null)
+        {
+            int finalDamage = player.Stats.ResolveIncomingDamage(context.Damage, out string wardFeedback);
+            context.Damage = finalDamage;
+            context.AddNote(wardFeedback);
+
+            if (finalDamage > 0)
+                player.Hp = Mathf.Max(0, player.Hp - finalDamage);
+        }
         if (context.Damage > 0 && context.HealingAmount > 0)
             Heal(context.HealingAmount);
 
@@ -149,8 +183,8 @@ public partial class Enemy : StaticBody3D
         HasAggro = true;
 
         var label = new Label3D();
-        label.Text = IsBoss ? "!!!" : "!";
-        label.FontSize = IsBoss ? 28 : 20;
+        label.Text = IsBoss ? "!!!" : IsElite ? "!!" : "!";
+        label.FontSize = IsBoss ? 28 : IsElite ? 24 : 20;
         label.Billboard = BaseMaterial3D.BillboardModeEnum.Enabled;
         label.NoDepthTest = false;
         label.FixedSize = true;
@@ -158,7 +192,7 @@ public partial class Enemy : StaticBody3D
         label.Modulate = new Color(1.0f, 0.3f, 0.2f);
         label.OutlineSize = 6;
         label.OutlineModulate = new Color(0, 0, 0);
-        label.Position = new Vector3(0, IsBoss ? 0.85f : 0.55f, 0);
+        label.Position = new Vector3(0, IsBoss ? 0.85f : IsElite ? 0.65f : 0.55f, 0);
         label.Name = "AggroIndicator";
         AddChild(label);
 
@@ -246,7 +280,7 @@ public partial class Enemy : StaticBody3D
     {
         if (_effectBadgeAnchor != null && IsInstanceValid(_effectBadgeAnchor))
         {
-            _effectBadgeAnchor.Position = new Vector3(0, IsBoss ? 0.75f : 0.55f, 0);
+            _effectBadgeAnchor.Position = new Vector3(0, IsBoss ? 0.75f : IsElite ? 0.62f : 0.55f, 0);
             return;
         }
 
@@ -258,7 +292,7 @@ public partial class Enemy : StaticBody3D
             AddChild(_effectBadgeAnchor);
         }
 
-        _effectBadgeAnchor.Position = new Vector3(0, IsBoss ? 0.75f : 0.55f, 0);
+        _effectBadgeAnchor.Position = new Vector3(0, IsBoss ? 0.75f : IsElite ? 0.62f : 0.55f, 0);
     }
 
     private void FlashTriggeredBadges(IReadOnlyList<MonsterEffectTriggerRecord> triggers)

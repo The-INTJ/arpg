@@ -93,6 +93,7 @@ GameManager
 
 - `MapGenerator` places walls procedurally and returns a shuffled spawn set.
 - `GameManager` uses the first positions for enemies and the next free position for the room's one item pickup.
+- tougher elite enemies can also drop consumable `ItemPickup` rewards on death
 - `GameManager` decides how many enemies exist for a room and whether one is a boss.
 
 ### UI
@@ -102,6 +103,7 @@ GameManager
   - some nodes are authored in `Game.tscn`
   - several widgets are created directly in `GameManager`
   - `PauseScreen` and `ModifyStatsSimple` still build most of their own UI in code
+- preferred direction: future UI changes should move toward authored `.tscn` scenes unless runtime generation is clearly the better Godot pattern
 
 ## State Ownership
 

@@ -224,8 +224,7 @@ public partial class GameHudUpdater : Node
 
         _enemyHpDisplay.Visible = true;
         _enemyHpBar.Value = enemy.HpPercent;
-        string label = enemy.IsBoss ? "BOSS" : (enemy.VariantName ?? "Enemy");
-        _enemyHpLabel.Text = $"{label}  {enemy.Hp}/{enemy.MaxHp}";
+        _enemyHpLabel.Text = $"{enemy.DisplayName}  {enemy.Hp}/{enemy.MaxHp}";
         _enemyEffectInfoLabel.Text = enemy.GetEffectInfoText();
 
         var screenPos = _camera.UnprojectPosition(worldPos);

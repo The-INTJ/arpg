@@ -10,15 +10,18 @@ namespace ARPG;
 public partial class PlayerStats
 {
     // Base values set by archetype.
-    private int _baseMaxHp = 15;
+    private int _baseMaxHp = 30;
     private int _baseAttackDamage = 4;
     private float _baseMoveSpeed = 5.5f;
     private float _baseAttackRange = 3.5f;
     private int _baseInventorySlots = 2;
     private Weapon _weapon;
+    private int _pendingWardCharges;
+    private int _pendingAttackBonusDamage;
+    private float _pendingAttackMultiplier = 1.0f;
 
     public float SprintMultiplier { get; set; } = 2.0f;
-    public float HpRegenRate { get; set; } = 0.2f; // 1 HP per 5 seconds
+    public float HpRegenRate { get; set; } = 0.0f;
 
     private readonly List<AppliedModifierEffect> _modifiers = new();
     private readonly List<Modifier> _backpack = new();
@@ -44,6 +47,9 @@ public partial class PlayerStats
     public float AttackRange => GetEffectiveStatValue(StatTarget.AttackRange);
     public int DesiredInventorySlotCount => ClampInventorySlots((int)GetEffectiveStatValue(StatTarget.InventorySlots));
     public int InventorySlotCount => Inventory.Capacity;
+    public int PendingWardCharges => _pendingWardCharges;
+    public int PendingAttackBonusDamage => _pendingAttackBonusDamage;
+    public float PendingAttackMultiplier => _pendingAttackMultiplier;
 
     // Current mutable state.
     public int CurrentHp { get; set; }
@@ -133,6 +139,61 @@ public partial class PlayerStats
     {
         int desiredCapacity = ClampInventorySlots((int)PreviewStatWithEffects(StatTarget.InventorySlots, extraEffects));
         return Math.Max(desiredCapacity, Inventory.MinimumRequiredCapacity);
+    }
+
+    public void QueueWard(int charges)
+    {
+        _pendingWardCharges += Math.Max(0, charges);
+    }
+
+    public void QueueAttackBonusDamage(int amount)
+    {
+        _pendingAttackBonusDamage += Math.Max(0, amount);
+    }
+
+    public void QueueAttackMultiplier(float multiplier)
+    {
+        _pendingAttackMultiplier *= Math.Max(1.0f, multiplier);
+    }
+
+    public int ConsumePreparedAttackDamage(int baseDamage, out string feedback)
+    {
+        int resolvedDamage = Math.Max(0, baseDamage);
+        List<string> notes = null;
+
+        if (_pendingAttackBonusDamage > 0)
+        {
+            resolvedDamage += _pendingAttackBonusDamage;
+            notes ??= new List<string>();
+            notes.Add($"+{_pendingAttackBonusDamage} damage");
+            _pendingAttackBonusDamage = 0;
+        }
+
+        if (_pendingAttackMultiplier > 1.001f)
+        {
+            resolvedDamage = Math.Max(0, (int)MathF.Round(resolvedDamage * _pendingAttackMultiplier));
+            notes ??= new List<string>();
+            notes.Add($"x{_pendingAttackMultiplier:0.#} power");
+            _pendingAttackMultiplier = 1.0f;
+        }
+
+        feedback = notes == null ? string.Empty : $"Empowered attack: {string.Join(", ", notes)}";
+        return resolvedDamage;
+    }
+
+    public int ResolveIncomingDamage(int amount, out string feedback)
+    {
+        int resolvedDamage = Math.Max(0, amount);
+
+        if (resolvedDamage > 0 && _pendingWardCharges > 0)
+        {
+            _pendingWardCharges--;
+            feedback = "A ward absorbs the hit.";
+            return 0;
+        }
+
+        feedback = string.Empty;
+        return resolvedDamage;
     }
 
     private float GetBase(StatTarget target) => target switch

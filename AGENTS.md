@@ -31,6 +31,7 @@ Multiplayer is a core consideration from day one. This doesn't mean every featur
 - **Project must be runnable after every change** — don't leave it broken between commits
 - **Primitive meshes + procedural sprites** — characters use `SpriteFactory` pixel art; environment uses primitive meshes
 - **Hardcode gameplay values** in scripts for now — data-driven content comes later when we have enough systems to justify it
+- **Prefer scene-authored UI** — AI contributors should update or add `.tscn` files for UI by default, and only build UI in code when that is clearly the Godot best-practice solution for the task
 
 ## Godot C# Patterns
 
@@ -41,6 +42,7 @@ Multiplayer is a core consideration from day one. This doesn't mean every featur
 - Signal connections: prefer editor or `Connect()` in `_Ready()`
 - Node references: `GetNode<Type>("path")` or `[Export] private NodePath`
 - Dynamic node creation: use `new Enemy()` directly so the C# type is correct, not `SetScript()`
+- For menus, HUD, overlays, and reusable controls, prefer authored scenes over programmatic control trees even if the scene edit is more tedious
 
 ## Shared Systems
 

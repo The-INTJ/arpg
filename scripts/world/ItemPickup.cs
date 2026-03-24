@@ -35,11 +35,13 @@ public partial class ItemPickup : Area3D
         _nameLabel.Text = item.Name;
         _nameLabel.Modulate = item.DisplayColor;
         _nameLabel.OutlineModulate = Palette.BgDark;
+        _nameLabel.Visible = false;
 
         _promptLabel = GetNode<Label3D>("PromptLabel");
         _promptLabel.Text = item.Description;
         _promptLabel.Modulate = Palette.TextLight;
         _promptLabel.OutlineModulate = Palette.BgDark;
+        _promptLabel.Visible = false;
 
         var tween = CreateTween().SetLoops();
         tween.TweenProperty(mesh, "position:y", 0.48f, 0.8f)
@@ -66,6 +68,7 @@ public partial class ItemPickup : Area3D
             return;
 
         _nearbyPlayer = player;
+        _nameLabel.Visible = true;
         TryCollect();
     }
 
@@ -75,6 +78,7 @@ public partial class ItemPickup : Area3D
         {
             _nearbyPlayer = null;
             _inventoryFullShown = false;
+            _nameLabel.Visible = false;
             _promptLabel.Visible = false;
         }
     }
@@ -92,6 +96,7 @@ public partial class ItemPickup : Area3D
         }
 
         _promptLabel.Text = "Inventory Full";
+        _nameLabel.Visible = true;
         _promptLabel.Visible = true;
         if (!_inventoryFullShown)
             EmitSignal(SignalName.InventoryFull, _item.Name);

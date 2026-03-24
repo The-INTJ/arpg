@@ -44,6 +44,12 @@ Several systems are created directly in code rather than instanced from `.tscn` 
 
 This works, but future contributors need a clear rule for when code creation is preferred over packed scenes.
 
+For UI specifically, the rule should be strict:
+
+- default to editing or adding `.tscn` scenes for menus, HUD widgets, overlays, and reusable controls
+- do not build programmatic UI just because it is faster for an agent
+- only create UI in code when the task is inherently runtime-generated and scene authoring would be the worse Godot solution
+
 ### Thin Scene Controllers Outside Gameplay
 
 Menu and victory scenes are straightforward:
@@ -95,6 +101,7 @@ Prefer `.tscn` scenes when a thing benefits from editor ownership, reusable stru
 - authored pickups
 - reusable HUD widgets
 - encounter rooms
+- nearly all UI
 
 ### Use Plain Classes For Pure Data And Math
 

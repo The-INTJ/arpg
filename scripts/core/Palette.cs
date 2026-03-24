@@ -23,6 +23,13 @@ public static class Palette
 	public static readonly Color EnemyBody = new(0.63f, 0.32f, 0.18f);
 	public static readonly Color EnemyHead = new(0.83f, 0.39f, 0.17f);
 	public static readonly Color EnemyGlow = new(0.5f, 0.15f, 0.0f);
+	public static readonly Color ItemHeal = new(0.35f, 0.82f, 0.56f);
+	public static readonly Color ItemHealMajor = new(0.62f, 0.95f, 0.68f);
+	public static readonly Color ItemBomb = new(0.92f, 0.46f, 0.16f);
+	public static readonly Color ItemBombMajor = new(1.0f, 0.74f, 0.28f);
+	public static readonly Color ItemWard = new(0.52f, 0.82f, 0.94f);
+	public static readonly Color ItemPower = new(0.90f, 0.57f, 0.24f);
+	public static readonly Color ItemArcane = new(0.80f, 0.66f, 0.96f);
 	public static readonly Color EffectInvulnerable = new(0.70f, 0.91f, 0.95f);
 	public static readonly Color EffectBulwark = new(0.90f, 0.76f, 0.34f);
 	public static readonly Color EffectThorns = new(0.48f, 0.78f, 0.42f);

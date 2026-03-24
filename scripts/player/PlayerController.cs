@@ -81,7 +81,7 @@ public partial class PlayerController : CharacterBody3D
 
     public void TickRegen(float delta)
     {
-        if (Stats.CurrentHp >= Stats.MaxHp) return;
+        if (Stats.HpRegenRate <= 0.0f || Stats.CurrentHp >= Stats.MaxHp) return;
 
         _regenAccumulator += Stats.HpRegenRate * delta;
         if (_regenAccumulator >= 1.0f)
