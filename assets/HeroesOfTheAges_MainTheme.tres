@@ -71,6 +71,38 @@ content_margin_top = 12.0
 content_margin_right = 12.0
 content_margin_bottom = 12.0
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_section_panel"]
+bg_color = Color(0.12, 0.09, 0.06, 0.92)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.5, 0.45, 0.4, 0.55)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+content_margin_left = 18.0
+content_margin_top = 18.0
+content_margin_right = 18.0
+content_margin_bottom = 18.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_confirm_panel"]
+bg_color = Color(0.16, 0.11, 0.08, 0.98)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.83, 0.65, 0.22, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+content_margin_left = 22.0
+content_margin_top = 22.0
+content_margin_right = 22.0
+content_margin_bottom = 22.0
+
 [resource]
 Button/colors/font_color = Color(0.96, 0.9, 0.8, 1)
 Button/colors/font_hover_color = Color(0.96, 0.9, 0.8, 1)
@@ -89,3 +121,7 @@ Label/constants/shadow_offset_x = 2
 Label/constants/shadow_offset_y = 2
 Label/font_sizes/font_size = 18
 PanelContainer/styles/panel = SubResource("StyleBoxFlat_panel")
+SectionPanel/base_type = "PanelContainer"
+SectionPanel/styles/panel = SubResource("StyleBoxFlat_section_panel")
+ConfirmPanel/base_type = "PanelContainer"
+ConfirmPanel/styles/panel = SubResource("StyleBoxFlat_confirm_panel")

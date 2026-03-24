@@ -9,10 +9,7 @@ public partial class RunHistorySnippet : VBoxContainer
 
     public override void _Ready()
     {
-        AddThemeConstantOverride("separation", 10);
-        SizeFlagsVertical = SizeFlags.ExpandFill;
-
-        BuildUi();
+        _historyList = GetNode<VBoxContainer>("ScrollContainer/HistoryList");
         RefreshFromGameState();
     }
 
@@ -36,31 +33,6 @@ public partial class RunHistorySnippet : VBoxContainer
 
         for (int i = 0; i < entries.Count; i++)
             _historyList.AddChild(CreateRunCard(entries[i], i == 0));
-    }
-
-    private void BuildUi()
-    {
-        var title = new Label();
-        title.Text = "Run History";
-        title.AddThemeColorOverride("font_color", Palette.Accent);
-        title.AddThemeFontSizeOverride("font_size", 28);
-        title.HorizontalAlignment = HorizontalAlignment.Center;
-        AddChild(title);
-
-        var subtitle = CreateMutedLabel("Latest run first.");
-        subtitle.HorizontalAlignment = HorizontalAlignment.Center;
-        AddChild(subtitle);
-
-        var scroll = new ScrollContainer();
-        scroll.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        scroll.SizeFlagsVertical = SizeFlags.ExpandFill;
-        scroll.CustomMinimumSize = new Vector2(0, 320);
-        AddChild(scroll);
-
-        _historyList = new VBoxContainer();
-        _historyList.AddThemeConstantOverride("separation", 12);
-        _historyList.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        scroll.AddChild(_historyList);
     }
 
     private Control CreateRunCard(RunScoreEntry entry, bool isLatest)

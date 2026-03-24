@@ -20,8 +20,9 @@ public partial class ItemPickup : Area3D
     {
         _item = item;
 
-        var mesh = new MeshInstance3D();
-        var sphere = new SphereMesh { Radius = 0.18f, Height = 0.36f };
+        // Apply runtime properties to scene nodes
+        var mesh = GetNode<MeshInstance3D>("OrbMesh");
+        var sphere = (SphereMesh)mesh.Mesh;
         sphere.Material = new StandardMaterial3D
         {
             AlbedoColor = item.DisplayColor,
@@ -29,40 +30,16 @@ public partial class ItemPickup : Area3D
             Emission = item.DisplayColor,
             EmissionEnergyMultiplier = 2.0f,
         };
-        mesh.Mesh = sphere;
-        mesh.Position = Vector3.Up * 0.3f;
-        AddChild(mesh);
 
-        _nameLabel = new Label3D();
+        _nameLabel = GetNode<Label3D>("NameLabel");
         _nameLabel.Text = item.Name;
-        _nameLabel.FontSize = 14;
-        _nameLabel.Billboard = BaseMaterial3D.BillboardModeEnum.Enabled;
-        _nameLabel.NoDepthTest = true;
-        _nameLabel.FixedSize = true;
-        _nameLabel.PixelSize = 0.004f;
         _nameLabel.Modulate = item.DisplayColor;
-        _nameLabel.OutlineSize = 4;
         _nameLabel.OutlineModulate = Palette.BgDark;
-        _nameLabel.Position = new Vector3(0, 0.72f, 0);
-        AddChild(_nameLabel);
 
-        _promptLabel = new Label3D();
+        _promptLabel = GetNode<Label3D>("PromptLabel");
         _promptLabel.Text = item.Description;
-        _promptLabel.FontSize = 12;
-        _promptLabel.Billboard = BaseMaterial3D.BillboardModeEnum.Enabled;
-        _promptLabel.NoDepthTest = true;
-        _promptLabel.FixedSize = true;
-        _promptLabel.PixelSize = 0.004f;
         _promptLabel.Modulate = Palette.TextLight;
-        _promptLabel.OutlineSize = 3;
         _promptLabel.OutlineModulate = Palette.BgDark;
-        _promptLabel.Position = new Vector3(0, 1.0f, 0);
-        _promptLabel.Visible = false;
-        AddChild(_promptLabel);
-
-        var shape = new CollisionShape3D();
-        shape.Shape = new SphereShape3D { Radius = 1.25f };
-        AddChild(shape);
 
         var tween = CreateTween().SetLoops();
         tween.TweenProperty(mesh, "position:y", 0.48f, 0.8f)

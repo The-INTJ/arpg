@@ -16,50 +16,13 @@ public partial class PauseScreen : Control
         Visible = false;
         MouseFilter = MouseFilterEnum.Stop;
 
-        // Semi-transparent dark overlay
-        var overlay = new ColorRect();
-        overlay.Color = new Color(0, 0, 0, 0.6f);
-        overlay.SetAnchorsPreset(LayoutPreset.FullRect);
-        overlay.MouseFilter = MouseFilterEnum.Stop;
-        AddChild(overlay);
+        _resumeButton = GetNode<Button>("VBox/ResumeButton");
+        _statsButton = GetNode<Button>("VBox/StatsButton");
+        _quitButton = GetNode<Button>("VBox/QuitButton");
 
-        // Center container
-        var vbox = new VBoxContainer();
-        vbox.SetAnchorsPreset(LayoutPreset.Center);
-        vbox.GrowHorizontal = GrowDirection.Both;
-        vbox.GrowVertical = GrowDirection.Both;
-        vbox.CustomMinimumSize = new Vector2(300, 0);
-        vbox.AddThemeConstantOverride("separation", 16);
-        AddChild(vbox);
-
-        // Title
-        var title = new Label();
-        title.Text = "PAUSED";
-        title.HorizontalAlignment = HorizontalAlignment.Center;
-        title.AddThemeColorOverride("font_color", Palette.Accent);
-        title.AddThemeFontSizeOverride("font_size", 36);
-        vbox.AddChild(title);
-
-        // Resume button
-        _resumeButton = new Button();
-        _resumeButton.Text = "Resume";
-        Palette.StyleButton(_resumeButton, 22);
         _resumeButton.Pressed += OnResume;
-        vbox.AddChild(_resumeButton);
-
-        // Stats button
-        _statsButton = new Button();
-        _statsButton.Text = "View Stats";
-        Palette.StyleButton(_statsButton, 22);
         _statsButton.Pressed += OnViewStats;
-        vbox.AddChild(_statsButton);
-
-        // Quit to menu
-        _quitButton = new Button();
-        _quitButton.Text = "Quit to Menu";
-        Palette.StyleButton(_quitButton, 22);
         _quitButton.Pressed += OnQuit;
-        vbox.AddChild(_quitButton);
     }
 
     public override void _UnhandledInput(InputEvent @event)

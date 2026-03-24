@@ -8,14 +8,7 @@ public partial class DamageNumber : Node3D
 
     public override void _Ready()
     {
-        _label = new Label3D();
-        _label.Billboard = BaseMaterial3D.BillboardModeEnum.Enabled;
-        _label.NoDepthTest = true;
-        _label.FixedSize = true;
-        _label.PixelSize = 0.006f;
-        _label.FontSize = 24;
-        _label.OutlineSize = 6;
-        AddChild(_label);
+        _label = GetNode<Label3D>("Label3D");
     }
 
     public void Setup(int amount, bool isPlayerDamage)

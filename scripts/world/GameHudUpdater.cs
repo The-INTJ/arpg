@@ -101,7 +101,8 @@ public partial class GameHudUpdater : Node
 
     public void RebuildItemBar()
     {
-        var (labels, styles) = GameHudBuilder.BuildItemBar(_canvas, _player.Stats.Inventory.Capacity);
+        var hbox = _canvas.GetNode<HBoxContainer>("ItemBarCenter/ItemBarHBox");
+        var (labels, styles) = GameHudBuilder.BuildItemBar(hbox, _player.Stats.Inventory.Capacity);
         _itemSlotLabels = labels;
         _itemSlotStyles = styles;
     }
