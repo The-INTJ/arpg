@@ -301,9 +301,9 @@ public partial class GameManager : Node3D
             _actionHandler.OnAbilityPressed();
         }
 
-        for (int i = 0; i < _player.Stats.Inventory.Capacity && i < GameKeys.ItemSlots.Length; i++)
+        for (int i = 0; i < _player.Stats.Inventory.Capacity && i < GameKeys.KeyboardItemSlotCount; i++)
         {
-            if (!@event.IsActionPressed(GameKeys.ItemSlot(i)))
+            if (!@event.IsActionPressed(GameKeys.KeyboardItemSlotAction(i)))
                 continue;
 
             _actionHandler.OnItemSlotPressed(i);
@@ -441,7 +441,7 @@ public partial class GameManager : Node3D
         pickup.Init(item);
         pickup.Collected += (itemName, slotIndex) =>
         {
-            string keyName = GameKeys.DisplayName(GameKeys.ItemSlot(slotIndex));
+            string keyName = GameKeys.ItemSlotUseHint(slotIndex);
             _hudUpdater.StatusText = $"Picked up {itemName} ({keyName})";
             AudioManager.Instance?.PlayPickup();
         };

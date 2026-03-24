@@ -122,6 +122,7 @@ public partial class GameHudUpdater : Node
         while (_itemSlots.Count < desired)
         {
             var entry = GameHudBuilder.CreateItemSlot();
+            entry.Panel.GuiInput += @event => OnItemSlotGuiInput(entry.Panel, @event);
             _itemBarHBox.AddChild(entry.Panel);
             _itemSlots.Add(entry);
         }
@@ -139,10 +140,10 @@ public partial class GameHudUpdater : Node
     private void UpdateItemBar()
     {
         var inventory = _player.Stats.Inventory;
-        for (int i = 0; i < _itemSlots.Count && i < GameKeys.ItemSlots.Length; i++)
+        for (int i = 0; i < _itemSlots.Count; i++)
         {
             var slot = _itemSlots[i];
-            string keyName = GameKeys.DisplayName(GameKeys.ItemSlot(i));
+            string keyName = GameKeys.ItemSlotLabel(i);
             var item = inventory.GetItem(i);
 
             if (item == null)
@@ -153,6 +154,7 @@ public partial class GameHudUpdater : Node
                 slot.Label.AddThemeColorOverride("font_color", Palette.TextDisabled);
                 slot.Style.BgColor = new Color(Palette.BgDark, 0.9f);
                 slot.Style.BorderColor = new Color(Palette.TextDisabled, 0.85f);
+                GameHudBuilder.RefreshItemSlotSize(slot);
                 continue;
             }
 
@@ -162,7 +164,37 @@ public partial class GameHudUpdater : Node
             slot.Label.AddThemeColorOverride("font_color", Palette.TextLight);
             slot.Style.BgColor = new Color(Palette.ButtonBg, 0.92f);
             slot.Style.BorderColor = item.DisplayColor;
+            GameHudBuilder.RefreshItemSlotSize(slot);
         }
+
+        _itemBarHBox.QueueSort();
+    }
+
+    private void OnItemSlotGuiInput(PanelContainer panel, InputEvent @event)
+    {
+        if (@event is not InputEventMouseButton mouseButton)
+            return;
+
+        if (mouseButton.ButtonIndex != MouseButton.Left || !mouseButton.Pressed)
+            return;
+
+        int slotIndex = FindSlotIndex(panel);
+        if (slotIndex < 0)
+            return;
+
+        _actionHandler.OnItemSlotPressed(slotIndex);
+        GetViewport().SetInputAsHandled();
+    }
+
+    private int FindSlotIndex(PanelContainer panel)
+    {
+        for (int i = 0; i < _itemSlots.Count; i++)
+        {
+            if (_itemSlots[i].Panel == panel)
+                return i;
+        }
+
+        return -1;
     }
 
     private void UpdateExploreUI()

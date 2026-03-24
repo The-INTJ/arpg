@@ -25,27 +25,70 @@ public static class GameHudBuilder
 
 	public record EnemyHpDisplay(ProgressBar Bar, Label HpLabel, Label EffectInfoLabel, VBoxContainer Container);
 
-	public record ItemSlotEntry(Panel Panel, TextureRect Icon, Label Label, StyleBoxFlat Style);
+	public record ItemSlotEntry(
+		PanelContainer Panel,
+		MarginContainer Margin,
+		HBoxContainer Row,
+		TextureRect Icon,
+		Label Label,
+		StyleBoxFlat Style,
+		Vector2 BasePanelMinimumSize,
+		Vector2 BaseLabelMinimumSize);
 
 	/// <summary>
 	/// Instantiates an ItemSlot scene and applies runtime styling.
 	/// </summary>
 	public static ItemSlotEntry CreateItemSlot()
 	{
-		var panel = ItemSlotScene.Instantiate<Panel>();
-		var icon = panel.GetNodeOrNull<TextureRect>("Content/Icon");
-		var label = panel.GetNodeOrNull<Label>("Content/Label");
+		var panel = ItemSlotScene.Instantiate<PanelContainer>();
+		var margin = panel.GetNodeOrNull<MarginContainer>("MarginContainer");
+		var row = panel.GetNodeOrNull<HBoxContainer>("MarginContainer/HBoxContainer");
+		var icon = panel.GetNodeOrNull<TextureRect>("MarginContainer/HBoxContainer/Icon");
+		var label = panel.GetNodeOrNull<Label>("MarginContainer/HBoxContainer/Label");
 
-		if (icon == null || label == null)
+		if (margin == null || row == null || icon == null || label == null)
 		{
 			throw new System.InvalidOperationException(
-				"ItemSlot.tscn is missing the expected Icon/Label nodes for the HUD item bar.");
+				"ItemSlot.tscn is missing the expected layout nodes for the HUD item bar.");
 		}
+
+		margin.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+		row.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+		label.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+		margin.MouseFilter = Control.MouseFilterEnum.Ignore;
+		row.MouseFilter = Control.MouseFilterEnum.Ignore;
+		icon.MouseFilter = Control.MouseFilterEnum.Ignore;
+		label.MouseFilter = Control.MouseFilterEnum.Ignore;
 
 		var style = CreateItemSlotStyle();
 		panel.AddThemeStyleboxOverride("panel", style);
+		panel.MouseFilter = Control.MouseFilterEnum.Stop;
+		panel.MouseDefaultCursorShape = Control.CursorShape.PointingHand;
 		icon.TextureFilter = CanvasItem.TextureFilterEnum.Nearest;
-		return new ItemSlotEntry(panel, icon, label, style);
+		var entry = new ItemSlotEntry(
+			panel,
+			margin,
+			row,
+			icon,
+			label,
+			style,
+			panel.CustomMinimumSize,
+			label.CustomMinimumSize);
+		RefreshItemSlotSize(entry);
+		return entry;
+	}
+
+	public static void RefreshItemSlotSize(ItemSlotEntry entry)
+	{
+		float desiredLabelWidth = Mathf.Max(
+			entry.BaseLabelMinimumSize.X,
+			MeasureLabelTextWidth(entry.Label) + 2.0f);
+		entry.Label.CustomMinimumSize = new Vector2(desiredLabelWidth, entry.BaseLabelMinimumSize.Y);
+
+		Vector2 contentMinimum = entry.Margin.GetCombinedMinimumSize();
+		entry.Panel.CustomMinimumSize = new Vector2(
+			Mathf.Max(entry.BasePanelMinimumSize.X, Mathf.Ceil(contentMinimum.X)),
+			Mathf.Max(entry.BasePanelMinimumSize.Y, Mathf.Ceil(contentMinimum.Y)));
 	}
 
 	public static StyleBoxFlat CreateItemSlotStyle()
@@ -60,5 +103,27 @@ public static class GameHudBuilder
 		style.ShadowSize = 6;
 		style.ShadowOffset = new Vector2(0, 3);
 		return style;
+	}
+
+	private static float MeasureLabelTextWidth(Label label)
+	{
+		if (label == null || string.IsNullOrEmpty(label.Text))
+			return 0.0f;
+
+		var font = label.GetThemeFont("font");
+		if (font == null)
+			return 0.0f;
+
+		int fontSize = label.GetThemeFontSize("font_size");
+		float widestLine = 0.0f;
+		foreach (string rawLine in label.Text.Split('\n'))
+		{
+			string line = rawLine.TrimEnd('\r');
+			widestLine = Mathf.Max(
+				widestLine,
+				font.GetStringSize(line, HorizontalAlignment.Left, -1, fontSize).X);
+		}
+
+		return Mathf.Ceil(widestLine);
 	}
 }

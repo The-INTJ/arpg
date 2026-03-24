@@ -231,12 +231,12 @@ public partial class PlayerStats
 
     private static int ClampInventorySlots(int value)
     {
-        return Math.Clamp(value, 1, GameKeys.ItemSlots.Length);
+        return Math.Max(1, value);
     }
 
     private static int ClampItemUsesPerTurn(int value)
     {
-        return Math.Clamp(value, 1, GameKeys.ItemSlots.Length);
+        return Math.Max(1, value);
     }
 
     /// <summary>
