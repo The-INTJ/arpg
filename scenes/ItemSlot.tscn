@@ -1,9 +1,9 @@
-[gd_scene load_steps=1 format=3 uid="uid://item_slot_scene"]
+[gd_scene format=3 uid="uid://ck0ynb63876v4"]
 
-[node name="ItemSlot" type="Panel"]
+[node name="ItemSlot" type="Panel" unique_id=327710152]
 custom_minimum_size = Vector2(228, 72)
 
-[node name="Content" type="HBoxContainer" parent="."]
+[node name="Content" type="HBoxContainer" parent="." unique_id=1309065607]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -12,19 +12,29 @@ grow_horizontal = 2
 grow_vertical = 2
 theme_override_constants/separation = 10
 
-[node name="Icon" type="TextureRect" parent="Content"]
+[node name="MarginContainer" type="MarginContainer" parent="Content" unique_id=1399212352]
 layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 16
+
+[node name="GridContainer" type="GridContainer" parent="Content/MarginContainer" unique_id=1468634173]
+layout_mode = 2
+columns = 2
+
+[node name="Icon" type="TextureRect" parent="Content/MarginContainer/GridContainer" unique_id=1788950770]
 custom_minimum_size = Vector2(38, 38)
+layout_mode = 2
 size_flags_vertical = 4
 expand_mode = 1
 stretch_mode = 5
-texture_filter = 0
 
-[node name="Label" type="Label" parent="Content"]
+[node name="Label" type="Label" parent="Content/MarginContainer/GridContainer" unique_id=129938369]
+custom_minimum_size = Vector2(100, 0)
 layout_mode = 2
 size_flags_horizontal = 3
-size_flags_vertical = 4
-horizontal_alignment = 0
+size_flags_vertical = 6
+theme_override_font_sizes/font_size = 17
 vertical_alignment = 1
 autowrap_mode = 2
-theme_override_font_sizes/font_size = 17

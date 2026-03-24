@@ -1,4 +1,4 @@
-[gd_resource type="Environment" load_steps=3 format=3]
+[gd_resource type="Environment" format=3 uid="uid://b832ykxndumen"]
 
 [ext_resource type="Material" path="res://assets/environments/splintered_sky.tres" id="1_sky_mat"]
 
