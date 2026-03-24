@@ -94,11 +94,12 @@ GameManager
 - `MapGenerator` now uses a hybrid room-building model:
   - broad room layout and gameplay-facing placement rules stay in code
   - reusable authorable set pieces can be instanced as scene slices
-  - the current live slice is the cave pocket reused across layouts
+  - current live slices include the cave pocket, the reusable single-ramp rise slice, and tree variants
 - `MapGenerator` still returns the spawn/chest result that `GameManager` expects.
 - `GameManager` uses the returned enemy spawn positions for encounters and the returned cave chest position for room rewards.
 - tougher elite or boss enemies can also drop consumable `ItemPickup` rewards on death
 - `GameManager` decides how many enemies exist for a room and whether one is a boss.
+- `PlayerController` handles open-void recovery in code: leaving zone bounds and falling for about a second respawns the player at the last grounded point for `-5 HP`.
 
 ### UI
 

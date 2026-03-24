@@ -29,11 +29,15 @@ Those decisions stay in code for now.
 - slices provide anchor data back to the builder
 - `GeneratedMapResult` stays the output contract to `GameManager`
 
-The first live slice is the cave pocket:
+Current live slices:
 
-- scene: `res://scenes/world_slices/CavePocketSlice.tscn`
-- placement: `MapGenerator.PlaceCavePocket(...)`
-- reuse: the same slice is rotated `0` or `180` degrees around Y to support left/right variants
+- `res://scenes/world_slices/CavePocketSlice.tscn`
+  - placement: `MapGenerator.PlaceCavePocket(...)`
+  - reuse: rotated `0` or `180` degrees around Y for left/right cave variants
+- `res://scenes/world_slices/PlatformRampSlice.tscn`
+  - placement: builder-configured single-ramp rises used for the repeated ground-to-mid and mid-to-high set pieces
+- `res://scenes/world_slices/PineTreeSlice.tscn`
+- `res://scenes/world_slices/RoundTreeSlice.tscn`
 
 ## Anchor Contract
 
@@ -59,8 +63,8 @@ If a thing is meant to be edited in the Godot editor and reused across rooms, pr
 Strong next candidates:
 
 - full ridge and mesa room layouts
-- repeated platform-and-ramp set pieces
-- tree and rock dressing clusters
+- twin-ramp hub slices for the ridge spine and mesa center
+- rock dressing clusters
 - distant background chunk variants
 
 Keep these in code for now:

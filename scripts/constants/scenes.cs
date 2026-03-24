@@ -16,6 +16,9 @@ public static partial class Scenes
 	public const string MainMenu = Root + "MainMenu.tscn";
 	public const string ModifyStatsSimple = Root + "ModifyStatsSimple.tscn";
 	public const string PauseScreen = Root + "PauseScreen.tscn";
+	public const string PineTreeSlice = WorldSliceRoot + "PineTreeSlice.tscn";
+	public const string PlatformRampSlice = WorldSliceRoot + "PlatformRampSlice.tscn";
+	public const string RoundTreeSlice = WorldSliceRoot + "RoundTreeSlice.tscn";
 	public const string RunHistorySnippet = Root + "RunHistorySnippet.tscn";
 	public const string VictoryScreen = Root + "VictoryScreen.tscn";
 }

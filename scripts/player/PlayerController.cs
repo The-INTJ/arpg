@@ -189,6 +189,12 @@ public partial class PlayerController : CharacterBody3D
             return false;
         }
 
+        if (Velocity.Y >= -0.05f)
+        {
+            _voidFallTimer = 0.0f;
+            return false;
+        }
+
         _voidFallTimer += delta;
         if (_voidFallTimer < VoidFallGracePeriod)
             return false;

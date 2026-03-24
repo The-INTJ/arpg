@@ -31,6 +31,7 @@
    - player regen ticks
    - nearby enemies are scanned for aggro
    - the attack button is shown near the nearest in-range enemy
+   - stepping beyond zone bounds is allowed visually; if the player keeps falling in the void for about 1 second, `PlayerController` respawns them at the last grounded point and removes 5 HP
 4. Aggro is delayed:
    - enemy enters sight range
    - enemy shows an aggro indicator

@@ -17,6 +17,9 @@ public partial class MapGenerator : Node3D
     private const float RampThickness = 0.6f;
 
     private static PackedScene _cavePocketSliceScene;
+    private static PackedScene _platformRampSliceScene;
+    private static PackedScene _pineTreeSliceScene;
+    private static PackedScene _roundTreeSliceScene;
     private readonly List<SurfaceRect> _spawnSurfaces = new();
 
     public GeneratedMapResult Generate()
@@ -40,8 +43,8 @@ public partial class MapGenerator : Node3D
         AddChild(shell);
         ChunkBuilder.BuildChunk(shell, ChunkWidth, ChunkDepth, ChunkThickness);
 
-        // Keep the main floor slightly larger than the edge-fall bounds so the player
-        // gets snapped back while still above solid ground instead of dropping into the void.
+        // Keep the main floor slightly larger than the code-defined zone bounds so the
+        // player can visibly step off into the void before the fall recovery kicks in.
         PlacePlatform(0, 0, PlayWidth, PlayDepth, GroundTop, WorldSurfaceKind.Ground);
     }
 
@@ -53,11 +56,9 @@ public partial class MapGenerator : Node3D
         PlaceRamp(ridgeSide * 13.0f, 24.0f, 10.0f, 12.0f, GroundTop, MidTop, alongX: true, ascendPositive: ridgeSide > 0);
         PlaceRamp(ridgeSide * 13.0f, -28.0f, 10.0f, 12.0f, GroundTop, MidTop, alongX: true, ascendPositive: ridgeSide > 0);
 
-        PlacePlatform(ridgeSide * 31.0f, -16.0f, 14.0f, 20.0f, HighTop, WorldSurfaceKind.High);
-        PlaceRamp(ridgeSide * 25.0f, -16.0f, 10.0f, 12.0f, MidTop, HighTop, alongX: true, ascendPositive: ridgeSide > 0);
+        PlaceMidToHighRise(ridgeSide * 25.0f, -16.0f, 14.0f, 20.0f, ridgeSide > 0);
 
-        PlacePlatform(-ridgeSide * 10.0f, 26.0f, 16.0f, 18.0f, MidTop, WorldSurfaceKind.Mid);
-        PlaceRamp(-ridgeSide * 4.0f, 26.0f, 10.0f, 12.0f, GroundTop, MidTop, alongX: true, ascendPositive: -ridgeSide > 0);
+        PlaceGroundToMidRise(-ridgeSide * 4.0f, 26.0f, 16.0f, 18.0f, -ridgeSide > 0);
 
         var caveResult = PlaceCavePocket(caveSide, 10.0f);
 
@@ -91,11 +92,9 @@ public partial class MapGenerator : Node3D
         PlaceRamp(-14.0f, -6.0f, 12.0f, 12.0f, GroundTop, MidTop, alongX: true, ascendPositive: true);
         PlaceRamp(14.0f, -6.0f, 12.0f, 12.0f, GroundTop, MidTop, alongX: true, ascendPositive: false);
 
-        PlacePlatform(highSide * 16.0f, -20.0f, 16.0f, 18.0f, HighTop, WorldSurfaceKind.High);
-        PlaceRamp(highSide * 10.0f, -20.0f, 10.0f, 12.0f, MidTop, HighTop, alongX: true, ascendPositive: highSide > 0);
+        PlaceMidToHighRise(highSide * 10.0f, -20.0f, 16.0f, 18.0f, highSide > 0);
 
-        PlacePlatform(caveSide * -24.0f, 22.0f, 14.0f, 20.0f, MidTop, WorldSurfaceKind.Mid);
-        PlaceRamp(caveSide * -18.0f, 22.0f, 10.0f, 12.0f, GroundTop, MidTop, alongX: true, ascendPositive: -caveSide > 0);
+        PlaceGroundToMidRise(caveSide * -18.0f, 22.0f, 14.0f, 20.0f, -caveSide > 0);
 
         var caveResult = PlaceCavePocket(caveSide, 16.0f);
 
@@ -143,6 +142,78 @@ public partial class MapGenerator : Node3D
         return new CavePocketResult(
             ResolveSliceAnchorPosition(slice, SceneSliceAnchorKind.CaveChest, defaultChestPosition),
             ResolveSliceAnchorPosition(slice, SceneSliceAnchorKind.FallbackItem, defaultFallbackPosition));
+    }
+
+    private void PlaceGroundToMidRise(float rampX, float z, float platformWidth, float platformDepth, bool ascendPositive)
+    {
+        PlacePlatformRampSlice(
+            rampX,
+            z,
+            platformWidth,
+            platformDepth,
+            MidTop,
+            platformOffsetX: 6.0f,
+            rampWidth: 10.0f,
+            rampRun: 12.0f,
+            rampLowTop: GroundTop,
+            rampHighTop: MidTop,
+            WorldSurfaceKind.Mid,
+            ascendPositive,
+            "GroundToMidRise");
+    }
+
+    private void PlaceMidToHighRise(float rampX, float z, float platformWidth, float platformDepth, bool ascendPositive)
+    {
+        PlacePlatformRampSlice(
+            rampX,
+            z,
+            platformWidth,
+            platformDepth,
+            HighTop,
+            platformOffsetX: 6.0f,
+            rampWidth: 10.0f,
+            rampRun: 12.0f,
+            rampLowTop: MidTop,
+            rampHighTop: HighTop,
+            WorldSurfaceKind.High,
+            ascendPositive,
+            "MidToHighRise");
+    }
+
+    private void PlacePlatformRampSlice(
+        float rampX,
+        float z,
+        float platformWidth,
+        float platformDepth,
+        float platformTopHeight,
+        float platformOffsetX,
+        float rampWidth,
+        float rampRun,
+        float rampLowTop,
+        float rampHighTop,
+        WorldSurfaceKind platformSurfaceKind,
+        bool ascendPositive,
+        string sliceName)
+    {
+        float platformCenterX = rampX + (ascendPositive ? platformOffsetX : -platformOffsetX);
+        _spawnSurfaces.Add(new SurfaceRect(platformCenterX, z, platformWidth, platformDepth, platformTopHeight));
+
+        var slice = LoadPlatformRampSlice().Instantiate<PlatformRampSlice>();
+        slice.Name = sliceName;
+        slice.Configure(
+            new Vector2(platformWidth, platformDepth),
+            platformTopHeight,
+            platformOffsetX,
+            rampWidth,
+            rampRun,
+            rampLowTop,
+            rampHighTop,
+            platformSurfaceKind);
+        slice.Position = new Vector3(rampX, 0, z);
+        if (!ascendPositive)
+            slice.Rotation = new Vector3(0, Mathf.Pi, 0);
+
+        AddChild(slice);
     }
 
     private void ClearGeneratedGeometry()
@@ -213,99 +284,14 @@ public partial class MapGenerator : Node3D
         body.AddChild(shape);
     }
 
-    private void PlaceRockMass(float x, float z, float width, float depth, float height, bool caveRock)
-    {
-        var body = new StaticBody3D();
-        body.Position = new Vector3(x, height / 2.0f, z);
-        AddChild(body);
-
-        var mesh = new MeshInstance3D();
-        mesh.Mesh = new BoxMesh
-        {
-            Size = new Vector3(width, height, depth),
-            Material = caveRock ? WorldMaterials.GetCaveRockMaterial() : WorldMaterials.GetRockMaterial(),
-        };
-        body.AddChild(mesh);
-
-        var shape = new CollisionShape3D();
-        shape.Shape = new BoxShape3D { Size = new Vector3(width, height, depth) };
-        body.AddChild(shape);
-    }
-
-    private void PlaceCeiling(float x, float z, float width, float depth, float centerY, float thickness)
-    {
-        var mesh = new MeshInstance3D();
-        mesh.Position = new Vector3(x, centerY, z);
-        mesh.Mesh = new BoxMesh
-        {
-            Size = new Vector3(width, thickness, depth),
-            Material = WorldMaterials.GetCaveRoofMaterial(),
-        };
-        AddChild(mesh);
-    }
-
     private void PlaceTree(Vector3 position)
     {
-        var tree = new StaticBody3D();
+        PackedScene treeScene = GD.Randi() % 2 == 0 ? LoadPineTreeSlice() : LoadRoundTreeSlice();
+        var tree = treeScene.Instantiate<StaticBody3D>();
         tree.Position = position;
+        tree.Rotation = new Vector3(0, (float)GD.RandRange(0.0, Mathf.Tau), 0);
+        tree.Scale = Vector3.One * (float)GD.RandRange(0.88, 1.18);
         AddChild(tree);
-
-        float trunkHeight = (float)GD.RandRange(1.7, 2.8);
-        float trunkRadius = (float)GD.RandRange(0.16, 0.26);
-        var trunkMesh = new MeshInstance3D();
-        trunkMesh.Mesh = new CylinderMesh
-        {
-            TopRadius = trunkRadius * 0.72f,
-            BottomRadius = trunkRadius,
-            Height = trunkHeight,
-            Material = new StandardMaterial3D
-            {
-                AlbedoColor = new Color(0.40f, 0.28f, 0.15f),
-                Roughness = 0.9f,
-            },
-        };
-        trunkMesh.Position = new Vector3(0, trunkHeight / 2.0f, 0);
-        tree.AddChild(trunkMesh);
-
-        bool isPine = GD.Randi() % 2 == 0;
-        var canopyMesh = new MeshInstance3D();
-        var canopyMaterial = new StandardMaterial3D
-        {
-            AlbedoColor = new Color(0.14f, (float)GD.RandRange(0.30, 0.52), 0.12f),
-            Roughness = 0.85f,
-        };
-
-        if (isPine)
-        {
-            float coneHeight = (float)GD.RandRange(1.6, 2.6);
-            float coneRadius = (float)GD.RandRange(0.85, 1.3);
-            canopyMesh.Mesh = new CylinderMesh
-            {
-                TopRadius = 0.0f,
-                BottomRadius = coneRadius,
-                Height = coneHeight,
-                Material = canopyMaterial,
-            };
-            canopyMesh.Position = new Vector3(0, trunkHeight + coneHeight / 2.0f - 0.2f, 0);
-        }
-        else
-        {
-            float sphereRadius = (float)GD.RandRange(0.9, 1.4);
-            canopyMesh.Mesh = new SphereMesh
-            {
-                Radius = sphereRadius,
-                Height = sphereRadius * 2.0f,
-                Material = canopyMaterial,
-            };
-            canopyMesh.Position = new Vector3(0, trunkHeight + sphereRadius * 0.55f, 0);
-        }
-
-        tree.AddChild(canopyMesh);
-
-        var shape = new CollisionShape3D();
-        shape.Shape = new CylinderShape3D { Radius = trunkRadius + 0.1f, Height = trunkHeight };
-        shape.Position = new Vector3(0, trunkHeight / 2.0f, 0);
-        tree.AddChild(shape);
     }
 
     private Vector3 SpawnPoint(float x, float preferredSurfaceTop, float z)
@@ -337,6 +323,21 @@ public partial class MapGenerator : Node3D
     private static PackedScene LoadCavePocketSlice()
     {
         return _cavePocketSliceScene ??= GD.Load<PackedScene>(Scenes.CavePocketSlice);
+    }
+
+    private static PackedScene LoadPlatformRampSlice()
+    {
+        return _platformRampSliceScene ??= GD.Load<PackedScene>(Scenes.PlatformRampSlice);
+    }
+
+    private static PackedScene LoadPineTreeSlice()
+    {
+        return _pineTreeSliceScene ??= GD.Load<PackedScene>(Scenes.PineTreeSlice);
+    }
+
+    private static PackedScene LoadRoundTreeSlice()
+    {
+        return _roundTreeSliceScene ??= GD.Load<PackedScene>(Scenes.RoundTreeSlice);
     }
 
     private Vector3 ResolveSliceAnchorPosition(Node root, SceneSliceAnchorKind kind, Vector3 fallbackPosition)

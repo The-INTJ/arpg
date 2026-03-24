@@ -28,6 +28,9 @@ public static class Palette
 	public static readonly Color Ramp = new(0.48f, 0.39f, 0.28f);
 	public static readonly Color ChestWood = new(0.46f, 0.27f, 0.12f);
 	public static readonly Color ChestMetal = new(0.86f, 0.72f, 0.30f);
+	public static readonly Color TreeTrunk = new(0.40f, 0.28f, 0.15f);
+	public static readonly Color TreePine = new(0.14f, 0.34f, 0.12f);
+	public static readonly Color TreeCanopy = new(0.18f, 0.42f, 0.15f);
 
 	// Dark energy / bridge (3D materials only — UI colors are in the theme)
 	public static readonly Color DarkEnergyGlow = new(0.70f, 0.30f, 0.90f);

@@ -1,0 +1,34 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/world/PlatformRampSlice.cs" id="1_slice"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_platform"]
+size = Vector3(1, 1, 1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_platform"]
+size = Vector3(1, 1, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_ramp"]
+size = Vector3(1, 1, 1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_ramp"]
+size = Vector3(1, 1, 1)
+
+[node name="PlatformRampSlice" type="Node3D"]
+script = ExtResource("1_slice")
+
+[node name="Platform" type="StaticBody3D" parent="."]
+
+[node name="Mesh" type="MeshInstance3D" parent="Platform"]
+mesh = SubResource("BoxMesh_platform")
+
+[node name="Collision" type="CollisionShape3D" parent="Platform"]
+shape = SubResource("BoxShape3D_platform")
+
+[node name="Ramp" type="StaticBody3D" parent="."]
+
+[node name="Mesh" type="MeshInstance3D" parent="Ramp"]
+mesh = SubResource("BoxMesh_ramp")
+
+[node name="Collision" type="CollisionShape3D" parent="Ramp"]
+shape = SubResource("BoxShape3D_ramp")

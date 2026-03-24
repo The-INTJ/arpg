@@ -1,0 +1,33 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scripts/world/TreeSlice.cs" id="1_tree"]
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_trunk"]
+top_radius = 0.17
+bottom_radius = 0.24
+height = 2.0
+
+[sub_resource type="SphereMesh" id="SphereMesh_canopy"]
+radius = 1.08
+height = 2.16
+
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_collision"]
+radius = 0.34
+height = 2.0
+
+[node name="RoundTreeSlice" type="StaticBody3D"]
+script = ExtResource("1_tree")
+
+[node name="Trunk" type="MeshInstance3D" parent="."]
+position = Vector3(0, 1, 0)
+mesh = SubResource("CylinderMesh_trunk")
+cast_shadow = 0
+
+[node name="Canopy" type="MeshInstance3D" parent="."]
+position = Vector3(0, 2.55, 0)
+mesh = SubResource("SphereMesh_canopy")
+cast_shadow = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+position = Vector3(0, 1, 0)
+shape = SubResource("CylinderShape3D_collision")

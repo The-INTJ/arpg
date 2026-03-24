@@ -131,7 +131,7 @@ Current problem:
 Current progress:
 
 - reusable world scene slices are now a live seam
-- the cave pocket is the first slice instanced by `MapGenerator`
+- the cave pocket, repeated single-ramp rises, and tree variants are all slice-backed now
 
 Likely future split:
 
@@ -143,8 +143,8 @@ Likely future split:
 Best next targets:
 
 - full ridge and mesa layout scenes
-- repeated platform/ramp feature groups
-- tree or rock dressing clusters
+- twin-ramp hub feature groups
+- rock dressing clusters
 - distant chunk variants
 
 ## Multi-Agent Collision Areas
