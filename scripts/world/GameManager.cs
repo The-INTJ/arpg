@@ -103,13 +103,12 @@ public partial class GameManager : Node3D
             GetViewport().GetVisibleRect().Size.Y);
 
         var itemBarHBox = GetNode<HBoxContainer>("CanvasLayer/ItemBarCenter/ItemBarHBox");
-        var (itemSlots, itemIcons, itemLabels, itemStyles) = GameHudBuilder.BindItemBar(itemBarHBox);
 
         _hudUpdater = new GameHudUpdater();
         AddChild(_hudUpdater);
         _hudUpdater.Init(_player, _turnManager, _combatManager, _aggroSystem, _actionHandler, camera, canvas,
             hpLabel, statsLabel, darkEnergyLabel, darkEnergyBar, statusLabel, attackButton, abilityButton,
-            enemyHp, itemSlots, itemIcons, itemLabels, itemStyles);
+            enemyHp, itemBarHBox);
 
         _player.EdgeFall += () => _hudUpdater.StatusText = "Fell into the abyss! -5 HP";
 

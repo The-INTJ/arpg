@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Godot;
 
 namespace ARPG;
@@ -26,10 +27,9 @@ public partial class GameHudUpdater : Node
     private Label _enemyHpLabel;
     private Label _enemyEffectInfoLabel;
     private VBoxContainer _enemyHpDisplay;
-    private Control[] _itemSlotControls;
-    private TextureRect[] _itemSlotIcons;
-    private Label[] _itemSlotLabels;
-    private StyleBoxFlat[] _itemSlotStyles;
+
+    private HBoxContainer _itemBarHBox;
+    private readonly List<GameHudBuilder.ItemSlotEntry> _itemSlots = new();
 
     public string StatusText
     {
@@ -56,10 +56,7 @@ public partial class GameHudUpdater : Node
         Button attackButton,
         Button abilityButton,
         GameHudBuilder.EnemyHpDisplay enemyHp,
-        Control[] itemSlotControls,
-        TextureRect[] itemSlotIcons,
-        Label[] itemSlotLabels,
-        StyleBoxFlat[] itemSlotStyles)
+        HBoxContainer itemBarHBox)
     {
         _player = player;
         _turnManager = turnManager;
@@ -79,15 +76,13 @@ public partial class GameHudUpdater : Node
         _enemyHpLabel = enemyHp.HpLabel;
         _enemyEffectInfoLabel = enemyHp.EffectInfoLabel;
         _enemyHpDisplay = enemyHp.Container;
-        _itemSlotControls = itemSlotControls;
-        _itemSlotIcons = itemSlotIcons;
-        _itemSlotLabels = itemSlotLabels;
-        _itemSlotStyles = itemSlotStyles;
+        _itemBarHBox = itemBarHBox;
     }
 
     public void UpdateAll(DarkEnergy darkEnergy)
     {
         UpdateHud(darkEnergy);
+        SyncItemSlotCount();
         UpdateItemBar();
 
         if (_turnManager.IsExploring)
@@ -115,36 +110,58 @@ public partial class GameHudUpdater : Node
         _darkEnergyBar.Value = darkEnergy.FillPercent;
     }
 
+    /// <summary>
+    /// Adds or removes ItemSlot scene instances to match the player's inventory capacity.
+    /// </summary>
+    private void SyncItemSlotCount()
+    {
+        int desired = _player.Stats.Inventory.Capacity;
+        if (desired == _itemSlots.Count)
+            return;
+
+        while (_itemSlots.Count < desired)
+        {
+            var entry = GameHudBuilder.CreateItemSlot();
+            _itemBarHBox.AddChild(entry.Panel);
+            _itemSlots.Add(entry);
+        }
+
+        while (_itemSlots.Count > desired)
+        {
+            int last = _itemSlots.Count - 1;
+            var entry = _itemSlots[last];
+            _itemBarHBox.RemoveChild(entry.Panel);
+            entry.Panel.QueueFree();
+            _itemSlots.RemoveAt(last);
+        }
+    }
+
     private void UpdateItemBar()
     {
         var inventory = _player.Stats.Inventory;
-        for (int i = 0; i < _itemSlotControls.Length; i++)
+        for (int i = 0; i < _itemSlots.Count && i < GameKeys.ItemSlots.Length; i++)
         {
-            bool slotUnlocked = i < inventory.Capacity;
-            _itemSlotControls[i].Visible = slotUnlocked;
-            if (!slotUnlocked)
-                continue;
-
+            var slot = _itemSlots[i];
             string keyName = GameKeys.DisplayName(GameKeys.ItemSlot(i));
             var item = inventory.GetItem(i);
 
             if (item == null)
             {
-                _itemSlotIcons[i].Texture = null;
-                _itemSlotIcons[i].Visible = false;
-                _itemSlotLabels[i].Text = $"{keyName}\n(empty)";
-                _itemSlotLabels[i].AddThemeColorOverride("font_color", Palette.TextDisabled);
-                _itemSlotStyles[i].BgColor = new Color(Palette.BgDark, 0.9f);
-                _itemSlotStyles[i].BorderColor = new Color(Palette.TextDisabled, 0.85f);
+                slot.Icon.Texture = null;
+                slot.Icon.Visible = false;
+                slot.Label.Text = $"{keyName}\n(empty)";
+                slot.Label.AddThemeColorOverride("font_color", Palette.TextDisabled);
+                slot.Style.BgColor = new Color(Palette.BgDark, 0.9f);
+                slot.Style.BorderColor = new Color(Palette.TextDisabled, 0.85f);
                 continue;
             }
 
-            _itemSlotIcons[i].Texture = SpriteFactory.CreateItemTexture(item.VisualId);
-            _itemSlotIcons[i].Visible = true;
-            _itemSlotLabels[i].Text = $"{keyName}  {item.Name}\n{item.Description}";
-            _itemSlotLabels[i].AddThemeColorOverride("font_color", Palette.TextLight);
-            _itemSlotStyles[i].BgColor = new Color(Palette.ButtonBg, 0.92f);
-            _itemSlotStyles[i].BorderColor = item.DisplayColor;
+            slot.Icon.Texture = SpriteFactory.CreateItemTexture(item.VisualId);
+            slot.Icon.Visible = true;
+            slot.Label.Text = $"{keyName}  {item.Name}\n{item.Description}";
+            slot.Label.AddThemeColorOverride("font_color", Palette.TextLight);
+            slot.Style.BgColor = new Color(Palette.ButtonBg, 0.92f);
+            slot.Style.BorderColor = item.DisplayColor;
         }
     }
 
