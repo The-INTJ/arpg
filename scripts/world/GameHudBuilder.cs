@@ -7,6 +7,9 @@ namespace ARPG;
 /// </summary>
 public static class GameHudBuilder
 {
+    private static readonly PackedScene ItemSlotScene =
+        GD.Load<PackedScene>("res://scenes/ItemSlot.tscn");
+
     public static void StyleHudLabels(Label[] labels, float viewportHeight)
     {
         int fontSize = Mathf.Max(20, (int)(viewportHeight * 0.032f));
@@ -22,32 +25,20 @@ public static class GameHudBuilder
 
     public record EnemyHpDisplay(ProgressBar Bar, Label HpLabel, Label EffectInfoLabel, VBoxContainer Container);
 
-    public static (Control[] slots, TextureRect[] icons, Label[] labels, StyleBoxFlat[] styles) BindItemBar(HBoxContainer hbox)
+    public record ItemSlotEntry(Panel Panel, TextureRect Icon, Label Label, StyleBoxFlat Style);
+
+    /// <summary>
+    /// Instantiates an ItemSlot scene and applies runtime styling.
+    /// </summary>
+    public static ItemSlotEntry CreateItemSlot()
     {
-        int slotCount = Mathf.Min(GameKeys.ItemSlots.Length, hbox.GetChildCount());
-        var slots = new Control[slotCount];
-        var icons = new TextureRect[slotCount];
-        var labels = new Label[slotCount];
-        var styles = new StyleBoxFlat[slotCount];
-
-        for (int i = 0; i < slotCount; i++)
-        {
-            var panel = hbox.GetChild<Panel>(i);
-            var icon = panel.GetNode<TextureRect>("Content/Icon");
-            var label = panel.GetNode<Label>("Content/Label");
-            var style = CreateItemSlotStyle();
-            panel.AddThemeStyleboxOverride("panel", style);
-            panel.CustomMinimumSize = new Vector2(228, 72);
-            label.AddThemeFontSizeOverride("font_size", 17);
-            icon.TextureFilter = CanvasItem.TextureFilterEnum.Nearest;
-
-            slots[i] = panel;
-            icons[i] = icon;
-            labels[i] = label;
-            styles[i] = style;
-        }
-
-        return (slots, icons, labels, styles);
+        var panel = ItemSlotScene.Instantiate<Panel>();
+        var icon = panel.GetNode<TextureRect>("Content/Icon");
+        var label = panel.GetNode<Label>("Content/Label");
+        var style = CreateItemSlotStyle();
+        panel.AddThemeStyleboxOverride("panel", style);
+        icon.TextureFilter = CanvasItem.TextureFilterEnum.Nearest;
+        return new ItemSlotEntry(panel, icon, label, style);
     }
 
     public static StyleBoxFlat CreateItemSlotStyle()
