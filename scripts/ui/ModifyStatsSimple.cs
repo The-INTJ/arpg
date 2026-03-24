@@ -10,6 +10,8 @@ namespace ARPG;
 /// </summary>
 public partial class ModifyStatsSimple : Control
 {
+	private static readonly PackedScene BackpackRowScene = GD.Load<PackedScene>("res://scenes/ui_components/BackpackItemRow.tscn");
+
 	private PlayerStats _stats;
 	private Label _weaponTitle;
 	private Label _selectedModifierLabel;
@@ -236,32 +238,12 @@ public partial class ModifyStatsSimple : Control
 
 		foreach (var modifier in backpack)
 		{
-			var rowPanel = ModifyStatsTheme.CreateSectionPanel();
-			rowPanel.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-			_backpackList.AddChild(rowPanel);
-
-			var row = new HBoxContainer();
-			row.AddThemeConstantOverride("separation", 12);
-			rowPanel.AddChild(row);
-
-			var label = new Label();
-			label.Text = modifier.Description;
-			label.AddThemeColorOverride("font_color", Palette.TextLight);
-			label.AddThemeFontSizeOverride("font_size", 16);
-			label.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-			label.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-			row.AddChild(label);
-
-			var selectButton = new Button();
 			bool isSelected = _selectionPlan != null && modifier == _selectionPlan.Modifier;
-			selectButton.Text = isSelected ? "Clear" : "Select";
-			selectButton.CustomMinimumSize = new Vector2(92, 0);
-			selectButton.FocusMode = Control.FocusModeEnum.None;
-			ModifyStatsTheme.ApplyBackpackButtonTheme(selectButton, isSelected);
-
 			var capturedModifier = modifier;
-			selectButton.Pressed += () => ToggleSelection(capturedModifier);
-			row.AddChild(selectButton);
+
+			var row = BackpackRowScene.Instantiate<BackpackItemRow>();
+			_backpackList.AddChild(row);
+			row.Populate(capturedModifier, isSelected, () => ToggleSelection(capturedModifier));
 		}
 	}
 
