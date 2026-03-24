@@ -40,7 +40,7 @@ size = Vector3(18, 0.7, 26)
 script = ExtResource("1_slice")
 
 [node name="CaveFloor" type="StaticBody3D" parent="."]
-position = Vector3(0, -0.5, 0)
+position = Vector3(0, -0.47, 0)
 
 [node name="Mesh" type="MeshInstance3D" parent="CaveFloor"]
 mesh = SubResource("BoxMesh_floor")
@@ -58,8 +58,8 @@ mesh = SubResource("BoxMesh_shelf")
 shape = SubResource("BoxShape3D_shelf")
 
 [node name="Ramp" type="StaticBody3D" parent="."]
-position = Vector3(5, 0.27698, 0)
-rotation = Vector3(0, 0, 0.114493)
+position = Vector3(5, 0.291864, 0)
+rotation = Vector3(0, 0, 0.111535)
 
 [node name="Mesh" type="MeshInstance3D" parent="Ramp"]
 mesh = SubResource("BoxMesh_ramp")
@@ -106,5 +106,5 @@ position = Vector3(10, 1.15, 0)
 script = ExtResource("2_anchor")
 
 [node name="FallbackItemAnchor" type="Marker3D" parent="."]
-position = Vector3(-2, 0, 0)
+position = Vector3(-2, 0.03, 0)
 script = ExtResource("2_anchor")
