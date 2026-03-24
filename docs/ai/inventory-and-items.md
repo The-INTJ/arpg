@@ -8,7 +8,7 @@ Today it works like this:
 
 - the player has a small run inventory owned by `PlayerStats`
 - inventory capacity starts at 2 slots
-- one item pickup is spawned per room
+- one cave chest is spawned per room and releases an item pickup when opened
 - elite enemies can also drop item pickups on death
 - pickups auto-store into the first open slot
 - hotkeys are reserved from `Z` through `M`, but only the first two slots are active by default because capacity is 2
@@ -37,10 +37,10 @@ The item bar is built in code by `GameManager`, and the currently reachable slot
 
 ## Pickup Flow
 
-`GameManager` asks `MapGenerator` for a shuffled spawn set.
+`GameManager` asks `MapGenerator` for enemy spawn positions plus the room's cave chest anchor.
 
-- the first `N` positions are used for enemies
-- the next free position is used for the room's one `ItemPickup`
+- the returned positions are used for enemies
+- the returned chest anchor is used to place the room's `CaveChest`
 - tougher enemies may also spawn an `ItemPickup` next to their normal modifier loot when they die
 
 `ItemPickup` is auto-collect, not button-confirmed:

@@ -38,8 +38,6 @@ Several systems are created directly in code rather than instanced from `.tscn` 
 - `TurnManager`
 - `CombatManager`
 - `Enemy`
-- `LootPickup`
-- `ItemPickup`
 - some gameplay HUD controls
 
 This works, but future contributors need a clear rule for when code creation is preferred over packed scenes.
@@ -78,6 +76,7 @@ This is the repo's clearest current pattern and also its biggest scaling risk.
 The current item system is intentionally not the final shape:
 
 - today: simple run inventory, two starting slots, one pickup per room, consumable item kinds
+- today: simple run inventory, two starting slots, one cave chest reward per room, consumable item kinds
 - intended direction: permanent items with usable skills on cooldown
 
 Future contributors should treat the current consumables as the first vertical-slice implementation, not as proof that all items should disappear on use.
@@ -88,7 +87,7 @@ These are important for future AI contributors to notice:
 
 - `Palette` is meant to centralize colors, but some colors are still hardcoded in scene files and scripts.
 - `GameKeys` exists, but movement still uses raw input action strings in `PlayerController`.
-- Some reusable gameplay elements have `.tscn` files, but the game instantiates the C# types directly instead of using those scenes.
+- Some reusable gameplay elements are scene-backed, while other reusable world geometry is still built directly in code.
 - The repo policy says all C# classes should be `partial`, but plain model classes currently are not.
 
 ## Preferred Direction As The Repo Grows
@@ -101,7 +100,17 @@ Prefer `.tscn` scenes when a thing benefits from editor ownership, reusable stru
 - authored pickups
 - reusable HUD widgets
 - encounter rooms
+- reusable world slices and set pieces under `scenes/world_slices/`
 - nearly all UI
+
+### Keep Builders As The Decision Makers
+
+For room generation, the current preferred split is:
+
+- builders choose layouts, placement, and gameplay rules
+- scene slices own geometry, collisions, local lights, and anchor markers
+
+Do not move room progression or encounter rules into slice scenes just because the geometry is scene-authored.
 
 ### Use Plain Classes For Pure Data And Math
 

@@ -59,8 +59,8 @@ Current problem:
 
 Examples:
 
-- `scenes/LootPickup.tscn` exists, but `GameManager` uses `new LootPickup()`
-- `ItemPickup` is code-only today, while loot still has a `.tscn` placeholder scene
+- reusable pickups are already scene-backed
+- reusable world geometry is only starting to move toward scene ownership through scene slices
 - `scenes/PauseScreen.tscn` exists, but `Game.tscn` embeds a node with the script directly
 
 Recommended rule:
@@ -126,12 +126,26 @@ Likely future split:
 Current problem:
 
 - `MapGenerator` handles wall placement and spawn-set selection, while `GameManager` decides encounter counts and boss designation
+- room geometry was previously almost entirely hand-built in code, which made visual iteration slower than it needs to be
+
+Current progress:
+
+- reusable world scene slices are now a live seam
+- the cave pocket is the first slice instanced by `MapGenerator`
 
 Likely future split:
 
 - room layout generation
+- room layout scenes composed from reusable slices
 - encounter generation
 - progression-based difficulty rules
+
+Best next targets:
+
+- full ridge and mesa layout scenes
+- repeated platform/ramp feature groups
+- tree or rock dressing clusters
+- distant chunk variants
 
 ## Multi-Agent Collision Areas
 

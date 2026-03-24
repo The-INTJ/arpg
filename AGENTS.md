@@ -32,6 +32,7 @@ Multiplayer is a core consideration from day one. This doesn't mean every featur
 - **Primitive meshes + procedural sprites** — characters use `SpriteFactory` pixel art; environment uses primitive meshes
 - **Hardcode gameplay values** in scripts for now — data-driven content comes later when we have enough systems to justify it
 - **Prefer scene-authored UI** — AI contributors should update or add `.tscn` files for UI by default, and only build UI in code when that is clearly the Godot best-practice solution for the task
+- **Prefer scene-authored world slices for reusable environment pieces** — if a room feature is meant to be edited in the Godot editor and reused, author it as a `.tscn` under `scenes/world_slices/` and have builders instance it instead of rebuilding the same geometry in C#
 
 ## Godot C# Patterns
 
@@ -43,6 +44,7 @@ Multiplayer is a core consideration from day one. This doesn't mean every featur
 - Node references: `GetNode<Type>("path")` or `[Export] private NodePath`
 - Dynamic node creation: use `new Enemy()` directly so the C# type is correct, not `SetScript()`
 - For menus, HUD, overlays, and reusable controls, prefer authored scenes over programmatic control trees even if the scene edit is more tedious
+- For reusable world set pieces, prefer scene slices with `SceneSliceAnchor` markers so builders can place scenes and read back gameplay anchors without hardcoding the full geometry in C#
 
 ## Shared Systems
 
@@ -58,6 +60,7 @@ Multiplayer is a core consideration from day one. This doesn't mean every featur
 
 ```
 scenes/          — .tscn scene files (MainMenu, ArchetypeSelect, Game, VictoryScreen, DamageNumber, etc.)
+scenes/world_slices/ — reusable environment set pieces instanced by room builders
 scripts/         — .cs script files
 plans/           — development roadmap docs
 ```

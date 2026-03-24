@@ -28,7 +28,7 @@ The project is still a Godot-first vertical slice centered on one main gameplay 
 - `scenes/Game.tscn`
   - Root script: `scripts/GameManager.cs`
   - Contains the world, player, exit door, HUD labels, attack button, pause screen, and modify-stats overlay node
-  - Runtime setup creates `TurnManager`, `CombatManager`, ability/enemy/item HUD widgets, enemies, loot pickups, and one map item pickup
+  - Runtime setup creates `TurnManager`, `CombatManager`, ability/enemy/item HUD widgets, enemies, cave chests, loot pickups, and dropped item pickups
 - `scenes/VictoryScreen.tscn`
   - Styled by `scripts/VictoryScreen.cs`
 - `scenes/GameOverScreen.tscn`
@@ -91,9 +91,13 @@ GameManager
 
 ### World And Encounter Generation
 
-- `MapGenerator` places walls procedurally and returns a shuffled spawn set.
-- `GameManager` uses the first positions for enemies and the next free position for the room's one item pickup.
-- tougher elite enemies can also drop consumable `ItemPickup` rewards on death
+- `MapGenerator` now uses a hybrid room-building model:
+  - broad room layout and gameplay-facing placement rules stay in code
+  - reusable authorable set pieces can be instanced as scene slices
+  - the current live slice is the cave pocket reused across layouts
+- `MapGenerator` still returns the spawn/chest result that `GameManager` expects.
+- `GameManager` uses the returned enemy spawn positions for encounters and the returned cave chest position for room rewards.
+- tougher elite or boss enemies can also drop consumable `ItemPickup` rewards on death
 - `GameManager` decides how many enemies exist for a room and whether one is a boss.
 
 ### UI

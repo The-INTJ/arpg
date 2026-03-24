@@ -1,0 +1,110 @@
+[gd_scene load_steps=13 format=3]
+
+[ext_resource type="Script" path="res://scripts/world/CavePocketSlice.cs" id="1_slice"]
+[ext_resource type="Script" path="res://scripts/world/SceneSliceAnchor.cs" id="2_anchor"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_floor"]
+size = Vector3(18, 1, 24)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_floor"]
+size = Vector3(18, 1, 24)
+
+[sub_resource type="BoxMesh" id="BoxMesh_shelf"]
+size = Vector3(10, 1, 12)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_shelf"]
+size = Vector3(10, 1, 12)
+
+[sub_resource type="BoxMesh" id="BoxMesh_ramp"]
+size = Vector3(10.065909, 0.6, 8)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_ramp"]
+size = Vector3(10.065909, 0.6, 8)
+
+[sub_resource type="BoxMesh" id="BoxMesh_back_wall"]
+size = Vector3(5, 3.8, 28)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_back_wall"]
+size = Vector3(5, 3.8, 28)
+
+[sub_resource type="BoxMesh" id="BoxMesh_side_wall"]
+size = Vector3(16, 3, 4)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_side_wall"]
+size = Vector3(16, 3, 4)
+
+[sub_resource type="BoxMesh" id="BoxMesh_ceiling"]
+size = Vector3(18, 0.7, 26)
+
+[node name="CavePocketSlice" type="Node3D"]
+script = ExtResource("1_slice")
+
+[node name="CaveFloor" type="StaticBody3D" parent="."]
+position = Vector3(0, -0.5, 0)
+
+[node name="Mesh" type="MeshInstance3D" parent="CaveFloor"]
+mesh = SubResource("BoxMesh_floor")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="CaveFloor"]
+shape = SubResource("BoxShape3D_floor")
+
+[node name="Shelf" type="StaticBody3D" parent="."]
+position = Vector3(10, 0.65, 0)
+
+[node name="Mesh" type="MeshInstance3D" parent="Shelf"]
+mesh = SubResource("BoxMesh_shelf")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Shelf"]
+shape = SubResource("BoxShape3D_shelf")
+
+[node name="Ramp" type="StaticBody3D" parent="."]
+position = Vector3(5, 0.27698, 0)
+rotation = Vector3(0, 0, 0.114493)
+
+[node name="Mesh" type="MeshInstance3D" parent="Ramp"]
+mesh = SubResource("BoxMesh_ramp")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Ramp"]
+shape = SubResource("BoxShape3D_ramp")
+
+[node name="BackWall" type="StaticBody3D" parent="."]
+position = Vector3(13.5, 1.9, 0)
+
+[node name="Mesh" type="MeshInstance3D" parent="BackWall"]
+mesh = SubResource("BoxMesh_back_wall")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="BackWall"]
+shape = SubResource("BoxShape3D_back_wall")
+
+[node name="NorthWall" type="StaticBody3D" parent="."]
+position = Vector3(6, 1.5, -11)
+
+[node name="Mesh" type="MeshInstance3D" parent="NorthWall"]
+mesh = SubResource("BoxMesh_side_wall")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="NorthWall"]
+shape = SubResource("BoxShape3D_side_wall")
+
+[node name="SouthWall" type="StaticBody3D" parent="."]
+position = Vector3(6, 1.5, 11)
+
+[node name="Mesh" type="MeshInstance3D" parent="SouthWall"]
+mesh = SubResource("BoxMesh_side_wall")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="SouthWall"]
+shape = SubResource("BoxShape3D_side_wall")
+
+[node name="Ceiling" type="MeshInstance3D" parent="."]
+position = Vector3(6.5, 2.55, 0)
+mesh = SubResource("BoxMesh_ceiling")
+
+[node name="Lamp" type="OmniLight3D" parent="."]
+position = Vector3(6, 2, 0)
+
+[node name="ChestAnchor" type="Marker3D" parent="."]
+position = Vector3(10, 1.15, 0)
+script = ExtResource("2_anchor")
+
+[node name="FallbackItemAnchor" type="Marker3D" parent="."]
+position = Vector3(-2, 0, 0)
+script = ExtResource("2_anchor")

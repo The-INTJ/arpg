@@ -17,9 +17,9 @@
 3. Create and add `CombatManager`, then initialize it with player, turn manager, and camera.
 4. Build runtime HUD pieces such as ability button, enemy HP display, room label, and item bar.
 5. Apply some world styling such as the floor material.
-6. Ask `MapGenerator` for layout walls and a shuffled spawn set.
+6. Ask `MapGenerator` for room geometry and spawn/chest anchors. The builder can now mix procedural geometry with reusable scene slices such as the cave pocket.
 7. Spawn room enemies into `World/Enemies`.
-8. Spawn one map item pickup at the next free spawn point after the enemy placements.
+8. Spawn the room's cave chest at the returned chest anchor.
 9. Wire pause-to-stats interaction.
 10. Populate HUD text.
 
@@ -64,7 +64,7 @@ Current combat is still a one-player versus one-enemy exchange:
 
 Current item flow is the MVP version of a larger intended item system:
 
-1. Each room spawns one `ItemPickup`.
+1. Each room spawns one `CaveChest`, which releases an `ItemPickup` when opened.
 2. Walking into the pickup tries to auto-store the item in the first open inventory slot.
 3. If inventory is full, the pickup stays in the world and shows an inventory-full prompt.
 4. Hotkeys are reserved from `Z` through `M` via `GameKeys`, but the player inventory currently starts with capacity 2, so only `Z` and `X` are active by default.

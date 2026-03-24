@@ -24,6 +24,7 @@ public static class Palette
 	public static readonly Color CaveFloor = new(0.31f, 0.26f, 0.24f);
 	public static readonly Color CaveWall = new(0.24f, 0.21f, 0.20f);
 	public static readonly Color CaveShadow = new(0.14f, 0.12f, 0.12f);
+	public static readonly Color CaveLampGlow = new(1.0f, 0.82f, 0.65f);
 	public static readonly Color Ramp = new(0.48f, 0.39f, 0.28f);
 	public static readonly Color ChestWood = new(0.46f, 0.27f, 0.12f);
 	public static readonly Color ChestMetal = new(0.86f, 0.72f, 0.30f);

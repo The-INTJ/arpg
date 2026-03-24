@@ -16,14 +16,7 @@ public partial class MapGenerator : Node3D
     private const float FloorThickness = 1.0f;
     private const float RampThickness = 0.6f;
 
-    private static StandardMaterial3D _groundMaterial;
-    private static StandardMaterial3D _midGroundMaterial;
-    private static StandardMaterial3D _highGroundMaterial;
-    private static StandardMaterial3D _caveGroundMaterial;
-    private static StandardMaterial3D _rampMaterial;
-    private static StandardMaterial3D _rockMaterial;
-    private static StandardMaterial3D _caveRockMaterial;
-    private static StandardMaterial3D _caveRoofMaterial;
+    private static PackedScene _cavePocketSliceScene;
     private readonly List<SurfaceRect> _spawnSurfaces = new();
 
     public GeneratedMapResult Generate()
@@ -49,21 +42,21 @@ public partial class MapGenerator : Node3D
 
         // Keep the main floor slightly larger than the edge-fall bounds so the player
         // gets snapped back while still above solid ground instead of dropping into the void.
-        PlacePlatform(0, 0, PlayWidth, PlayDepth, GroundTop, SurfaceKind.Ground);
+        PlacePlatform(0, 0, PlayWidth, PlayDepth, GroundTop, WorldSurfaceKind.Ground);
     }
 
     private GeneratedMapResult BuildRidgeLayout(int caveSide)
     {
         int ridgeSide = -caveSide;
 
-        PlacePlatform(ridgeSide * 19.0f, -4.0f, 20.0f, 78.0f, MidTop, SurfaceKind.Mid);
+        PlacePlatform(ridgeSide * 19.0f, -4.0f, 20.0f, 78.0f, MidTop, WorldSurfaceKind.Mid);
         PlaceRamp(ridgeSide * 13.0f, 24.0f, 10.0f, 12.0f, GroundTop, MidTop, alongX: true, ascendPositive: ridgeSide > 0);
         PlaceRamp(ridgeSide * 13.0f, -28.0f, 10.0f, 12.0f, GroundTop, MidTop, alongX: true, ascendPositive: ridgeSide > 0);
 
-        PlacePlatform(ridgeSide * 31.0f, -16.0f, 14.0f, 20.0f, HighTop, SurfaceKind.High);
+        PlacePlatform(ridgeSide * 31.0f, -16.0f, 14.0f, 20.0f, HighTop, WorldSurfaceKind.High);
         PlaceRamp(ridgeSide * 25.0f, -16.0f, 10.0f, 12.0f, MidTop, HighTop, alongX: true, ascendPositive: ridgeSide > 0);
 
-        PlacePlatform(-ridgeSide * 10.0f, 26.0f, 16.0f, 18.0f, MidTop, SurfaceKind.Mid);
+        PlacePlatform(-ridgeSide * 10.0f, 26.0f, 16.0f, 18.0f, MidTop, WorldSurfaceKind.Mid);
         PlaceRamp(-ridgeSide * 4.0f, 26.0f, 10.0f, 12.0f, GroundTop, MidTop, alongX: true, ascendPositive: -ridgeSide > 0);
 
         var caveResult = PlaceCavePocket(caveSide, 10.0f);
@@ -94,14 +87,14 @@ public partial class MapGenerator : Node3D
     {
         int highSide = -caveSide;
 
-        PlacePlatform(0, -6.0f, 34.0f, 32.0f, MidTop, SurfaceKind.Mid);
+        PlacePlatform(0, -6.0f, 34.0f, 32.0f, MidTop, WorldSurfaceKind.Mid);
         PlaceRamp(-14.0f, -6.0f, 12.0f, 12.0f, GroundTop, MidTop, alongX: true, ascendPositive: true);
         PlaceRamp(14.0f, -6.0f, 12.0f, 12.0f, GroundTop, MidTop, alongX: true, ascendPositive: false);
 
-        PlacePlatform(highSide * 16.0f, -20.0f, 16.0f, 18.0f, HighTop, SurfaceKind.High);
+        PlacePlatform(highSide * 16.0f, -20.0f, 16.0f, 18.0f, HighTop, WorldSurfaceKind.High);
         PlaceRamp(highSide * 10.0f, -20.0f, 10.0f, 12.0f, MidTop, HighTop, alongX: true, ascendPositive: highSide > 0);
 
-        PlacePlatform(caveSide * -24.0f, 22.0f, 14.0f, 20.0f, MidTop, SurfaceKind.Mid);
+        PlacePlatform(caveSide * -24.0f, 22.0f, 14.0f, 20.0f, MidTop, WorldSurfaceKind.Mid);
         PlaceRamp(caveSide * -18.0f, 22.0f, 10.0f, 12.0f, GroundTop, MidTop, alongX: true, ascendPositive: -caveSide > 0);
 
         var caveResult = PlaceCavePocket(caveSide, 16.0f);
@@ -133,20 +126,23 @@ public partial class MapGenerator : Node3D
         float caveFloorX = side * 34.0f;
         float shelfX = side * 44.0f;
 
-        PlacePlatform(caveFloorX, centerZ, 18.0f, 24.0f, GroundTop, SurfaceKind.Cave);
-        PlacePlatform(shelfX, centerZ, 10.0f, 12.0f, MidTop, SurfaceKind.Mid);
-        PlaceRamp(side * 39.0f, centerZ, 8.0f, 10.0f, GroundTop, MidTop, alongX: true, ascendPositive: side > 0);
+        _spawnSurfaces.Add(new SurfaceRect(caveFloorX, centerZ, 18.0f, 24.0f, GroundTop));
+        _spawnSurfaces.Add(new SurfaceRect(shelfX, centerZ, 10.0f, 12.0f, MidTop));
 
-        // Rock masses shape the cave alcove while keeping the new open-chunk layout.
-        PlaceRockMass(side * 47.5f, centerZ, 5.0f, 28.0f, 3.8f, caveRock: true);
-        PlaceRockMass(side * 40.0f, centerZ - 11.0f, 16.0f, 4.0f, 3.0f, caveRock: true);
-        PlaceRockMass(side * 40.0f, centerZ + 11.0f, 16.0f, 4.0f, 3.0f, caveRock: true);
-        PlaceCeiling(side * 40.5f, centerZ, 18.0f, 26.0f, 2.55f, 0.7f);
-        PlaceLamp(new Vector3(side * 40.0f, 2.0f, centerZ), new Color(1.0f, 0.82f, 0.65f), 7.5f, 1.7f);
+        var slice = LoadCavePocketSlice().Instantiate<Node3D>();
+        slice.Name = "CavePocketSlice";
+        slice.Position = new Vector3(caveFloorX, GroundTop, centerZ);
+        if (side < 0)
+            slice.Rotation = new Vector3(0, Mathf.Pi, 0);
+
+        AddChild(slice);
+
+        Vector3 defaultChestPosition = new(shelfX, MidTop, centerZ);
+        Vector3 defaultFallbackPosition = new(caveFloorX - side * 2.0f, GroundTop, centerZ);
 
         return new CavePocketResult(
-            new Vector3(shelfX, MidTop, centerZ),
-            new Vector3(caveFloorX - side * 2.0f, GroundTop, centerZ));
+            ResolveSliceAnchorPosition(slice, SceneSliceAnchorKind.CaveChest, defaultChestPosition),
+            ResolveSliceAnchorPosition(slice, SceneSliceAnchorKind.FallbackItem, defaultFallbackPosition));
     }
 
     private void ClearGeneratedGeometry()
@@ -156,7 +152,7 @@ public partial class MapGenerator : Node3D
             child.QueueFree();
     }
 
-    private void PlacePlatform(float x, float z, float width, float depth, float topHeight, SurfaceKind surfaceKind)
+    private void PlacePlatform(float x, float z, float width, float depth, float topHeight, WorldSurfaceKind surfaceKind)
     {
         var body = new StaticBody3D();
         body.Position = new Vector3(x, topHeight - FloorThickness / 2.0f, z);
@@ -166,7 +162,7 @@ public partial class MapGenerator : Node3D
         mesh.Mesh = new BoxMesh
         {
             Size = new Vector3(width, FloorThickness, depth),
-            Material = GetSurfaceMaterial(surfaceKind),
+            Material = WorldMaterials.GetSurfaceMaterial(surfaceKind),
         };
         body.AddChild(mesh);
 
@@ -208,7 +204,7 @@ public partial class MapGenerator : Node3D
         mesh.Mesh = new BoxMesh
         {
             Size = size,
-            Material = GetSurfaceMaterial(SurfaceKind.Ramp),
+            Material = WorldMaterials.GetSurfaceMaterial(WorldSurfaceKind.Ramp),
         };
         body.AddChild(mesh);
 
@@ -227,7 +223,7 @@ public partial class MapGenerator : Node3D
         mesh.Mesh = new BoxMesh
         {
             Size = new Vector3(width, height, depth),
-            Material = caveRock ? GetCaveRockMaterial() : GetRockMaterial(),
+            Material = caveRock ? WorldMaterials.GetCaveRockMaterial() : WorldMaterials.GetRockMaterial(),
         };
         body.AddChild(mesh);
 
@@ -243,20 +239,9 @@ public partial class MapGenerator : Node3D
         mesh.Mesh = new BoxMesh
         {
             Size = new Vector3(width, thickness, depth),
-            Material = GetCaveRoofMaterial(),
+            Material = WorldMaterials.GetCaveRoofMaterial(),
         };
         AddChild(mesh);
-    }
-
-    private void PlaceLamp(Vector3 position, Color color, float range, float energy)
-    {
-        var light = new OmniLight3D();
-        light.Position = position;
-        light.LightColor = color;
-        light.OmniRange = range;
-        light.LightEnergy = energy;
-        light.ShadowEnabled = false;
-        AddChild(light);
     }
 
     private void PlaceTree(Vector3 position)
@@ -349,119 +334,32 @@ public partial class MapGenerator : Node3D
         return found ? bestTop : fallbackTop;
     }
 
-    private static StandardMaterial3D GetSurfaceMaterial(SurfaceKind surfaceKind)
+    private static PackedScene LoadCavePocketSlice()
     {
-        return surfaceKind switch
+        return _cavePocketSliceScene ??= GD.Load<PackedScene>(Scenes.CavePocketSlice);
+    }
+
+    private Vector3 ResolveSliceAnchorPosition(Node root, SceneSliceAnchorKind kind, Vector3 fallbackPosition)
+    {
+        foreach (SceneSliceAnchor anchor in EnumerateSceneSliceAnchors(root))
         {
-            SurfaceKind.Ground => _groundMaterial ??= CreateGroundMaterial(Palette.Floor, 0.028f, 0.11f),
-            SurfaceKind.Mid => _midGroundMaterial ??= CreateGroundMaterial(Palette.FloorMid, 0.032f, 0.12f),
-            SurfaceKind.High => _highGroundMaterial ??= CreateGroundMaterial(Palette.FloorHigh, 0.036f, 0.13f),
-            SurfaceKind.Cave => _caveGroundMaterial ??= CreateGroundMaterial(Palette.CaveFloor, 0.05f, 0.18f),
-            _ => _rampMaterial ??= CreateGroundMaterial(Palette.Ramp, 0.035f, 0.12f),
-        };
-    }
-
-    private static StandardMaterial3D GetRockMaterial()
-    {
-        return _rockMaterial ??= CreateStoneMaterial(Palette.ChunkEdge);
-    }
-
-    private static StandardMaterial3D GetCaveRockMaterial()
-    {
-        return _caveRockMaterial ??= CreateStoneMaterial(Palette.CaveWall);
-    }
-
-    private static StandardMaterial3D GetCaveRoofMaterial()
-    {
-        return _caveRoofMaterial ??= new StandardMaterial3D
-        {
-            AlbedoColor = Palette.CaveShadow,
-            Roughness = 0.98f,
-        };
-    }
-
-    private static StandardMaterial3D CreateStoneMaterial(Color baseColor)
-    {
-        var noise = new FastNoiseLite();
-        noise.NoiseType = FastNoiseLite.NoiseTypeEnum.Simplex;
-        noise.Frequency = 0.08f;
-        noise.FractalOctaves = 3;
-
-        var noiseTex = new NoiseTexture2D();
-        noiseTex.Noise = noise;
-        noiseTex.Width = 64;
-        noiseTex.Height = 64;
-        noiseTex.ColorRamp = CreateStoneGradient(baseColor);
-
-        var mat = new StandardMaterial3D();
-        mat.AlbedoTexture = noiseTex;
-        mat.AlbedoColor = baseColor;
-        mat.Roughness = 0.88f;
-        mat.Uv1Triplanar = true;
-        mat.Uv1TriplanarSharpness = 1.0f;
-        mat.Uv1Scale = new Vector3(0.45f, 0.45f, 0.45f);
-        return mat;
-    }
-
-    private static Gradient CreateStoneGradient(Color baseColor)
-    {
-        var gradient = new Gradient();
-        gradient.SetColor(0, baseColor.Darkened(0.3f));
-        gradient.SetColor(1, baseColor.Lightened(0.15f));
-        return gradient;
-    }
-
-    public static StandardMaterial3D CreateGroundMaterial()
-    {
-        var mat = new StandardMaterial3D();
-        mat.AlbedoColor = Palette.Floor;
-        mat.Roughness = 0.95f;
-        mat.Uv1Triplanar = true;
-        mat.Uv1Scale = new Vector3(0.1f, 0.1f, 0.1f);
-
-        var custom = TextureLoader.TryLoad("res://assets/textures/chunk_top.png");
-        if (custom != null)
-        {
-            mat.AlbedoTexture = custom;
-            return mat;
+            if (anchor.Kind == kind)
+                return ToLocal(anchor.GlobalPosition);
         }
 
-        return GetSurfaceMaterial(SurfaceKind.Ground);
+        return fallbackPosition;
     }
 
-    private static StandardMaterial3D CreateGroundMaterial(Color baseColor, float noiseFrequency, float uvScale)
+    private IEnumerable<SceneSliceAnchor> EnumerateSceneSliceAnchors(Node root)
     {
-        var noise = new FastNoiseLite();
-        noise.NoiseType = FastNoiseLite.NoiseTypeEnum.Simplex;
-        noise.Frequency = noiseFrequency;
-        noise.FractalOctaves = 4;
+        foreach (Node child in root.GetChildren())
+        {
+            if (child is SceneSliceAnchor anchor)
+                yield return anchor;
 
-        var noiseTex = new NoiseTexture2D();
-        noiseTex.Noise = noise;
-        noiseTex.Width = 128;
-        noiseTex.Height = 128;
-
-        var gradient = new Gradient();
-        gradient.SetColor(0, baseColor.Darkened(0.2f));
-        gradient.SetColor(1, baseColor.Lightened(0.1f));
-        noiseTex.ColorRamp = gradient;
-
-        var mat = new StandardMaterial3D();
-        mat.AlbedoTexture = noiseTex;
-        mat.AlbedoColor = baseColor;
-        mat.Roughness = 0.96f;
-        mat.Uv1Triplanar = true;
-        mat.Uv1Scale = new Vector3(uvScale, uvScale, uvScale);
-        return mat;
-    }
-
-    private enum SurfaceKind
-    {
-        Ground,
-        Mid,
-        High,
-        Cave,
-        Ramp,
+            foreach (SceneSliceAnchor nestedAnchor in EnumerateSceneSliceAnchors(child))
+                yield return nestedAnchor;
+        }
     }
 
     private readonly record struct CavePocketResult(Vector3 ChestPosition, Vector3 FallbackItemPosition);
