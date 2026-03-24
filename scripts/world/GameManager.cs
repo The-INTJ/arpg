@@ -260,7 +260,7 @@ public partial class GameManager : Node3D
     private void ShowGameOverScreen()
     {
         GameState.FinalizeCurrentRun(RunOutcome.Defeat, _player?.Stats);
-        GetTree().ChangeSceneToFile("res://scenes/GameOverScreen.tscn");
+        GetTree().ChangeSceneToFile(Scenes.GameOverScreen);
     }
 
     // --- Items and loot ---

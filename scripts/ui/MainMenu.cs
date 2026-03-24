@@ -23,7 +23,7 @@ public partial class MainMenu : Control
 
 	private void OnPlayPressed()
 	{
-		GetTree().ChangeSceneToFile("res://scenes/ArchetypeSelect.tscn");
+		GetTree().ChangeSceneToFile(Scenes.ArchetypeSelect);
 	}
 
 	private void OnQuitPressed()

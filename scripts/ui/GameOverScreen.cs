@@ -25,11 +25,11 @@ public partial class GameOverScreen : Control
     private void OnRetryPressed()
     {
         GameState.RestartRun();
-        GetTree().ChangeSceneToFile("res://scenes/Game.tscn");
+        GetTree().ChangeSceneToFile(Scenes.Game);
     }
 
     private void OnMainMenuPressed()
     {
-        GetTree().ChangeSceneToFile("res://scenes/MainMenu.tscn");
+        GetTree().ChangeSceneToFile(Scenes.MainMenu);
     }
 }

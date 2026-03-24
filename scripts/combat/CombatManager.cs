@@ -36,7 +36,7 @@ public partial class CombatManager : Node
         _camera = camera;
         _cameraRig = camera.GetParent<Node3D>();
         _cameraController = _cameraRig as CameraController;
-        _damageNumberScene = GD.Load<PackedScene>("res://scenes/DamageNumber.tscn");
+        _damageNumberScene = GD.Load<PackedScene>(Scenes.DamageNumber);
     }
 
     public void EnterCombat(Enemy enemy)

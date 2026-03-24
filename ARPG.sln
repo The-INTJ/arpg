@@ -1,0 +1,19 @@
+﻿Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2012
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ARPG", "ARPG.csproj", "{588B1203-81A0-4D9D-805B-F518D8D2BA12}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+	Debug|Any CPU = Debug|Any CPU
+	ExportDebug|Any CPU = ExportDebug|Any CPU
+	ExportRelease|Any CPU = ExportRelease|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{588B1203-81A0-4D9D-805B-F518D8D2BA12}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{588B1203-81A0-4D9D-805B-F518D8D2BA12}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{588B1203-81A0-4D9D-805B-F518D8D2BA12}.ExportDebug|Any CPU.ActiveCfg = ExportDebug|Any CPU
+		{588B1203-81A0-4D9D-805B-F518D8D2BA12}.ExportDebug|Any CPU.Build.0 = ExportDebug|Any CPU
+		{588B1203-81A0-4D9D-805B-F518D8D2BA12}.ExportRelease|Any CPU.ActiveCfg = ExportRelease|Any CPU
+		{588B1203-81A0-4D9D-805B-F518D8D2BA12}.ExportRelease|Any CPU.Build.0 = ExportRelease|Any CPU
+	EndGlobalSection
+EndGlobal

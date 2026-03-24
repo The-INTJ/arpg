@@ -98,6 +98,6 @@ public partial class PauseScreen : Control
     private void OnQuit()
     {
         GetTree().Paused = false;
-        GetTree().ChangeSceneToFile("res://scenes/MainMenu.tscn");
+        GetTree().ChangeSceneToFile(Scenes.MainMenu);
     }
 }

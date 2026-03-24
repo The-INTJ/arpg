@@ -36,12 +36,12 @@ public partial class ExitDoor : Node3D
 		if (GameState.CurrentRoom >= GameState.TotalRooms)
 		{
 			GameState.FinalizeCurrentRun(RunOutcome.Victory, player.Stats);
-			GetTree().ChangeSceneToFile("res://scenes/VictoryScreen.tscn");
+			GetTree().ChangeSceneToFile(Scenes.VictoryScreen);
 			return;
 		}
 
 		AudioManager.Instance?.PlayLevelUp();
 		GameState.CurrentRoom++;
-		GetTree().ChangeSceneToFile("res://scenes/Game.tscn");
+		GetTree().ChangeSceneToFile(Scenes.Game);
 	}
 }
