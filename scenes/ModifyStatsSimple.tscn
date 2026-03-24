@@ -1,17 +1,191 @@
-[gd_scene load_steps=2 format=3 uid="uid://8xhkehkpijak"]
+[gd_scene load_steps=3 format=3 uid="uid://8xhkehkpijak"]
 
 [ext_resource type="Script" path="res://scripts/ui/ModifyStatsSimple.cs" id="1_script"]
+[ext_resource type="Theme" uid="uid://c5ekn6wb3wjor" path="res://assets/HeroesOfTheAges_MainTheme.tres" id="2_theme"]
 
 [node name="ModifyStatsSimple" type="Control"]
 layout_mode = 3
-anchor_left = 0.67600006
-anchor_top = 0.82500005
-anchor_right = 1.7500001
-anchor_bottom = 1.728
-offset_left = -451.2801
-offset_top = -266.00006
-offset_right = 206.99976
-offset_bottom = 129.83997
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+theme = ExtResource("2_theme")
 script = ExtResource("1_script")
+
+[node name="Overlay" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 1
+color = Color(0, 0, 0, 0.72)
+
+[node name="MarginContainer" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 72
+theme_override_constants/margin_right = 72
+theme_override_constants/margin_top = 48
+theme_override_constants/margin_bottom = 48
+
+[node name="RootVBox" type="VBoxContainer" parent="MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 18
+
+[node name="Header" type="Label" parent="MarginContainer/RootVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.96, 0.9, 0.8, 0.9)
+theme_override_font_sizes/font_size = 18
+text = "Pick a modifier, then assign each effect to any stat row you want."
+horizontal_alignment = 1
+
+[node name="MainHBox" type="HBoxContainer" parent="MarginContainer/RootVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 28
+
+[node name="LeftVBox" type="VBoxContainer" parent="MarginContainer/RootVBox/MainHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 18
+
+[node name="WeaponPanel" type="PanelContainer" parent="MarginContainer/RootVBox/MainHBox/LeftVBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = "SectionPanel"
+
+[node name="WeaponVBox" type="VBoxContainer" parent="MarginContainer/RootVBox/MainHBox/LeftVBox/WeaponPanel"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="WeaponTitle" type="Label" parent="MarginContainer/RootVBox/MainHBox/LeftVBox/WeaponPanel/WeaponVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.83, 0.65, 0.22, 1)
+theme_override_font_sizes/font_size = 26
+horizontal_alignment = 1
+
+[node name="WeaponSubtitle" type="Label" parent="MarginContainer/RootVBox/MainHBox/LeftVBox/WeaponPanel/WeaponVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.96, 0.9, 0.8, 0.75)
+theme_override_font_sizes/font_size = 15
+text = "Rows are persistent stats. Flexible modifiers bind to a row only when you apply them."
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="BackpackPanel" type="PanelContainer" parent="MarginContainer/RootVBox/MainHBox/LeftVBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_type_variation = "SectionPanel"
+
+[node name="BackpackVBox" type="VBoxContainer" parent="MarginContainer/RootVBox/MainHBox/LeftVBox/BackpackPanel"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 12
+
+[node name="BackpackTitle" type="Label" parent="MarginContainer/RootVBox/MainHBox/LeftVBox/BackpackPanel/BackpackVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.83, 0.65, 0.22, 1)
+theme_override_font_sizes/font_size = 24
+text = "BACKPACK"
+horizontal_alignment = 1
+
+[node name="ScrollContainer" type="ScrollContainer" parent="MarginContainer/RootVBox/MainHBox/LeftVBox/BackpackPanel/BackpackVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+custom_minimum_size = Vector2(0, 180)
+
+[node name="BackpackList" type="VBoxContainer" parent="MarginContainer/RootVBox/MainHBox/LeftVBox/BackpackPanel/BackpackVBox/ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="BackpackEmptyLabel" type="Label" parent="MarginContainer/RootVBox/MainHBox/LeftVBox/BackpackPanel/BackpackVBox/ScrollContainer/BackpackList"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.5, 0.45, 0.4, 1)
+theme_override_font_sizes/font_size = 16
+text = "(empty)"
+horizontal_alignment = 1
+
+[node name="RightVBox" type="VBoxContainer" parent="MarginContainer/RootVBox/MainHBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(340, 0)
+theme_override_constants/separation = 18
+
+[node name="SelectedPanel" type="PanelContainer" parent="MarginContainer/RootVBox/MainHBox/RightVBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = "SectionPanel"
+
+[node name="SelectedVBox" type="VBoxContainer" parent="MarginContainer/RootVBox/MainHBox/RightVBox/SelectedPanel"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="SelectedTitle" type="Label" parent="MarginContainer/RootVBox/MainHBox/RightVBox/SelectedPanel/SelectedVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.83, 0.65, 0.22, 1)
+theme_override_font_sizes/font_size = 24
+text = "SELECTED"
+horizontal_alignment = 1
+
+[node name="SelectedModifierLabel" type="Label" parent="MarginContainer/RootVBox/MainHBox/RightVBox/SelectedPanel/SelectedVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.96, 0.9, 0.8, 1)
+theme_override_font_sizes/font_size = 17
+autowrap_mode = 2
+
+[node name="YouPanel" type="PanelContainer" parent="MarginContainer/RootVBox/MainHBox/RightVBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = "SectionPanel"
+
+[node name="YouVBox" type="VBoxContainer" parent="MarginContainer/RootVBox/MainHBox/RightVBox/YouPanel"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="YouTitle" type="Label" parent="MarginContainer/RootVBox/MainHBox/RightVBox/YouPanel/YouVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.83, 0.65, 0.22, 1)
+theme_override_font_sizes/font_size = 24
+text = "YOU"
+horizontal_alignment = 1
+
+[node name="YouStatsLabel" type="Label" parent="MarginContainer/RootVBox/MainHBox/RightVBox/YouPanel/YouVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.96, 0.9, 0.8, 1)
+theme_override_font_sizes/font_size = 20
+
+[node name="Footer" type="Label" parent="MarginContainer/RootVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.96, 0.9, 0.8, 0.55)
+theme_override_font_sizes/font_size = 15
+horizontal_alignment = 1
+
+[node name="ConfirmPanel" type="PanelContainer" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -300.0
+offset_right = 300.0
+offset_top = -210.0
+offset_bottom = 210.0
+mouse_filter = 1
+theme_type_variation = "ConfirmPanel"
+
+[node name="ConfirmLabel" type="Label" parent="ConfirmPanel"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.96, 0.9, 0.8, 1)
+theme_override_font_sizes/font_size = 18
+autowrap_mode = 2

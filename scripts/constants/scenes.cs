@@ -7,6 +7,7 @@ public static partial class Scenes
 	public const string ArchetypeSelect = Root + "ArchetypeSelect.tscn";
 	public const string DamageNumber = Root + "DamageNumber.tscn";
 	public const string Game = Root + "Game.tscn";
+	public const string ItemPickup = Root + "ItemPickup.tscn";
 	public const string GameOverScreen = Root + "GameOverScreen.tscn";
 	public const string LootPickup = Root + "LootPickup.tscn";
 	public const string MainMenu = Root + "MainMenu.tscn";

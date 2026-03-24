@@ -1,12 +1,13 @@
-[gd_scene load_steps=18 format=3 uid="uid://b8ru378ifyyhi"]
+[gd_scene load_steps=21 format=3 uid="uid://b8ru378ifyyhi"]
 
 [ext_resource type="Script" path="res://scripts/world/GameManager.cs" id="1_gm"]
 [ext_resource type="Script" path="res://scripts/player/PlayerController.cs" id="2_pc"]
 [ext_resource type="Script" path="res://scripts/world/ExitDoor.cs" id="4_ed"]
 [ext_resource type="Script" path="res://scripts/world/MapGenerator.cs" id="5_mg"]
-[ext_resource type="Script" path="res://scripts/ui/PauseScreen.cs" id="6_ps"]
-[ext_resource type="Script" path="res://scripts/ui/ModifyStatsSimple.cs" id="7_mss"]
+[ext_resource type="PackedScene" uid="uid://twjsjihh04h2" path="res://scenes/PauseScreen.tscn" id="6_ps"]
+[ext_resource type="PackedScene" uid="uid://8xhkehkpijak" path="res://scenes/ModifyStatsSimple.tscn" id="7_mss"]
 [ext_resource type="Script" path="res://scripts/world/CameraController.cs" id="8_cc"]
+[ext_resource type="Theme" uid="uid://c5ekn6wb3wjor" path="res://assets/HeroesOfTheAges_MainTheme.tres" id="9_theme"]
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_floor"]
 size = Vector2(100, 100)
@@ -42,6 +43,20 @@ emission = Color(0.0, 0.6, 0.1, 1)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_trigger"]
 size = Vector3(5, 3, 1.5)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hpbar_fill"]
+bg_color = Color(0.7, 0.15, 0.15, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hpbar_bg"]
+bg_color = Color(0.2, 0.15, 0.12, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
 
 [node name="Game" type="Node3D"]
 script = ExtResource("1_gm")
@@ -141,22 +156,84 @@ text = "Find and defeat 3 enemies"
 visible = false
 offset_right = 160.0
 offset_bottom = 40.0
+theme = ExtResource("9_theme")
 text = "Attack (E)"
 
-[node name="PauseScreen" type="Control" parent="CanvasLayer"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-script = ExtResource("6_ps")
+[node name="AbilityButton" type="Button" parent="CanvasLayer"]
+visible = false
+offset_right = 160.0
+offset_bottom = 40.0
+theme = ExtResource("9_theme")
 
-[node name="ModifyStatsSimple" type="Control" parent="CanvasLayer"]
-layout_mode = 1
-anchors_preset = 15
+[node name="EnemyHpDisplay" type="VBoxContainer" parent="CanvasLayer"]
+visible = false
+
+[node name="HpLabel" type="Label" parent="CanvasLayer/EnemyHpDisplay"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.96, 0.9, 0.8, 1)
+theme_override_font_sizes/font_size = 16
+text = "Enemy"
+horizontal_alignment = 1
+
+[node name="HpBar" type="ProgressBar" parent="CanvasLayer/EnemyHpDisplay"]
+layout_mode = 2
+custom_minimum_size = Vector2(120, 14)
+theme_override_styles/fill = SubResource("StyleBoxFlat_hpbar_fill")
+theme_override_styles/background = SubResource("StyleBoxFlat_hpbar_bg")
+min_value = 0.0
+max_value = 1.0
+show_percentage = false
+
+[node name="EffectInfoLabel" type="Label" parent="CanvasLayer/EnemyHpDisplay"]
+layout_mode = 2
+custom_minimum_size = Vector2(220, 0)
+theme_override_colors/font_color = Color(0.96, 0.9, 0.8, 1)
+theme_override_font_sizes/font_size = 15
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="RoomLabel" type="Label" parent="CanvasLayer"]
+anchors_preset = 0
+anchor_left = 1.0
 anchor_right = 1.0
+offset_left = -200.0
+offset_top = 20.0
+grow_horizontal = 0
+theme_override_colors/font_color = Color(0.83, 0.65, 0.22, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.8)
+theme_override_constants/shadow_offset_x = 2
+theme_override_constants/shadow_offset_y = 2
+theme_override_font_sizes/font_size = 22
+horizontal_alignment = 2
+
+[node name="RuleLabel" type="Label" parent="CanvasLayer"]
+anchors_preset = 0
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -320.0
+offset_top = 52.0
+grow_horizontal = 0
+custom_minimum_size = Vector2(280, 0)
+theme_override_colors/font_color = Color(0.96, 0.9, 0.8, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.8)
+theme_override_constants/shadow_offset_x = 2
+theme_override_constants/shadow_offset_y = 2
+theme_override_font_sizes/font_size = 14
+horizontal_alignment = 2
+autowrap_mode = 2
+
+[node name="ItemBarCenter" type="CenterContainer" parent="CanvasLayer"]
+anchors_preset = 0
+anchor_right = 1.0
+anchor_top = 1.0
 anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-script = ExtResource("7_mss")
+offset_top = -100.0
+offset_bottom = -20.0
+
+[node name="ItemBarHBox" type="HBoxContainer" parent="CanvasLayer/ItemBarCenter"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="PauseScreen" parent="CanvasLayer" instance=ExtResource("6_ps")]
+
+[node name="ModifyStatsSimple" parent="CanvasLayer" instance=ExtResource("7_mss")]

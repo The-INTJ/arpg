@@ -49,15 +49,37 @@ public partial class ModifyStatsSimple : Control
 
 	public override void _Ready()
 	{
-		var ui = ModifyStatsBuilder.Build(this, OnChannelPressed);
-		_weaponTitle = ui.WeaponTitle;
-		_selectedModifierLabel = ui.SelectedModifierLabel;
-		_channelButtons = ui.ChannelButtons;
-		_youStatsLabel = ui.YouStatsLabel;
-		_backpackList = ui.BackpackList;
-		_backpackEmptyLabel = ui.BackpackEmptyLabel;
-		_confirmPanel = ui.ConfirmPanel;
-		_confirmLabel = ui.ConfirmLabel;
+		Visible = false;
+		ProcessMode = ProcessModeEnum.Always;
+		MouseFilter = MouseFilterEnum.Stop;
+
+		_weaponTitle = GetNode<Label>("MarginContainer/RootVBox/MainHBox/LeftVBox/WeaponPanel/WeaponVBox/WeaponTitle");
+		_selectedModifierLabel = GetNode<Label>("MarginContainer/RootVBox/MainHBox/RightVBox/SelectedPanel/SelectedVBox/SelectedModifierLabel");
+		_youStatsLabel = GetNode<Label>("MarginContainer/RootVBox/MainHBox/RightVBox/YouPanel/YouVBox/YouStatsLabel");
+		_backpackList = GetNode<VBoxContainer>("MarginContainer/RootVBox/MainHBox/LeftVBox/BackpackPanel/BackpackVBox/ScrollContainer/BackpackList");
+		_backpackEmptyLabel = GetNode<Label>("MarginContainer/RootVBox/MainHBox/LeftVBox/BackpackPanel/BackpackVBox/ScrollContainer/BackpackList/BackpackEmptyLabel");
+		_confirmPanel = GetNode<PanelContainer>("ConfirmPanel");
+		_confirmLabel = GetNode<Label>("ConfirmPanel/ConfirmLabel");
+
+		// Channel buttons are data-driven — create dynamically
+		var weaponVBox = GetNode<VBoxContainer>("MarginContainer/RootVBox/MainHBox/LeftVBox/WeaponPanel/WeaponVBox");
+		_channelButtons = new Button[StatTargetInfo.All.Length];
+		for (int i = 0; i < StatTargetInfo.All.Length; i++)
+		{
+			StatTarget target = StatTargetInfo.All[i];
+			var button = new Button();
+			button.Alignment = HorizontalAlignment.Left;
+			button.CustomMinimumSize = new Vector2(0, 88);
+			button.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+			button.FocusMode = FocusModeEnum.None;
+			button.Pressed += () => OnChannelPressed(target);
+			weaponVBox.AddChild(button);
+			_channelButtons[i] = button;
+		}
+
+		// Footer text uses runtime key display names
+		var footer = GetNode<Label>("MarginContainer/RootVBox/Footer");
+		footer.Text = $"Esc Close  |  ({GameKeys.DisplayName(GameKeys.Ability)}) Reset picks / clear selection";
 	}
 
 

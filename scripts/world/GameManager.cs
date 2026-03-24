@@ -60,17 +60,26 @@ public partial class GameManager : Node3D
         _actionHandler.Init(_player, _turnManager, _combatManager, _aggroSystem);
         _actionHandler.StatusMessage += text => _hudUpdater.StatusText = text;
 
-        // Build HUD elements
+        // HUD elements from scene
         var attackButton = GetNode<Button>("CanvasLayer/AttackButton");
         attackButton.Pressed += _actionHandler.OnAttackPressed;
         attackButton.Visible = false;
         Palette.StyleButton(attackButton, 18);
 
-        var abilityButton = GameHudBuilder.BuildAbilityButton(canvas);
+        var abilityButton = GetNode<Button>("CanvasLayer/AbilityButton");
+        Palette.StyleButton(abilityButton, 18);
         abilityButton.Pressed += _actionHandler.OnAbilityPressed;
 
-        var enemyHp = GameHudBuilder.BuildEnemyHpBar(canvas);
-        GameHudBuilder.BuildRoomLabels(canvas, _room, monsterEffectProfile);
+        var enemyHp = new GameHudBuilder.EnemyHpDisplay(
+            GetNode<ProgressBar>("CanvasLayer/EnemyHpDisplay/HpBar"),
+            GetNode<Label>("CanvasLayer/EnemyHpDisplay/HpLabel"),
+            GetNode<Label>("CanvasLayer/EnemyHpDisplay/EffectInfoLabel"),
+            GetNode<VBoxContainer>("CanvasLayer/EnemyHpDisplay"));
+
+        var roomLabel = GetNode<Label>("CanvasLayer/RoomLabel");
+        roomLabel.Text = $"Room {_room}/{GameState.TotalRooms}";
+        var ruleLabel = GetNode<Label>("CanvasLayer/RuleLabel");
+        ruleLabel.Text = $"{monsterEffectProfile.DisplayName}\n{monsterEffectProfile.Description}";
 
         var hpLabel = GetNode<Label>("CanvasLayer/HUD/HpLabel");
         var statsLabel = GetNode<Label>("CanvasLayer/HUD/StatsLabel");
@@ -80,7 +89,8 @@ public partial class GameManager : Node3D
             new[] { hpLabel, statsLabel, killLabel, statusLabel },
             GetViewport().GetVisibleRect().Size.Y);
 
-        var (itemLabels, itemStyles) = GameHudBuilder.BuildItemBar(canvas, _player.Stats.Inventory.Capacity);
+        var itemBarHBox = GetNode<HBoxContainer>("CanvasLayer/ItemBarCenter/ItemBarHBox");
+        var (itemLabels, itemStyles) = GameHudBuilder.BuildItemBar(itemBarHBox, _player.Stats.Inventory.Capacity);
 
         // HUD updater
         _hudUpdater = new GameHudUpdater();
@@ -267,7 +277,7 @@ public partial class GameManager : Node3D
 
     private void SpawnMapItem(Vector3 position)
     {
-        var pickup = new ItemPickup();
+        var pickup = GD.Load<PackedScene>(Scenes.ItemPickup).Instantiate<ItemPickup>();
         pickup.Position = position;
         pickup.Init(InventoryItem.CreateForRoom(_room));
         pickup.Collected += (itemName, slotIndex) =>
@@ -285,7 +295,7 @@ public partial class GameManager : Node3D
 
     private void SpawnLoot(Vector3 position)
     {
-        var pickup = new LootPickup();
+        var pickup = GD.Load<PackedScene>(Scenes.LootPickup).Instantiate<LootPickup>();
         pickup.Position = position;
         pickup.Init(ModifierGenerator.Random());
         pickup.EquipRequested += () =>
