@@ -17,7 +17,8 @@ public partial class GameHudUpdater : Node
 
     private Label _hpLabel;
     private Label _statsLabel;
-    private Label _killLabel;
+    private Label _darkEnergyLabel;
+    private ProgressBar _darkEnergyBar;
     private Label _statusLabel;
     private Button _attackButton;
     private Button _abilityButton;
@@ -48,7 +49,8 @@ public partial class GameHudUpdater : Node
         CanvasLayer canvas,
         Label hpLabel,
         Label statsLabel,
-        Label killLabel,
+        Label darkEnergyLabel,
+        ProgressBar darkEnergyBar,
         Label statusLabel,
         Button attackButton,
         Button abilityButton,
@@ -66,7 +68,8 @@ public partial class GameHudUpdater : Node
         _canvas = canvas;
         _hpLabel = hpLabel;
         _statsLabel = statsLabel;
-        _killLabel = killLabel;
+        _darkEnergyLabel = darkEnergyLabel;
+        _darkEnergyBar = darkEnergyBar;
         _statusLabel = statusLabel;
         _attackButton = attackButton;
         _abilityButton = abilityButton;
@@ -79,9 +82,9 @@ public partial class GameHudUpdater : Node
         _itemSlotStyles = itemSlotStyles;
     }
 
-    public void UpdateAll(int killCount, int totalEnemies)
+    public void UpdateAll(DarkEnergy darkEnergy)
     {
-        UpdateHud(killCount, totalEnemies);
+        UpdateHud(darkEnergy);
         UpdateItemBar();
 
         if (_turnManager.IsExploring)
@@ -97,7 +100,7 @@ public partial class GameHudUpdater : Node
         _enemyHpDisplay.Visible = false;
     }
 
-    private void UpdateHud(int killCount, int totalEnemies)
+    private void UpdateHud(DarkEnergy darkEnergy)
     {
         var s = _player.Stats;
         _hpLabel.Text = $"HP: {s.CurrentHp} / {s.MaxHp}";
@@ -105,7 +108,8 @@ public partial class GameHudUpdater : Node
             ? $"{_actionHandler.RemainingCombatItemUses}/{_actionHandler.CombatItemUsesPerTurn}"
             : $"{s.ItemUsesPerTurn}/turn";
         _statsLabel.Text = $"ATK: {s.AttackDamage}  |  SPD: {s.MoveSpeed:0.#}  |  Range: {s.AttackRange:0.#}  |  Items: {itemUsesText}";
-        _killLabel.Text = $"Kills: {killCount}/{totalEnemies}";
+        _darkEnergyLabel.Text = $"Dark Energy: {darkEnergy.Current}/{darkEnergy.Threshold}";
+        _darkEnergyBar.Value = darkEnergy.FillPercent;
     }
 
     private void UpdateItemBar()

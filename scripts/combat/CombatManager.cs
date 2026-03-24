@@ -21,6 +21,7 @@ public partial class CombatManager : Node
     /// <summary>Where the last killed enemy stood — used for loot spawning.</summary>
     public Vector3 LastKillPosition { get; private set; }
     public bool LastKillWasBoss { get; private set; }
+    public bool LastKillWasElite { get; private set; }
     public InventoryItem LastKillItemDrop { get; private set; }
 
     [Signal]
@@ -112,6 +113,7 @@ public partial class CombatManager : Node
     {
         _turnManager.SetState(TurnState.Busy);
         LastKillWasBoss = false;
+        LastKillWasElite = false;
         LastKillItemDrop = null;
 
         var result = _target.ResolveIncomingDamage(damage, _player);
@@ -145,6 +147,7 @@ public partial class CombatManager : Node
 
             LastKillPosition = _target.GlobalPosition;
             LastKillWasBoss = _target.IsBoss;
+            LastKillWasElite = _target.IsElite;
             LastKillItemDrop = _target.ItemDrop;
             _target.Die();
             _target = null;

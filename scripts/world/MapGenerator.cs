@@ -40,10 +40,10 @@ public partial class MapGenerator : Node3D
 
     private static readonly Vector3[][] SpawnSets =
     {
-        new[] { new Vector3(12.5f, 0.5f, -12.5f), new Vector3(-15, 0.5f, 7.5f), new Vector3(7.5f, 0.5f, 12.5f), new Vector3(-5, 0.5f, -15), new Vector3(15, 0.5f, 2.5f) },
-        new[] { new Vector3(-7.5f, 0.5f, -12.5f), new Vector3(10, 0.5f, -10), new Vector3(-10, 0.5f, 10), new Vector3(7.5f, 0.5f, 12.5f), new Vector3(12.5f, 0.5f, -2.5f) },
-        new[] { new Vector3(-12.5f, 0.5f, -5), new Vector3(12.5f, 0.5f, 7.5f), new Vector3(0, 0.5f, -15), new Vector3(-10, 0.5f, 12.5f), new Vector3(12.5f, 0.5f, -12.5f) },
-        new[] { new Vector3(15, 0.5f, -12.5f), new Vector3(-15, 0.5f, -7.5f), new Vector3(12.5f, 0.5f, 10), new Vector3(-10, 0.5f, 15), new Vector3(-2.5f, 0.5f, 7.5f) },
+        new[] { new Vector3(12.5f, 0.5f, -12.5f), new Vector3(-15, 0.5f, 7.5f), new Vector3(7.5f, 0.5f, 12.5f), new Vector3(-5, 0.5f, -15), new Vector3(15, 0.5f, 2.5f), new Vector3(-12.5f, 0.5f, -5), new Vector3(5, 0.5f, -5), new Vector3(-7.5f, 0.5f, 15) },
+        new[] { new Vector3(-7.5f, 0.5f, -12.5f), new Vector3(10, 0.5f, -10), new Vector3(-10, 0.5f, 10), new Vector3(7.5f, 0.5f, 12.5f), new Vector3(12.5f, 0.5f, -2.5f), new Vector3(-15, 0.5f, -5), new Vector3(5, 0.5f, 5), new Vector3(-5, 0.5f, -7.5f) },
+        new[] { new Vector3(-12.5f, 0.5f, -5), new Vector3(12.5f, 0.5f, 7.5f), new Vector3(0, 0.5f, -15), new Vector3(-10, 0.5f, 12.5f), new Vector3(12.5f, 0.5f, -12.5f), new Vector3(-15, 0.5f, 2.5f), new Vector3(7.5f, 0.5f, -7.5f), new Vector3(-5, 0.5f, 5) },
+        new[] { new Vector3(15, 0.5f, -12.5f), new Vector3(-15, 0.5f, -7.5f), new Vector3(12.5f, 0.5f, 10), new Vector3(-10, 0.5f, 15), new Vector3(-2.5f, 0.5f, 7.5f), new Vector3(10, 0.5f, -2.5f), new Vector3(-5, 0.5f, -12.5f), new Vector3(7.5f, 0.5f, 5) },
     };
 
     public Vector3[] Generate()
@@ -52,11 +52,17 @@ public partial class MapGenerator : Node3D
         var layout = Layouts[idx];
         var spawns = SpawnSets[idx];
 
-        // Boundary walls (scaled to 200x200 arena)
-        PlaceWall(0, -25 * S, 52 * S, 1, 4, Palette.BoundaryWall, true);
-        PlaceWall(0, 25 * S, 52 * S, 1, 4, Palette.BoundaryWall, true);
-        PlaceWall(-25 * S, 0, 1, 52 * S, 4, Palette.BoundaryWall, true);
-        PlaceWall(25 * S, 0, 1, 52 * S, 4, Palette.BoundaryWall, true);
+        // Floating chunk geometry (visible cliff sides + bottom)
+        float chunkWidth = 50 * S;
+        float chunkDepth = 50 * S;
+        ChunkBuilder.BuildChunk(this, chunkWidth, chunkDepth);
+
+        // Invisible low collision walls at edges (knee-height so player can see over)
+        float edgeH = 1.0f;
+        PlaceInvisibleWall(0, -25 * S, 52 * S, 1, edgeH);
+        PlaceInvisibleWall(0, 25 * S, 52 * S, 1, edgeH);
+        PlaceInvisibleWall(-25 * S, 0, 1, 52 * S, edgeH);
+        PlaceInvisibleWall(25 * S, 0, 1, 52 * S, edgeH);
 
         // Interior walls (scaled positions and sizes)
         foreach (var wall in layout)
@@ -78,6 +84,17 @@ public partial class MapGenerator : Node3D
             shuffled[i] = new Vector3(shuffled[i].X * S, shuffled[i].Y, shuffled[i].Z * S);
 
         return shuffled;
+    }
+
+    private void PlaceInvisibleWall(float x, float z, float w, float d, float h)
+    {
+        var body = new StaticBody3D();
+        AddChild(body);
+        body.Position = new Vector3(x, h / 2, z);
+
+        var shape = new CollisionShape3D();
+        shape.Shape = new BoxShape3D { Size = new Vector3(w, h, d) };
+        body.AddChild(shape);
     }
 
     private void PlaceWall(float x, float z, float w, float d, float h, Color color, bool textured)
@@ -250,10 +267,24 @@ public partial class MapGenerator : Node3D
     }
 
     /// <summary>
-    /// Creates a textured ground material with noise.
+    /// Creates a textured ground material. Uses res://assets/textures/chunk_top.png if
+    /// real art exists there, otherwise falls back to procedural noise.
     /// </summary>
     public static StandardMaterial3D CreateGroundMaterial()
     {
+        var mat = new StandardMaterial3D();
+        mat.AlbedoColor = Palette.Floor;
+        mat.Roughness = 0.95f;
+        mat.Uv1Triplanar = true;
+        mat.Uv1Scale = new Vector3(0.1f, 0.1f, 0.1f);
+
+        var custom = TextureLoader.TryLoad("res://assets/textures/chunk_top.png");
+        if (custom != null)
+        {
+            mat.AlbedoTexture = custom;
+            return mat;
+        }
+
         var noise = new FastNoiseLite();
         noise.NoiseType = FastNoiseLite.NoiseTypeEnum.Simplex;
         noise.Frequency = 0.03f;
@@ -269,12 +300,7 @@ public partial class MapGenerator : Node3D
         gradient.SetColor(1, Palette.Floor.Lightened(0.1f));
         noiseTex.ColorRamp = gradient;
 
-        var mat = new StandardMaterial3D();
         mat.AlbedoTexture = noiseTex;
-        mat.AlbedoColor = Palette.Floor;
-        mat.Roughness = 0.95f;
-        mat.Uv1Triplanar = true;
-        mat.Uv1Scale = new Vector3(0.1f, 0.1f, 0.1f);
         return mat;
     }
 }

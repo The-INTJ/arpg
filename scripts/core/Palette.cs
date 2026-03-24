@@ -17,6 +17,12 @@ public static class Palette
 	public static readonly Color Floor = new(0.65f, 0.55f, 0.35f);
 	public static readonly Color Wall = new(0.42f, 0.31f, 0.24f);
 	public static readonly Color BoundaryWall = new(0.35f, 0.25f, 0.18f);
+	public static readonly Color ChunkEdge = new(0.30f, 0.22f, 0.15f);
+	public static readonly Color AbyssVoid = new(0.05f, 0.02f, 0.08f);
+
+	// Dark energy / bridge (3D materials only — UI colors are in the theme)
+	public static readonly Color DarkEnergyGlow = new(0.70f, 0.30f, 0.90f);
+	public static readonly Color BridgePurple = new(0.60f, 0.25f, 0.85f);
 
 	// Characters
 	public static readonly Color PlayerBody = new(0.18f, 0.55f, 0.43f);

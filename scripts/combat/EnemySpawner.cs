@@ -15,24 +15,35 @@ public static class EnemySpawner
             {
                 EnemySpawnPlan.Normal(),
                 EnemySpawnPlan.Normal(),
+                EnemySpawnPlan.Normal(),
+                EnemySpawnPlan.Normal(),
                 EnemySpawnPlan.Elite(InventoryItem.CreateEnemyDrop(room)),
             },
             2 => new[]
             {
                 EnemySpawnPlan.Normal(),
-                EnemySpawnPlan.Elite(InventoryItem.CreateEnemyDrop(room)),
                 EnemySpawnPlan.Normal(),
+                EnemySpawnPlan.Normal(),
+                EnemySpawnPlan.Normal(),
+                EnemySpawnPlan.Elite(InventoryItem.CreateEnemyDrop(room)),
+                EnemySpawnPlan.Elite(InventoryItem.CreateEnemyDrop(room)),
                 EnemySpawnPlan.Normal(),
             },
             3 => new[]
             {
                 EnemySpawnPlan.Boss(InventoryItem.CreateEnemyDrop(room, fromBoss: true)),
                 EnemySpawnPlan.Elite(InventoryItem.CreateEnemyDrop(room)),
+                EnemySpawnPlan.Elite(InventoryItem.CreateEnemyDrop(room)),
+                EnemySpawnPlan.Normal(),
+                EnemySpawnPlan.Normal(),
+                EnemySpawnPlan.Normal(),
                 EnemySpawnPlan.Normal(),
                 EnemySpawnPlan.Normal(),
             },
             _ => new[]
             {
+                EnemySpawnPlan.Normal(),
+                EnemySpawnPlan.Normal(),
                 EnemySpawnPlan.Normal(),
                 EnemySpawnPlan.Normal(),
                 EnemySpawnPlan.Elite(InventoryItem.CreateEnemyDrop(room)),
