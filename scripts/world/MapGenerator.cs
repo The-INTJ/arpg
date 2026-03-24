@@ -282,6 +282,47 @@ public partial class MapGenerator : Node3D
         var shape = new CollisionShape3D();
         shape.Shape = new BoxShape3D { Size = size };
         body.AddChild(shape);
+
+        AddRampEdgeRocks(body, size, alongX);
+    }
+
+    private void AddRampEdgeRocks(StaticBody3D rampBody, Vector3 rampSize, bool alongX)
+    {
+        var rng = new RandomNumberGenerator();
+        rng.Seed = GD.Randi();
+        var rockMat = WorldMaterials.GetRockMaterial();
+
+        float length = alongX ? rampSize.X : rampSize.Z;
+        float width = alongX ? rampSize.Z : rampSize.X;
+        float halfWidth = width * 0.5f;
+
+        for (int side = -1; side <= 1; side += 2)
+        {
+            for (int i = 0; i < 3; i++)
+            {
+                float t = rng.RandfRange(0.1f, 0.9f);
+                float along = (t - 0.5f) * length;
+                float radius = rng.RandfRange(0.2f, 0.45f);
+                float edgeOffset = halfWidth + rng.RandfRange(-0.2f, 0.3f);
+
+                var rock = new MeshInstance3D();
+                rock.Mesh = new SphereMesh
+                {
+                    Radius = radius,
+                    Height = radius * rng.RandfRange(0.7f, 1.2f),
+                };
+                rock.MaterialOverride = rockMat;
+                rock.Position = alongX
+                    ? new Vector3(along, RampThickness * 0.5f + radius * 0.2f, side * edgeOffset)
+                    : new Vector3(side * edgeOffset, RampThickness * 0.5f + radius * 0.2f, along);
+                rock.Scale = new Vector3(
+                    rng.RandfRange(0.7f, 1.3f),
+                    rng.RandfRange(0.4f, 0.8f),
+                    rng.RandfRange(0.7f, 1.3f));
+                rock.CastShadow = GeometryInstance3D.ShadowCastingSetting.Off;
+                rampBody.AddChild(rock);
+            }
+        }
     }
 
     private void PlaceTree(Vector3 position)
