@@ -24,6 +24,7 @@ public partial class GameHudUpdater : Node
     private Label _enemyHpLabel;
     private Label _enemyEffectInfoLabel;
     private VBoxContainer _enemyHpDisplay;
+    private Control[] _itemSlotControls;
     private Label[] _itemSlotLabels;
     private StyleBoxFlat[] _itemSlotStyles;
 
@@ -50,6 +51,7 @@ public partial class GameHudUpdater : Node
         Button attackButton,
         Button abilityButton,
         GameHudBuilder.EnemyHpDisplay enemyHp,
+        Control[] itemSlotControls,
         Label[] itemSlotLabels,
         StyleBoxFlat[] itemSlotStyles)
     {
@@ -69,6 +71,7 @@ public partial class GameHudUpdater : Node
         _enemyHpLabel = enemyHp.HpLabel;
         _enemyEffectInfoLabel = enemyHp.EffectInfoLabel;
         _enemyHpDisplay = enemyHp.Container;
+        _itemSlotControls = itemSlotControls;
         _itemSlotLabels = itemSlotLabels;
         _itemSlotStyles = itemSlotStyles;
     }
@@ -99,22 +102,16 @@ public partial class GameHudUpdater : Node
         _killLabel.Text = $"Kills: {killCount}/{totalEnemies}";
     }
 
-    public void RebuildItemBar()
-    {
-        var hbox = _canvas.GetNode<HBoxContainer>("ItemBarCenter/ItemBarHBox");
-        var (labels, styles) = GameHudBuilder.BuildItemBar(hbox, _player.Stats.Inventory.Capacity);
-        _itemSlotLabels = labels;
-        _itemSlotStyles = styles;
-    }
-
     private void UpdateItemBar()
     {
         var inventory = _player.Stats.Inventory;
-        if (_itemSlotLabels.Length != inventory.Capacity || _itemSlotStyles.Length != inventory.Capacity)
-            RebuildItemBar();
-
-        for (int i = 0; i < inventory.Capacity; i++)
+        for (int i = 0; i < _itemSlotControls.Length; i++)
         {
+            bool slotUnlocked = i < inventory.Capacity;
+            _itemSlotControls[i].Visible = slotUnlocked;
+            if (!slotUnlocked)
+                continue;
+
             string keyName = GameKeys.DisplayName(GameKeys.ItemSlot(i));
             var item = inventory.GetItem(i);
 
@@ -122,14 +119,14 @@ public partial class GameHudUpdater : Node
             {
                 _itemSlotLabels[i].Text = $"{keyName}\n(empty)";
                 _itemSlotLabels[i].AddThemeColorOverride("font_color", Palette.TextDisabled);
-                _itemSlotStyles[i].BgColor = new Color(Palette.BgDark, 0.92f);
-                _itemSlotStyles[i].BorderColor = Palette.TextDisabled;
+                _itemSlotStyles[i].BgColor = new Color(Palette.BgDark, 0.9f);
+                _itemSlotStyles[i].BorderColor = new Color(Palette.TextDisabled, 0.85f);
                 continue;
             }
 
             _itemSlotLabels[i].Text = $"{keyName}  {item.Name}\n{item.Description}";
             _itemSlotLabels[i].AddThemeColorOverride("font_color", Palette.TextLight);
-            _itemSlotStyles[i].BgColor = new Color(Palette.ButtonBg, 0.95f);
+            _itemSlotStyles[i].BgColor = new Color(Palette.ButtonBg, 0.92f);
             _itemSlotStyles[i].BorderColor = item.DisplayColor;
         }
     }

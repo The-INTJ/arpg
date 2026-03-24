@@ -70,6 +70,7 @@ public partial class CombatManager : Node
     {
         if (!_turnManager.IsPlayerTurn || _target == null) return;
         int damage = _player.Stats.ConsumePreparedAttackDamage(_player.AttackDamage, out string feedback);
+        _player.PlayAttackAnimation(_target.GlobalPosition, isHeavy: false);
         ResolveDamageAction(damage, true, feedback);
     }
 
@@ -83,6 +84,7 @@ public partial class CombatManager : Node
         int damage = (int)(_player.AttackDamage * ability.DamageMultiplier);
         ability.Use();
         damage = _player.Stats.ConsumePreparedAttackDamage(damage, out string feedback);
+        _player.PlayAttackAnimation(_target.GlobalPosition, isHeavy: true);
         ResolveDamageAction(damage, true, feedback);
     }
 
@@ -112,10 +114,16 @@ public partial class CombatManager : Node
         GameState.RecordDamageDone(result.Damage);
         SpawnDamageNumber(_target.GlobalPosition + Vector3.Up * 0.6f, result.Damage, false);
         if (result.Damage > 0)
+        {
+            _target.PlayHitAnimation();
             AudioManager.Instance?.PlayHit();
+        }
 
         if (result.RetaliationDamage > 0)
+        {
+            _player.PlayHitReaction();
             SpawnDamageNumber(_player.GlobalPosition + Vector3.Up * 0.7f, result.RetaliationDamage, true);
+        }
 
         EmitCombatFeedback(CombineFeedback(extraFeedback, result.BuildFeedbackText()));
         _shakeTimeLeft = result.Damage > 0 || result.RetaliationDamage > 0 ? 0.15f : 0.08f;
@@ -161,10 +169,14 @@ public partial class CombatManager : Node
 
         _turnManager.SetState(TurnState.EnemyTurn);
         _target.OnOwnerTurnStarted();
+        _target.PlayAttackAnimation(_player.GlobalPosition);
 
         var result = _target.ResolveOutgoingDamage(_player);
         if (result.Damage > 0)
+        {
+            _player.PlayHitReaction();
             SpawnDamageNumber(_player.GlobalPosition + Vector3.Up * 0.7f, result.Damage, true);
+        }
         if (result.Damage > 0)
             AudioManager.Instance?.PlayPlayerHit();
         if (result.HealingAmount > 0)

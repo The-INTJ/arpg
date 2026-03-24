@@ -1,7 +1,9 @@
-[gd_scene load_steps=3 format=3 uid="uid://dyqmcmc72p28a"]
+[gd_scene load_steps=5 format=3 uid="uid://dyqmcmc72p28a"]
 
 [ext_resource type="Script" path="res://scripts/ui/VictoryScreen.cs" id="1_vic"]
 [ext_resource type="PackedScene" path="res://scenes/RunHistorySnippet.tscn" id="2_history"]
+[ext_resource type="Texture2D" path="res://assets/ui/title_ornament.svg" id="3_ornament"]
+[ext_resource type="Texture2D" path="res://assets/ui/crest_medallion.svg" id="4_crest"]
 
 [node name="VictoryScreen" type="Control"]
 layout_mode = 3
@@ -20,6 +22,24 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
+[node name="Crest" type="TextureRect" parent="."]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -220.0
+offset_top = -220.0
+offset_right = 220.0
+offset_bottom = 220.0
+grow_horizontal = 2
+grow_vertical = 2
+modulate = Color(1, 1, 1, 0.12)
+texture = ExtResource("4_crest")
+expand_mode = 1
+stretch_mode = 5
+
 [node name="MarginContainer" type="MarginContainer" parent="."]
 layout_mode = 1
 anchors_preset = 15
@@ -35,6 +55,12 @@ theme_override_constants/margin_bottom = 48
 [node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer"]
 layout_mode = 2
 theme_override_constants/separation = 24
+
+[node name="Ornament" type="TextureRect" parent="MarginContainer/VBoxContainer"]
+layout_mode = 2
+texture = ExtResource("3_ornament")
+expand_mode = 1
+stretch_mode = 5
 
 [node name="TitleLabel" type="Label" parent="MarginContainer/VBoxContainer"]
 layout_mode = 2

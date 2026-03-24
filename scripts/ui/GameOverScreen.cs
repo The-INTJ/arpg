@@ -7,11 +7,11 @@ public partial class GameOverScreen : Control
     public override void _Ready()
     {
         Input.MouseMode = Input.MouseModeEnum.Visible;
-        GetNode<ColorRect>("Background").Color = Palette.BgDark;
+        GetNode<ColorRect>("Background").Color = new Color(0.11f, 0.06f, 0.05f);
 
         var title = GetNode<Label>("MarginContainer/VBoxContainer/TitleLabel");
         title.AddThemeColorOverride("font_color", Palette.Accent);
-        title.AddThemeFontSizeOverride("font_size", 72);
+        title.AddThemeFontSizeOverride("font_size", 74);
 
         var retryButton = GetNode<Button>("MarginContainer/VBoxContainer/Buttons/RetryButton");
         Palette.StyleButton(retryButton, 24);

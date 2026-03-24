@@ -1,6 +1,9 @@
-[gd_scene load_steps=2 format=3 uid="uid://bdj4qlw0qayh7"]
+[gd_scene load_steps=5 format=3 uid="uid://bdj4qlw0qayh7"]
 
 [ext_resource type="Script" path="res://scripts/ui/ArchetypeSelect.cs" id="1_as"]
+[ext_resource type="Theme" uid="uid://c5ekn6wb3wjor" path="res://assets/HeroesOfTheAges_MainTheme.tres" id="2_theme"]
+[ext_resource type="Texture2D" path="res://assets/ui/title_ornament.svg" id="3_ornament"]
+[ext_resource type="Texture2D" path="res://assets/ui/crest_medallion.svg" id="4_crest"]
 
 [node name="ArchetypeSelect" type="Control"]
 layout_mode = 3
@@ -9,6 +12,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+theme = ExtResource("2_theme")
 script = ExtResource("1_as")
 
 [node name="Background" type="ColorRect" parent="."]
@@ -19,31 +23,102 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="CenterContainer" type="CenterContainer" parent="."]
+[node name="Crest" type="TextureRect" parent="."]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -240.0
+offset_top = -240.0
+offset_right = 240.0
+offset_bottom = 240.0
+grow_horizontal = 2
+grow_vertical = 2
+modulate = Color(1, 1, 1, 0.14)
+texture = ExtResource("4_crest")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="MarginContainer" type="MarginContainer" parent="."]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+theme_override_constants/margin_left = 90
+theme_override_constants/margin_top = 60
+theme_override_constants/margin_right = 90
+theme_override_constants/margin_bottom = 60
 
-[node name="VBoxContainer" type="VBoxContainer" parent="CenterContainer"]
+[node name="CenterContainer" type="CenterContainer" parent="MarginContainer"]
 layout_mode = 2
-theme_override_constants/separation = 30
+size_flags_horizontal = 3
+size_flags_vertical = 3
 
-[node name="TitleLabel" type="Label" parent="CenterContainer/VBoxContainer"]
+[node name="SelectionCard" type="PanelContainer" parent="MarginContainer/CenterContainer"]
 layout_mode = 2
+custom_minimum_size = Vector2(1320, 0)
+theme_type_variation = "SectionPanel"
+
+[node name="CardMargin" type="MarginContainer" parent="MarginContainer/CenterContainer/SelectionCard"]
+layout_mode = 2
+theme_override_constants/margin_left = 52
+theme_override_constants/margin_top = 48
+theme_override_constants/margin_right = 52
+theme_override_constants/margin_bottom = 38
+
+[node name="VBox" type="VBoxContainer" parent="MarginContainer/CenterContainer/SelectionCard/CardMargin"]
+layout_mode = 2
+theme_override_constants/separation = 22
+
+[node name="Ornament" type="TextureRect" parent="MarginContainer/CenterContainer/SelectionCard/CardMargin/VBox"]
+layout_mode = 2
+texture = ExtResource("3_ornament")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="TitleLabel" type="Label" parent="MarginContainer/CenterContainer/SelectionCard/CardMargin/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 60
 text = "Choose Your Archetype"
 horizontal_alignment = 1
 
-[node name="DescriptionLabel" type="Label" parent="CenterContainer/VBoxContainer"]
+[node name="DescriptionLabel" type="Label" parent="MarginContainer/CenterContainer/SelectionCard/CardMargin/VBox"]
 layout_mode = 2
-custom_minimum_size = Vector2(500, 80)
-text = "Choose your path..."
+custom_minimum_size = Vector2(0, 100)
+theme_override_colors/font_color = Color(0.96, 0.9, 0.8, 0.84)
+theme_override_font_sizes/font_size = 22
+text = "Hover an archetype to preview its strengths."
 horizontal_alignment = 1
 autowrap_mode = 2
 
-[node name="ButtonBox" type="HBoxContainer" parent="CenterContainer/VBoxContainer"]
+[node name="ButtonBox" type="HBoxContainer" parent="MarginContainer/CenterContainer/SelectionCard/CardMargin/VBox"]
 layout_mode = 2
 alignment = 1
-theme_override_constants/separation = 20
+theme_override_constants/separation = 22
+
+[node name="FighterButton" type="Button" parent="MarginContainer/CenterContainer/SelectionCard/CardMargin/VBox/ButtonBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(280, 82)
+text = "Fighter"
+
+[node name="ArcherButton" type="Button" parent="MarginContainer/CenterContainer/SelectionCard/CardMargin/VBox/ButtonBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(280, 82)
+text = "Archer"
+
+[node name="MageButton" type="Button" parent="MarginContainer/CenterContainer/SelectionCard/CardMargin/VBox/ButtonBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(280, 82)
+text = "Mage"
+
+[node name="HintLabel" type="Label" parent="MarginContainer/CenterContainer/SelectionCard/CardMargin/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.96, 0.9, 0.8, 0.62)
+theme_override_font_sizes/font_size = 18
+text = "Each run keeps your build across rooms, so pick a lane you want to grow."
+horizontal_alignment = 1
+autowrap_mode = 2

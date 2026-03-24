@@ -80,6 +80,41 @@ text = "Rows are persistent stats. Flexible modifiers bind to a row only when yo
 horizontal_alignment = 1
 autowrap_mode = 2
 
+[node name="MaxHpButton" type="Button" parent="MarginContainer/RootVBox/MainHBox/LeftVBox/WeaponPanel/WeaponVBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 88)
+alignment = 0
+size_flags_horizontal = 3
+focus_mode = 0
+
+[node name="AttackDamageButton" type="Button" parent="MarginContainer/RootVBox/MainHBox/LeftVBox/WeaponPanel/WeaponVBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 88)
+alignment = 0
+size_flags_horizontal = 3
+focus_mode = 0
+
+[node name="MoveSpeedButton" type="Button" parent="MarginContainer/RootVBox/MainHBox/LeftVBox/WeaponPanel/WeaponVBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 88)
+alignment = 0
+size_flags_horizontal = 3
+focus_mode = 0
+
+[node name="AttackRangeButton" type="Button" parent="MarginContainer/RootVBox/MainHBox/LeftVBox/WeaponPanel/WeaponVBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 88)
+alignment = 0
+size_flags_horizontal = 3
+focus_mode = 0
+
+[node name="InventorySlotsButton" type="Button" parent="MarginContainer/RootVBox/MainHBox/LeftVBox/WeaponPanel/WeaponVBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 88)
+alignment = 0
+size_flags_horizontal = 3
+focus_mode = 0
+
 [node name="BackpackPanel" type="PanelContainer" parent="MarginContainer/RootVBox/MainHBox/LeftVBox"]
 layout_mode = 2
 size_flags_horizontal = 3

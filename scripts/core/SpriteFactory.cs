@@ -64,6 +64,57 @@ public static class SpriteFactory
         "..SSS.SSS.",
     };
 
+    private static readonly string[] FighterWeaponPixels =
+    {
+        "..GG..",
+        "..MM..",
+        "..MM..",
+        "..MM..",
+        "..MM..",
+        "..MM..",
+        "..MM..",
+        "..MM..",
+        "..MM..",
+        "..MM..",
+        "..WW..",
+        ".WWWW.",
+        "..WW..",
+    };
+
+    private static readonly string[] ArcherWeaponPixels =
+    {
+        "..WW..",
+        ".W..W.",
+        "W....W",
+        "W....R",
+        "W...R.",
+        ".W.R..",
+        "..R...",
+        ".W.R..",
+        "W...R.",
+        "W....R",
+        "W....W",
+        ".W..W.",
+        "..WW..",
+    };
+
+    private static readonly string[] MageWeaponPixels =
+    {
+        "..CC..",
+        "..CC..",
+        "..GG..",
+        "..WW..",
+        "..WW..",
+        "..WW..",
+        "..WW..",
+        "..WW..",
+        "..WW..",
+        "..WW..",
+        "..WW..",
+        ".WWWW.",
+        "..WW..",
+    };
+
     // --- Enemy variants ---
 
     // Goblin (original)
@@ -194,6 +245,29 @@ public static class SpriteFactory
         _ => Colors.Transparent,
     };
 
+    private static Color GetFighterWeaponColor(char c) => c switch
+    {
+        'M' => new Color(0.82f, 0.86f, 0.92f),
+        'G' => new Color(0.88f, 0.70f, 0.24f),
+        'W' => new Color(0.46f, 0.28f, 0.12f),
+        _ => Colors.Transparent,
+    };
+
+    private static Color GetArcherWeaponColor(char c) => c switch
+    {
+        'W' => new Color(0.48f, 0.32f, 0.14f),
+        'R' => new Color(0.90f, 0.86f, 0.70f),
+        _ => Colors.Transparent,
+    };
+
+    private static Color GetMageWeaponColor(char c) => c switch
+    {
+        'W' => new Color(0.43f, 0.29f, 0.17f),
+        'G' => new Color(0.86f, 0.72f, 0.38f),
+        'C' => new Color(0.64f, 0.82f, 1.0f),
+        _ => Colors.Transparent,
+    };
+
     private static Color GetGoblinColor(char c) => c switch
     {
         'E' => Palette.EnemyBody,
@@ -255,6 +329,17 @@ public static class SpriteFactory
             Archetype.Archer => BuildTexture(ArcherPixels, GetArcherColor),
             Archetype.Mage => BuildTexture(MagePixels, GetMageColor),
             _ => BuildTexture(FighterPixels, GetFighterColor),
+        };
+    }
+
+    public static ImageTexture CreateWeaponTexture(Archetype archetype)
+    {
+        return archetype switch
+        {
+            Archetype.Fighter => BuildTexture(FighterWeaponPixels, GetFighterWeaponColor),
+            Archetype.Archer => BuildTexture(ArcherWeaponPixels, GetArcherWeaponColor),
+            Archetype.Mage => BuildTexture(MageWeaponPixels, GetMageWeaponColor),
+            _ => BuildTexture(FighterWeaponPixels, GetFighterWeaponColor),
         };
     }
 

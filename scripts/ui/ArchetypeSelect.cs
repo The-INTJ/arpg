@@ -8,31 +8,29 @@ public partial class ArchetypeSelect : Control
 
     public override void _Ready()
     {
-        GetNode<ColorRect>("Background").Color = Palette.BgDark;
+        GetNode<ColorRect>("Background").Color = new Color(0.10f, 0.07f, 0.05f);
 
-        var title = GetNode<Label>("CenterContainer/VBoxContainer/TitleLabel");
+        var title = GetNode<Label>("MarginContainer/CenterContainer/SelectionCard/CardMargin/VBox/TitleLabel");
         title.AddThemeColorOverride("font_color", Palette.Accent);
-        title.AddThemeFontSizeOverride("font_size", 48);
+        title.AddThemeFontSizeOverride("font_size", 60);
 
-        _descriptionLabel = GetNode<Label>("CenterContainer/VBoxContainer/DescriptionLabel");
+        _descriptionLabel = GetNode<Label>("MarginContainer/CenterContainer/SelectionCard/CardMargin/VBox/DescriptionLabel");
         _descriptionLabel.AddThemeColorOverride("font_color", Palette.TextLight);
-        _descriptionLabel.AddThemeFontSizeOverride("font_size", 18);
+        _descriptionLabel.AddThemeFontSizeOverride("font_size", 22);
         _descriptionLabel.Text = "Choose your path...";
 
-        var buttonBox = GetNode<HBoxContainer>("CenterContainer/VBoxContainer/ButtonBox");
+        BindArchetypeButton("MarginContainer/CenterContainer/SelectionCard/CardMargin/VBox/ButtonBox/FighterButton", Archetype.Fighter);
+        BindArchetypeButton("MarginContainer/CenterContainer/SelectionCard/CardMargin/VBox/ButtonBox/ArcherButton", Archetype.Archer);
+        BindArchetypeButton("MarginContainer/CenterContainer/SelectionCard/CardMargin/VBox/ButtonBox/MageButton", Archetype.Mage);
+        OnHover(Archetype.Fighter);
+    }
 
-        foreach (Archetype archetype in new[] { Archetype.Fighter, Archetype.Archer, Archetype.Mage })
-        {
-            var btn = new Button();
-            btn.Text = ArchetypeData.DisplayName(archetype);
-            btn.CustomMinimumSize = new Vector2(200, 60);
-            Palette.StyleButton(btn, 24);
-            buttonBox.AddChild(btn);
-
-            var a = archetype; // capture for lambda
-            btn.MouseEntered += () => OnHover(a);
-            btn.Pressed += () => OnSelect(a);
-        }
+    private void BindArchetypeButton(string path, Archetype archetype)
+    {
+        var button = GetNode<Button>(path);
+        Palette.StyleButton(button, 24);
+        button.MouseEntered += () => OnHover(archetype);
+        button.Pressed += () => OnSelect(archetype);
     }
 
     private void OnHover(Archetype archetype)

@@ -90,14 +90,14 @@ public partial class GameManager : Node3D
             GetViewport().GetVisibleRect().Size.Y);
 
         var itemBarHBox = GetNode<HBoxContainer>("CanvasLayer/ItemBarCenter/ItemBarHBox");
-        var (itemLabels, itemStyles) = GameHudBuilder.BuildItemBar(itemBarHBox, _player.Stats.Inventory.Capacity);
+        var (itemSlots, itemLabels, itemStyles) = GameHudBuilder.BindItemBar(itemBarHBox);
 
         // HUD updater
         _hudUpdater = new GameHudUpdater();
         AddChild(_hudUpdater);
         _hudUpdater.Init(_player, _turnManager, _combatManager, _aggroSystem, camera, canvas,
             hpLabel, statsLabel, killLabel, statusLabel, attackButton, abilityButton,
-            enemyHp, itemLabels, itemStyles);
+            enemyHp, itemSlots, itemLabels, itemStyles);
 
         // Screens
         _modifyScreen = GetNode<ModifyStatsSimple>("CanvasLayer/ModifyStatsSimple");

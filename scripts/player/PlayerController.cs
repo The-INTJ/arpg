@@ -6,6 +6,7 @@ public partial class PlayerController : CharacterBody3D
 {
     private const float MoveRampUpTime = 0.30f;
     private const float MoveRampDownTime = 0.15f;
+    private static readonly Vector3 BobRootBasePosition = new(0, 0.25f, 0);
 
     public PlayerStats Stats { get; private set; }
     public Ability Ability { get; private set; }
@@ -14,8 +15,14 @@ public partial class PlayerController : CharacterBody3D
     public int AttackDamage => Stats.AttackDamage;
 
     private float _regenAccumulator;
+    private float _presentationTime;
     private CameraController _cameraController;
+    private Node3D _visualRoot;
+    private Node3D _bobRoot;
     private Sprite3D _sprite;
+    private Node3D _weaponPivot;
+    private Sprite3D _weaponSprite;
+    private Tween _visualTween;
 
     public override void _Ready()
     {
@@ -40,9 +47,26 @@ public partial class PlayerController : CharacterBody3D
         var mesh = GetNode<MeshInstance3D>("PlayerMesh");
         mesh.Visible = false;
 
+        _visualRoot = new Node3D();
+        _visualRoot.Name = "VisualRoot";
+        AddChild(_visualRoot);
+
+        _bobRoot = new Node3D();
+        _bobRoot.Name = "BobRoot";
+        _bobRoot.Position = BobRootBasePosition;
+        _visualRoot.AddChild(_bobRoot);
+
         _sprite = SpriteFactory.CreateSprite(SpriteFactory.CreatePlayerTexture(GameState.SelectedArchetype), 0.05f);
-        _sprite.Position = new Vector3(0, 0.25f, 0);
-        AddChild(_sprite);
+        _bobRoot.AddChild(_sprite);
+
+        _weaponPivot = new Node3D();
+        _weaponPivot.Name = "WeaponPivot";
+        _weaponPivot.Position = new Vector3(0.16f, -0.03f, 0.02f);
+        _bobRoot.AddChild(_weaponPivot);
+
+        _weaponSprite = SpriteFactory.CreateSprite(SpriteFactory.CreateWeaponTexture(GameState.SelectedArchetype), 0.03f);
+        _weaponSprite.Modulate = new Color(1, 1, 1, 0.95f);
+        _weaponPivot.AddChild(_weaponSprite);
 
         _cameraController = GetNode<CameraController>("CameraRig");
     }
@@ -77,6 +101,8 @@ public partial class PlayerController : CharacterBody3D
             var cameraRight = new Vector3(Mathf.Cos(yaw), 0, -Mathf.Sin(yaw));
             _sprite.FlipH = Velocity.Dot(cameraRight) < 0;
         }
+
+        UpdatePresentation((float)delta);
     }
 
     public void TickRegen(float delta)
@@ -90,5 +116,87 @@ public partial class PlayerController : CharacterBody3D
             Stats.CurrentHp = Godot.Mathf.Min(Stats.CurrentHp + heal, Stats.MaxHp);
             _regenAccumulator -= heal;
         }
+    }
+
+    public void PlayAttackAnimation(Vector3 targetPosition, bool isHeavy)
+    {
+        float lungeDistance = isHeavy ? 0.24f : 0.16f;
+        Vector3 attackDirection = (targetPosition - GlobalPosition).Normalized();
+        Vector3 localLunge = ToLocal(GlobalPosition + attackDirection * lungeDistance);
+        float swingDirection = _sprite.FlipH ? -1.0f : 1.0f;
+
+        ResetVisualTweenState();
+        _visualTween = CreateTween();
+        _visualTween.SetParallel(true);
+        _visualTween.TweenProperty(_visualRoot, "position", localLunge, 0.08f)
+            .SetTrans(Tween.TransitionType.Quad)
+            .SetEase(Tween.EaseType.Out);
+        _visualTween.TweenProperty(_sprite, "scale", new Vector3(isHeavy ? 1.12f : 1.08f, isHeavy ? 1.12f : 1.08f, 1), 0.08f)
+            .SetTrans(Tween.TransitionType.Quad)
+            .SetEase(Tween.EaseType.Out);
+        _visualTween.TweenProperty(_weaponSprite, "rotation_degrees", new Vector3(0, 0, 75.0f * swingDirection), 0.08f)
+            .SetTrans(Tween.TransitionType.Back)
+            .SetEase(Tween.EaseType.Out);
+        _visualTween.TweenProperty(_weaponSprite, "scale", new Vector3(isHeavy ? 1.22f : 1.16f, isHeavy ? 1.22f : 1.16f, 1), 0.08f)
+            .SetTrans(Tween.TransitionType.Quad)
+            .SetEase(Tween.EaseType.Out);
+        _visualTween.SetParallel(false);
+        _visualTween.TweenProperty(_visualRoot, "position", Vector3.Zero, 0.14f)
+            .SetTrans(Tween.TransitionType.Bounce)
+            .SetEase(Tween.EaseType.Out);
+        _visualTween.SetParallel(true);
+        _visualTween.TweenProperty(_sprite, "scale", Vector3.One, 0.14f)
+            .SetTrans(Tween.TransitionType.Quad)
+            .SetEase(Tween.EaseType.InOut);
+        _visualTween.TweenProperty(_weaponSprite, "rotation_degrees", Vector3.Zero, 0.14f)
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(Tween.EaseType.InOut);
+        _visualTween.TweenProperty(_weaponSprite, "scale", Vector3.One, 0.14f)
+            .SetTrans(Tween.TransitionType.Quad)
+            .SetEase(Tween.EaseType.InOut);
+    }
+
+    public void PlayHitReaction()
+    {
+        ResetVisualTweenState();
+        _visualTween = CreateTween();
+        _visualTween.SetParallel(true);
+        _visualTween.TweenProperty(_visualRoot, "position", new Vector3(0, 0, 0.08f), 0.06f)
+            .SetTrans(Tween.TransitionType.Quad)
+            .SetEase(Tween.EaseType.Out);
+        _visualTween.TweenProperty(_sprite, "modulate", new Color(1.0f, 0.72f, 0.72f), 0.06f)
+            .SetTrans(Tween.TransitionType.Quad)
+            .SetEase(Tween.EaseType.Out);
+        _visualTween.SetParallel(false);
+        _visualTween.TweenProperty(_visualRoot, "position", Vector3.Zero, 0.14f)
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(Tween.EaseType.Out);
+        _visualTween.SetParallel(true);
+        _visualTween.TweenProperty(_sprite, "modulate", Colors.White, 0.14f)
+            .SetTrans(Tween.TransitionType.Quad)
+            .SetEase(Tween.EaseType.InOut);
+    }
+
+    private void UpdatePresentation(float delta)
+    {
+        _presentationTime += delta * (Velocity.LengthSquared() > 0.05f ? 8.0f : 3.2f);
+        float bobAmount = Velocity.LengthSquared() > 0.05f ? 0.03f : 0.012f;
+        float bobOffset = Mathf.Sin(_presentationTime) * bobAmount;
+        _bobRoot.Position = _bobRoot.Position.Lerp(BobRootBasePosition + new Vector3(0, bobOffset, 0), 0.2f);
+
+        float side = _sprite.FlipH ? -1.0f : 1.0f;
+        Vector3 desiredWeaponPivot = new Vector3(0.16f * side, -0.03f + bobOffset * 0.25f, 0.02f);
+        _weaponPivot.Position = _weaponPivot.Position.Lerp(desiredWeaponPivot, 0.18f);
+        _weaponSprite.FlipH = _sprite.FlipH;
+    }
+
+    private void ResetVisualTweenState()
+    {
+        _visualTween?.Kill();
+        _visualRoot.Position = Vector3.Zero;
+        _sprite.Scale = Vector3.One;
+        _sprite.Modulate = Colors.White;
+        _weaponSprite.Scale = Vector3.One;
+        _weaponSprite.RotationDegrees = Vector3.Zero;
     }
 }

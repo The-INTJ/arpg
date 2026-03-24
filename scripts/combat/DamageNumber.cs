@@ -34,11 +34,21 @@ public partial class DamageNumber : Node3D
         var tween = CreateTween();
         tween.SetParallel(true);
 
+        _label.Scale = new Vector3(0.7f, 0.7f, 0.7f);
+
         // Float upward
         var endPos = GlobalPosition + Vector3.Up * 1.0f;
         tween.TweenProperty(this, "global_position", endPos, 0.8f)
             .SetTrans(Tween.TransitionType.Quad)
             .SetEase(Tween.EaseType.Out);
+
+        tween.TweenProperty(_label, "scale", new Vector3(1.15f, 1.15f, 1.15f), 0.12f)
+            .SetTrans(Tween.TransitionType.Back)
+            .SetEase(Tween.EaseType.Out);
+        tween.TweenProperty(_label, "scale", Vector3.One, 0.22f)
+            .SetDelay(0.12f)
+            .SetTrans(Tween.TransitionType.Quad)
+            .SetEase(Tween.EaseType.InOut);
 
         // Fade out
         tween.TweenProperty(_label, "modulate:a", 0.0f, 0.8f)

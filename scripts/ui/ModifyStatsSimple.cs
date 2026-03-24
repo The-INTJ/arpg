@@ -61,25 +61,26 @@ public partial class ModifyStatsSimple : Control
 		_confirmPanel = GetNode<PanelContainer>("ConfirmPanel");
 		_confirmLabel = GetNode<Label>("ConfirmPanel/ConfirmLabel");
 
-		// Channel buttons are data-driven — create dynamically
-		var weaponVBox = GetNode<VBoxContainer>("MarginContainer/RootVBox/MainHBox/LeftVBox/WeaponPanel/WeaponVBox");
-		_channelButtons = new Button[StatTargetInfo.All.Length];
-		for (int i = 0; i < StatTargetInfo.All.Length; i++)
+		_channelButtons = new[]
 		{
-			StatTarget target = StatTargetInfo.All[i];
-			var button = new Button();
-			button.Alignment = HorizontalAlignment.Left;
-			button.CustomMinimumSize = new Vector2(0, 88);
-			button.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-			button.FocusMode = FocusModeEnum.None;
-			button.Pressed += () => OnChannelPressed(target);
-			weaponVBox.AddChild(button);
-			_channelButtons[i] = button;
-		}
+			BindChannelButton("MarginContainer/RootVBox/MainHBox/LeftVBox/WeaponPanel/WeaponVBox/MaxHpButton", StatTarget.MaxHp),
+			BindChannelButton("MarginContainer/RootVBox/MainHBox/LeftVBox/WeaponPanel/WeaponVBox/AttackDamageButton", StatTarget.AttackDamage),
+			BindChannelButton("MarginContainer/RootVBox/MainHBox/LeftVBox/WeaponPanel/WeaponVBox/MoveSpeedButton", StatTarget.MoveSpeed),
+			BindChannelButton("MarginContainer/RootVBox/MainHBox/LeftVBox/WeaponPanel/WeaponVBox/AttackRangeButton", StatTarget.AttackRange),
+			BindChannelButton("MarginContainer/RootVBox/MainHBox/LeftVBox/WeaponPanel/WeaponVBox/InventorySlotsButton", StatTarget.InventorySlots),
+		};
 
 		// Footer text uses runtime key display names
 		var footer = GetNode<Label>("MarginContainer/RootVBox/Footer");
 		footer.Text = $"Esc Close  |  ({GameKeys.DisplayName(GameKeys.Ability)}) Reset picks / clear selection";
+	}
+
+	private Button BindChannelButton(string path, StatTarget target)
+	{
+		var button = GetNode<Button>(path);
+		button.Alignment = HorizontalAlignment.Left;
+		button.Pressed += () => OnChannelPressed(target);
+		return button;
 	}
 
 

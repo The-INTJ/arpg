@@ -9,7 +9,7 @@ public static class GameHudBuilder
 {
     public static void StyleHudLabels(Label[] labels, float viewportHeight)
     {
-        int fontSize = Mathf.Max(18, (int)(viewportHeight * 0.03f));
+        int fontSize = Mathf.Max(20, (int)(viewportHeight * 0.032f));
         foreach (var label in labels)
         {
             label.AddThemeColorOverride("font_color", Palette.TextLight);
@@ -22,41 +22,41 @@ public static class GameHudBuilder
 
     public record EnemyHpDisplay(ProgressBar Bar, Label HpLabel, Label EffectInfoLabel, VBoxContainer Container);
 
-    public static (Label[] labels, StyleBoxFlat[] styles) BuildItemBar(HBoxContainer hbox, int slotCount)
+    public static (Control[] slots, Label[] labels, StyleBoxFlat[] styles) BindItemBar(HBoxContainer hbox)
     {
+        int slotCount = Mathf.Min(GameKeys.ItemSlots.Length, hbox.GetChildCount());
+        var slots = new Control[slotCount];
         var labels = new Label[slotCount];
         var styles = new StyleBoxFlat[slotCount];
 
-        // Clear existing slots
-        foreach (Node child in hbox.GetChildren())
-            child.QueueFree();
-
         for (int i = 0; i < slotCount; i++)
         {
-            var panel = new Panel();
-            panel.CustomMinimumSize = new Vector2(180, 58);
-
-            var style = new StyleBoxFlat();
-            style.BgColor = new Color(Palette.BgDark, 0.92f);
-            style.BorderColor = Palette.TextDisabled;
-            style.SetBorderWidthAll(2);
-            style.SetCornerRadiusAll(8);
-            style.SetContentMarginAll(10);
+            var panel = hbox.GetChild<Panel>(i);
+            var label = panel.GetNode<Label>("Label");
+            var style = CreateItemSlotStyle();
             panel.AddThemeStyleboxOverride("panel", style);
-            hbox.AddChild(panel);
+            panel.CustomMinimumSize = new Vector2(228, 72);
+            label.AddThemeFontSizeOverride("font_size", 17);
 
-            var label = new Label();
-            label.SetAnchorsPreset(Control.LayoutPreset.FullRect);
-            label.HorizontalAlignment = HorizontalAlignment.Center;
-            label.VerticalAlignment = VerticalAlignment.Center;
-            label.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-            label.AddThemeFontSizeOverride("font_size", 15);
-            panel.AddChild(label);
-
+            slots[i] = panel;
             labels[i] = label;
             styles[i] = style;
         }
 
-        return (labels, styles);
+        return (slots, labels, styles);
+    }
+
+    public static StyleBoxFlat CreateItemSlotStyle()
+    {
+        var style = new StyleBoxFlat();
+        style.BgColor = new Color(Palette.BgDark, 0.9f);
+        style.BorderColor = new Color(Palette.TextDisabled, 0.85f);
+        style.SetBorderWidthAll(2);
+        style.SetCornerRadiusAll(12);
+        style.SetContentMarginAll(12);
+        style.ShadowColor = new Color(0, 0, 0, 0.35f);
+        style.ShadowSize = 6;
+        style.ShadowOffset = new Vector2(0, 3);
+        return style;
     }
 }

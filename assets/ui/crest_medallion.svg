@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="320" viewBox="0 0 320 320" fill="none">
+  <defs>
+    <radialGradient id="core" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(160 160) rotate(90) scale(128)">
+      <stop stop-color="#F7E7B5" stop-opacity="0.9"/>
+      <stop offset="0.55" stop-color="#D09A45" stop-opacity="0.75"/>
+      <stop offset="1" stop-color="#5F3915" stop-opacity="0.15"/>
+    </radialGradient>
+  </defs>
+  <circle cx="160" cy="160" r="146" fill="#140D08" fill-opacity="0.72" stroke="#E7C06B" stroke-width="12"/>
+  <circle cx="160" cy="160" r="112" fill="url(#core)" fill-opacity="0.22" stroke="#F0D89A" stroke-opacity="0.55" stroke-width="4"/>
+  <path d="M160 54L184 116L252 120L198 162L214 228L160 194L106 228L122 162L68 120L136 116L160 54Z" fill="#F0D89A" fill-opacity="0.95"/>
+  <path d="M160 94L172 126L206 128L180 150L188 182L160 166L132 182L140 150L114 128L148 126L160 94Z" fill="#8A531E"/>
+  <path d="M160 20V48M160 272V300M20 160H48M272 160H300M62 62L82 82M238 238L258 258M62 258L82 238M238 82L258 62" stroke="#F6E3B3" stroke-opacity="0.7" stroke-width="6" stroke-linecap="round"/>
+</svg>

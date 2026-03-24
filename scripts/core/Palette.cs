@@ -49,9 +49,20 @@ public static class Palette
 		})
 		{
 			var box = new StyleBoxFlat();
-			box.BgColor = color;
-			box.SetCornerRadiusAll(8);
-			box.SetContentMarginAll(16);
+			box.BgColor = new Color(color, state == "disabled" ? 0.92f : 0.98f);
+			box.BorderColor = state switch
+			{
+				"hover" => new Color(0.97f, 0.85f, 0.55f, 1.0f),
+				"pressed" => new Color(0.98f, 0.88f, 0.60f, 1.0f),
+				"disabled" => new Color(TextDisabled, 0.4f),
+				_ => new Color(Accent, 0.86f)
+			};
+			box.SetBorderWidthAll(2);
+			box.SetCornerRadiusAll(12);
+			box.ShadowColor = new Color(0, 0, 0, 0.34f);
+			box.ShadowSize = 6;
+			box.ShadowOffset = new Vector2(0, 4);
+			box.SetContentMarginAll(18);
 			btn.AddThemeStyleboxOverride(state, box);
 		}
 

@@ -234,6 +234,118 @@ offset_bottom = -20.0
 layout_mode = 2
 theme_override_constants/separation = 12
 
+[node name="Slot1" type="Panel" parent="CanvasLayer/ItemBarCenter/ItemBarHBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(228, 72)
+
+[node name="Label" type="Label" parent="CanvasLayer/ItemBarCenter/ItemBarHBox/Slot1"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 2
+theme_override_font_sizes/font_size = 17
+
+[node name="Slot2" type="Panel" parent="CanvasLayer/ItemBarCenter/ItemBarHBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(228, 72)
+
+[node name="Label" type="Label" parent="CanvasLayer/ItemBarCenter/ItemBarHBox/Slot2"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 2
+theme_override_font_sizes/font_size = 17
+
+[node name="Slot3" type="Panel" parent="CanvasLayer/ItemBarCenter/ItemBarHBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(228, 72)
+
+[node name="Label" type="Label" parent="CanvasLayer/ItemBarCenter/ItemBarHBox/Slot3"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 2
+theme_override_font_sizes/font_size = 17
+
+[node name="Slot4" type="Panel" parent="CanvasLayer/ItemBarCenter/ItemBarHBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(228, 72)
+
+[node name="Label" type="Label" parent="CanvasLayer/ItemBarCenter/ItemBarHBox/Slot4"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 2
+theme_override_font_sizes/font_size = 17
+
+[node name="Slot5" type="Panel" parent="CanvasLayer/ItemBarCenter/ItemBarHBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(228, 72)
+
+[node name="Label" type="Label" parent="CanvasLayer/ItemBarCenter/ItemBarHBox/Slot5"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 2
+theme_override_font_sizes/font_size = 17
+
+[node name="Slot6" type="Panel" parent="CanvasLayer/ItemBarCenter/ItemBarHBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(228, 72)
+
+[node name="Label" type="Label" parent="CanvasLayer/ItemBarCenter/ItemBarHBox/Slot6"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 2
+theme_override_font_sizes/font_size = 17
+
+[node name="Slot7" type="Panel" parent="CanvasLayer/ItemBarCenter/ItemBarHBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(228, 72)
+
+[node name="Label" type="Label" parent="CanvasLayer/ItemBarCenter/ItemBarHBox/Slot7"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 2
+theme_override_font_sizes/font_size = 17
+
 [node name="PauseScreen" parent="CanvasLayer" instance=ExtResource("6_ps")]
 
 [node name="ModifyStatsSimple" parent="CanvasLayer" instance=ExtResource("7_mss")]
