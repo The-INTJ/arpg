@@ -71,7 +71,7 @@ public partial class CombatManager : Node
         if (!_turnManager.IsPlayerTurn || _target == null) return;
         int damage = _player.Stats.ConsumePreparedAttackDamage(_player.AttackDamage, out string feedback);
         _player.PlayAttackAnimation(_target.GlobalPosition, isHeavy: false);
-        ResolveDamageAction(damage, true, feedback);
+        ResolveDamageAction(damage, endTurnAfterAction: true, tickAbilityCooldown: true, extraFeedback: feedback);
     }
 
     public void PlayerAbility()
@@ -85,26 +85,30 @@ public partial class CombatManager : Node
         ability.Use();
         damage = _player.Stats.ConsumePreparedAttackDamage(damage, out string feedback);
         _player.PlayAttackAnimation(_target.GlobalPosition, isHeavy: true);
-        ResolveDamageAction(damage, true, feedback);
+        ResolveDamageAction(damage, endTurnAfterAction: true, tickAbilityCooldown: true, extraFeedback: feedback);
     }
 
-    public void PlayerUseDamageItem(int damage)
+    public void PlayerUseDamageItem(int damage, bool endTurnAfterUse)
     {
         if (!_turnManager.IsPlayerTurn || _target == null) return;
-        ResolveDamageAction(damage, false);
+        ResolveDamageAction(damage, endTurnAfterAction: endTurnAfterUse, tickAbilityCooldown: endTurnAfterUse);
     }
 
-    public void PlayerUseUtilityItem()
+    public void PlayerUseUtilityItem(bool endTurnAfterUse)
     {
         if (!_turnManager.IsPlayerTurn || _target == null || !IsInstanceValid(_target)) return;
 
+        if (!endTurnAfterUse)
+            return;
+
+        _player.Ability?.TickCooldown();
         _turnManager.SetState(TurnState.Busy);
 
         var timer = GetTree().CreateTimer(EnemyRetaliationDelay);
         timer.Timeout += OnEnemyRetaliate;
     }
 
-    private void ResolveDamageAction(int damage, bool tickAbilityCooldown, string extraFeedback = null)
+    private void ResolveDamageAction(int damage, bool endTurnAfterAction, bool tickAbilityCooldown, string extraFeedback = null)
     {
         _turnManager.SetState(TurnState.Busy);
         LastKillWasBoss = false;
@@ -136,6 +140,9 @@ public partial class CombatManager : Node
 
         if (targetDied)
         {
+            if (!tickAbilityCooldown)
+                _player.Ability?.TickCooldown();
+
             LastKillPosition = _target.GlobalPosition;
             LastKillWasBoss = _target.IsBoss;
             LastKillItemDrop = _target.ItemDrop;
@@ -156,6 +163,12 @@ public partial class CombatManager : Node
         if (playerDied)
         {
             _turnManager.SetState(TurnState.Defeat);
+            return;
+        }
+
+        if (!endTurnAfterAction)
+        {
+            _turnManager.SetState(TurnState.PlayerTurn);
             return;
         }
 

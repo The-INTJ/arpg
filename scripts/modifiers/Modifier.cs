@@ -18,7 +18,8 @@ public enum StatTarget
     AttackDamage,
     MoveSpeed,
     AttackRange,
-    InventorySlots
+    InventorySlots,
+    ItemUsesPerTurn
 }
 
 public partial class Modifier

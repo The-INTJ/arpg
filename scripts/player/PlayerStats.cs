@@ -15,6 +15,7 @@ public partial class PlayerStats
     private float _baseMoveSpeed = 5.5f;
     private float _baseAttackRange = 3.5f;
     private int _baseInventorySlots = 2;
+    private int _baseItemUsesPerTurn = 1;
     private Weapon _weapon;
     private int _pendingWardCharges;
     private int _pendingAttackBonusDamage;
@@ -46,6 +47,8 @@ public partial class PlayerStats
     public float MoveSpeed => GetEffectiveStatValue(StatTarget.MoveSpeed);
     public float AttackRange => GetEffectiveStatValue(StatTarget.AttackRange);
     public int DesiredInventorySlotCount => ClampInventorySlots((int)GetEffectiveStatValue(StatTarget.InventorySlots));
+    public float RawItemUsesPerTurn => GetEffectiveStatValue(StatTarget.ItemUsesPerTurn);
+    public int ItemUsesPerTurn => ClampItemUsesPerTurn((int)RawItemUsesPerTurn);
     public int InventorySlotCount => Inventory.Capacity;
     public int PendingWardCharges => _pendingWardCharges;
     public int PendingAttackBonusDamage => _pendingAttackBonusDamage;
@@ -141,6 +144,11 @@ public partial class PlayerStats
         return Math.Max(desiredCapacity, Inventory.MinimumRequiredCapacity);
     }
 
+    public int PreviewItemUsesPerTurnWithEffects(IReadOnlyList<AppliedModifierEffect> extraEffects)
+    {
+        return ClampItemUsesPerTurn((int)PreviewStatWithEffects(StatTarget.ItemUsesPerTurn, extraEffects));
+    }
+
     public void QueueWard(int charges)
     {
         _pendingWardCharges += Math.Max(0, charges);
@@ -203,6 +211,7 @@ public partial class PlayerStats
         StatTarget.MoveSpeed => _baseMoveSpeed,
         StatTarget.AttackRange => _baseAttackRange,
         StatTarget.InventorySlots => _baseInventorySlots,
+        StatTarget.ItemUsesPerTurn => _baseItemUsesPerTurn,
         _ => 0
     };
 
@@ -221,6 +230,11 @@ public partial class PlayerStats
     }
 
     private static int ClampInventorySlots(int value)
+    {
+        return Math.Clamp(value, 1, GameKeys.ItemSlots.Length);
+    }
+
+    private static int ClampItemUsesPerTurn(int value)
     {
         return Math.Clamp(value, 1, GameKeys.ItemSlots.Length);
     }

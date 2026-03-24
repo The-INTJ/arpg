@@ -115,6 +115,13 @@ alignment = 0
 size_flags_horizontal = 3
 focus_mode = 0
 
+[node name="ItemUsesButton" type="Button" parent="MarginContainer/RootVBox/MainHBox/LeftVBox/WeaponPanel/WeaponVBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 88)
+alignment = 0
+size_flags_horizontal = 3
+focus_mode = 0
+
 [node name="BackpackPanel" type="PanelContainer" parent="MarginContainer/RootVBox/MainHBox/LeftVBox"]
 layout_mode = 2
 size_flags_horizontal = 3

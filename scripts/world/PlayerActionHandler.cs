@@ -12,9 +12,13 @@ public partial class PlayerActionHandler : Node
     private TurnManager _turnManager;
     private CombatManager _combatManager;
     private AggroSystem _aggroSystem;
+    private int _remainingCombatItemUses;
 
     [Signal]
     public delegate void StatusMessageEventHandler(string text);
+
+    public int RemainingCombatItemUses => _turnManager != null && _turnManager.IsPlayerTurn ? _remainingCombatItemUses : 0;
+    public int CombatItemUsesPerTurn => _player?.Stats?.ItemUsesPerTurn ?? 1;
 
     public void Init(
         PlayerController player,
@@ -26,6 +30,8 @@ public partial class PlayerActionHandler : Node
         _turnManager = turnManager;
         _combatManager = combatManager;
         _aggroSystem = aggroSystem;
+        _turnManager.TurnChanged += OnTurnChanged;
+        ResetCombatItemUses();
     }
 
     public void OnAttackPressed()
@@ -73,6 +79,12 @@ public partial class PlayerActionHandler : Node
             return;
         }
 
+        if (_turnManager.IsPlayerTurn && _remainingCombatItemUses <= 0)
+        {
+            EmitSignal(SignalName.StatusMessage, "No item uses left this turn.");
+            return;
+        }
+
         if (item.RequiresCombatTarget && (!_turnManager.IsPlayerTurn || _combatManager.Target == null || !IsInstanceValid(_combatManager.Target)))
         {
             EmitSignal(SignalName.StatusMessage, $"{item.Name} needs a combat target.");
@@ -85,7 +97,6 @@ public partial class PlayerActionHandler : Node
     private void UseItem(int slotIndex, InventoryItem item)
     {
         bool used = false;
-        bool triggeredDamageAction = false;
         string summary = string.Empty;
 
         if (item.HealAmount > 0 && _player.Hp < _player.Stats.MaxHp)
@@ -125,9 +136,7 @@ public partial class PlayerActionHandler : Node
         if (item.DirectDamage > 0)
         {
             summary = AppendSummary(summary, $"{item.DirectDamage} damage");
-            _combatManager.PlayerUseDamageItem(item.DirectDamage);
             used = true;
-            triggeredDamageAction = true;
         }
 
         if (!used)
@@ -138,11 +147,44 @@ public partial class PlayerActionHandler : Node
             return;
         }
 
-        _player.Stats.Inventory.RemoveAt(slotIndex);
-        EmitSignal(SignalName.StatusMessage, $"Used {item.Name}: {summary}");
+        bool isCombatItemUse = _turnManager.IsPlayerTurn;
+        bool endTurnAfterUse = true;
+        if (isCombatItemUse)
+            endTurnAfterUse = ConsumeCombatItemUse();
 
-        if (_turnManager.IsPlayerTurn && !triggeredDamageAction)
-            _combatManager.PlayerUseUtilityItem();
+        _player.Stats.Inventory.RemoveAt(slotIndex);
+        string turnText = isCombatItemUse && !endTurnAfterUse
+            ? $" {_remainingCombatItemUses} item uses left."
+            : string.Empty;
+        EmitSignal(SignalName.StatusMessage, $"Used {item.Name}: {summary}.{turnText}");
+
+        if (isCombatItemUse)
+        {
+            if (item.DirectDamage > 0)
+                _combatManager.PlayerUseDamageItem(item.DirectDamage, endTurnAfterUse);
+            else
+                _combatManager.PlayerUseUtilityItem(endTurnAfterUse);
+        }
+    }
+
+    private void OnTurnChanged(int newState)
+    {
+        TurnState state = (TurnState)newState;
+        if (state == TurnState.PlayerTurn || state == TurnState.Exploring)
+            ResetCombatItemUses();
+        else if (state == TurnState.Defeat)
+            _remainingCombatItemUses = 0;
+    }
+
+    private void ResetCombatItemUses()
+    {
+        _remainingCombatItemUses = CombatItemUsesPerTurn;
+    }
+
+    private bool ConsumeCombatItemUse()
+    {
+        _remainingCombatItemUses = Mathf.Max(0, _remainingCombatItemUses - 1);
+        return _remainingCombatItemUses <= 0;
     }
 
     private static string AppendSummary(string summary, string addition)

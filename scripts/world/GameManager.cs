@@ -95,7 +95,7 @@ public partial class GameManager : Node3D
         // HUD updater
         _hudUpdater = new GameHudUpdater();
         AddChild(_hudUpdater);
-        _hudUpdater.Init(_player, _turnManager, _combatManager, _aggroSystem, camera, canvas,
+        _hudUpdater.Init(_player, _turnManager, _combatManager, _aggroSystem, _actionHandler, camera, canvas,
             hpLabel, statsLabel, killLabel, statusLabel, attackButton, abilityButton,
             enemyHp, itemSlots, itemLabels, itemStyles);
 

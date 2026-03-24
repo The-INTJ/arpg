@@ -68,6 +68,7 @@ public partial class ModifyStatsSimple : Control
 			BindChannelButton("MarginContainer/RootVBox/MainHBox/LeftVBox/WeaponPanel/WeaponVBox/MoveSpeedButton", StatTarget.MoveSpeed),
 			BindChannelButton("MarginContainer/RootVBox/MainHBox/LeftVBox/WeaponPanel/WeaponVBox/AttackRangeButton", StatTarget.AttackRange),
 			BindChannelButton("MarginContainer/RootVBox/MainHBox/LeftVBox/WeaponPanel/WeaponVBox/InventorySlotsButton", StatTarget.InventorySlots),
+			BindChannelButton("MarginContainer/RootVBox/MainHBox/LeftVBox/WeaponPanel/WeaponVBox/ItemUsesButton", StatTarget.ItemUsesPerTurn),
 		};
 
 		// Footer text uses runtime key display names
@@ -157,9 +158,12 @@ public partial class ModifyStatsSimple : Control
 				: System.Array.Empty<AppliedModifierEffect>();
 			bool hasPreviewForTarget = previewEffects.Any(effect => effect.Target == target);
 
-			string text = $"{StatTargetInfo.DisplayName(target)}\nCurrent: {channel?.Summary ?? "(unavailable)"}";
-			if (hasSelection && hasPreviewForTarget && channel != null)
-				text += $"\nAfter mod: {channel.SummaryWith(previewEffects)}";
+			string text =
+				$"{StatTargetInfo.DisplayName(target)}\n" +
+				$"Mods: {channel?.Summary ?? "(unavailable)"}\n" +
+				$"Value: {StatTargetInfo.FormatStatValueWithProgress(target, _stats.GetEffectiveStatValue(target))}";
+			if (hasSelection && hasPreviewForTarget)
+				text += $"\nAfter mod: {StatTargetInfo.FormatStatValueWithProgress(target, _stats.PreviewStatWithEffects(target, previewEffects))}";
 
 			button.Text = text;
 			button.TooltipText = canAssignNext
@@ -211,11 +215,12 @@ public partial class ModifyStatsSimple : Control
 	private void RefreshStatsPanel()
 	{
 		_youStatsLabel.Text =
-			$"HP:     {_stats.CurrentHp} / {_stats.MaxHp}\n" +
-			$"ATK:    {_stats.AttackDamage}\n" +
+			$"HP:     {_stats.CurrentHp} / {StatTargetInfo.FormatStatValueWithProgress(StatTarget.MaxHp, _stats.GetEffectiveStatValue(StatTarget.MaxHp))}\n" +
+			$"ATK:    {StatTargetInfo.FormatStatValueWithProgress(StatTarget.AttackDamage, _stats.GetEffectiveStatValue(StatTarget.AttackDamage))}\n" +
 			$"SPD:    {_stats.MoveSpeed:0.#}\n" +
 			$"Range:  {_stats.AttackRange:0.#}\n" +
-			$"Slots:  {_stats.InventorySlotCount}";
+			$"Slots:  {StatTargetInfo.FormatStatValueWithProgress(StatTarget.InventorySlots, _stats.GetEffectiveStatValue(StatTarget.InventorySlots))}\n" +
+			$"Items:  {StatTargetInfo.FormatStatValueWithProgress(StatTarget.ItemUsesPerTurn, _stats.GetEffectiveStatValue(StatTarget.ItemUsesPerTurn))}";
 	}
 
 	private void RefreshBackpack()
@@ -302,8 +307,9 @@ public partial class ModifyStatsSimple : Control
 
 			var channel = _stats.GetWeaponChannel(target);
 			lines.Add(StatTargetInfo.DisplayName(target));
-			lines.Add($"Current: {channel?.Summary ?? "(unavailable)"}");
-			lines.Add($"After mod: {channel?.SummaryWith(pendingEffects) ?? "(unavailable)"}");
+			lines.Add($"Mods: {channel?.Summary ?? "(unavailable)"}");
+			lines.Add($"Current value: {StatTargetInfo.FormatStatValueWithProgress(target, _stats.GetEffectiveStatValue(target))}");
+			lines.Add($"After mod: {StatTargetInfo.FormatStatValueWithProgress(target, _stats.PreviewStatWithEffects(target, pendingEffects))}");
 			lines.Add(string.Empty);
 		}
 
@@ -320,10 +326,11 @@ public partial class ModifyStatsSimple : Control
 		int afterMaxHp = (int)_stats.PreviewStatWithEffects(StatTarget.MaxHp, pendingEffects);
 		return
 			$"HP: {_stats.CurrentHp} / {_stats.MaxHp} -> {_stats.PreviewCurrentHpWithEffects(pendingEffects)} / {afterMaxHp}\n" +
-			$"ATK: {_stats.AttackDamage} -> {StatTargetInfo.FormatStatValue(StatTarget.AttackDamage, _stats.PreviewStatWithEffects(StatTarget.AttackDamage, pendingEffects))}\n" +
+			$"ATK: {StatTargetInfo.FormatStatValueWithProgress(StatTarget.AttackDamage, _stats.GetEffectiveStatValue(StatTarget.AttackDamage))} -> {StatTargetInfo.FormatStatValueWithProgress(StatTarget.AttackDamage, _stats.PreviewStatWithEffects(StatTarget.AttackDamage, pendingEffects))}\n" +
 			$"SPD: {_stats.MoveSpeed:0.#} -> {StatTargetInfo.FormatStatValue(StatTarget.MoveSpeed, _stats.PreviewStatWithEffects(StatTarget.MoveSpeed, pendingEffects))}\n" +
 			$"Range: {_stats.AttackRange:0.#} -> {StatTargetInfo.FormatStatValue(StatTarget.AttackRange, _stats.PreviewStatWithEffects(StatTarget.AttackRange, pendingEffects))}\n" +
-			$"Slots: {_stats.InventorySlotCount} -> {_stats.PreviewInventorySlotCountWithEffects(pendingEffects)}";
+			$"Slots: {StatTargetInfo.FormatStatValueWithProgress(StatTarget.InventorySlots, _stats.GetEffectiveStatValue(StatTarget.InventorySlots))} -> {StatTargetInfo.FormatStatValueWithProgress(StatTarget.InventorySlots, _stats.PreviewStatWithEffects(StatTarget.InventorySlots, pendingEffects))}\n" +
+			$"Items: {StatTargetInfo.FormatStatValueWithProgress(StatTarget.ItemUsesPerTurn, _stats.GetEffectiveStatValue(StatTarget.ItemUsesPerTurn))} -> {StatTargetInfo.FormatStatValueWithProgress(StatTarget.ItemUsesPerTurn, _stats.PreviewStatWithEffects(StatTarget.ItemUsesPerTurn, pendingEffects))}";
 	}
 
 	private void ConfirmApply()

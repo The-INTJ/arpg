@@ -7,7 +7,7 @@ namespace ARPG;
 public partial class Enemy : StaticBody3D
 {
     private readonly List<MonsterEffectInstance> _monsterEffects = new();
-    private readonly Dictionary<MonsterEffectInstance, Label3D> _effectBadges = new();
+    private readonly Dictionary<MonsterEffectInstance, Node3D> _effectBadges = new();
     private readonly Dictionary<MonsterEffectInstance, Color> _effectBadgeColors = new();
     private Node3D _effectBadgeAnchor;
     private Tween _visualTween;
@@ -310,29 +310,14 @@ public partial class Enemy : StaticBody3D
         if (_monsterEffects.Count == 0)
             return;
 
-        float spacing = IsBoss ? 0.25f : 0.2f;
-        float startX = -spacing * (_monsterEffects.Count - 1) * 0.5f;
         for (int i = 0; i < _monsterEffects.Count; i++)
         {
             var effect = _monsterEffects[i];
-            var label = new Label3D();
-            label.Name = $"EffectBadge_{effect.Definition.Id}";
-            label.Text = effect.Tier > 0
-                ? $"{effect.Definition.BadgeText}{effect.Tier}"
-                : effect.Definition.BadgeText;
-            label.FontSize = IsBoss ? 12 : 10;
-            label.Billboard = BaseMaterial3D.BillboardModeEnum.Enabled;
-            label.NoDepthTest = false;
-            label.FixedSize = true;
-            label.PixelSize = IsBoss ? 0.003f : 0.0025f;
-            label.Modulate = effect.Definition.BadgeColor;
-            label.OutlineSize = 3;
-            label.OutlineModulate = Palette.BgDark;
-            label.Position = new Vector3(startX + i * spacing, 0, 0);
-            _effectBadgeAnchor.AddChild(label);
+            var cluster = BuildEffectFlameCluster(effect, i, _monsterEffects.Count);
+            _effectBadgeAnchor.AddChild(cluster);
 
-            _effectBadges[effect] = label;
-            _effectBadgeColors[effect] = effect.Definition.BadgeColor;
+            _effectBadges[effect] = cluster;
+            _effectBadgeColors[effect] = GetEffectFlameColor(effect, i);
         }
     }
 
@@ -340,7 +325,7 @@ public partial class Enemy : StaticBody3D
     {
         if (_effectBadgeAnchor != null && IsInstanceValid(_effectBadgeAnchor))
         {
-            _effectBadgeAnchor.Position = new Vector3(0, IsBoss ? 0.75f : IsElite ? 0.62f : 0.55f, 0);
+            _effectBadgeAnchor.Position = new Vector3(0, 0.02f, 0);
             return;
         }
 
@@ -352,7 +337,7 @@ public partial class Enemy : StaticBody3D
             AddChild(_effectBadgeAnchor);
         }
 
-        _effectBadgeAnchor.Position = new Vector3(0, IsBoss ? 0.75f : IsElite ? 0.62f : 0.55f, 0);
+        _effectBadgeAnchor.Position = new Vector3(0, 0.02f, 0);
     }
 
     private void FlashTriggeredBadges(IReadOnlyList<MonsterEffectTriggerRecord> triggers)
@@ -372,31 +357,42 @@ public partial class Enemy : StaticBody3D
 
     private void FlashEffectBadge(MonsterEffectInstance effect)
     {
-        if (effect == null || !_effectBadges.TryGetValue(effect, out var label) || !IsInstanceValid(label))
+        if (effect == null || !_effectBadges.TryGetValue(effect, out var cluster) || !IsInstanceValid(cluster))
             return;
-        if (!_effectBadgeColors.TryGetValue(effect, out var baseColor))
-            baseColor = Palette.TextLight;
 
         var tween = CreateTween();
         tween.SetParallel(true);
-        tween.TweenProperty(label, "scale", new Vector3(1.2f, 1.2f, 1.2f), 0.08f)
+        tween.TweenProperty(cluster, "scale", new Vector3(1.22f, 1.22f, 1.22f), 0.08f)
             .SetTrans(Tween.TransitionType.Quad)
             .SetEase(Tween.EaseType.Out);
-        tween.TweenProperty(label, "modulate", Palette.TextLight, 0.08f)
-            .SetTrans(Tween.TransitionType.Quad)
-            .SetEase(Tween.EaseType.Out);
+        foreach (Node child in cluster.GetChildren())
+        {
+            if (child is not Sprite3D sprite)
+                continue;
+
+            tween.TweenProperty(sprite, "modulate", sprite.Modulate.Lightened(0.2f), 0.08f)
+                .SetTrans(Tween.TransitionType.Quad)
+                .SetEase(Tween.EaseType.Out);
+        }
         tween.SetParallel(false);
-        tween.TweenProperty(label, "scale", Vector3.One, 0.12f)
+        tween.TweenProperty(cluster, "scale", Vector3.One, 0.12f)
             .SetTrans(Tween.TransitionType.Quad)
             .SetEase(Tween.EaseType.In);
-        tween.TweenProperty(label, "modulate", baseColor, 0.12f)
-            .SetTrans(Tween.TransitionType.Quad)
-            .SetEase(Tween.EaseType.In);
+        foreach (Node child in cluster.GetChildren())
+        {
+            if (child is not Sprite3D sprite)
+                continue;
+
+            var baseColor = (Color)sprite.GetMeta("base_modulate", sprite.Modulate);
+            tween.TweenProperty(sprite, "modulate", baseColor, 0.12f)
+                .SetTrans(Tween.TransitionType.Quad)
+                .SetEase(Tween.EaseType.In);
+        }
     }
 
     private void FadeOutEffectBadge(MonsterEffectInstance effect)
     {
-        if (effect == null || !_effectBadges.TryGetValue(effect, out var label) || !IsInstanceValid(label))
+        if (effect == null || !_effectBadges.TryGetValue(effect, out var cluster) || !IsInstanceValid(cluster))
             return;
 
         _effectBadges.Remove(effect);
@@ -404,14 +400,96 @@ public partial class Enemy : StaticBody3D
 
         var tween = CreateTween();
         tween.SetParallel(true);
-        tween.TweenProperty(label, "modulate:a", 0.0f, 0.18f)
+        tween.TweenProperty(cluster, "scale", new Vector3(0.72f, 0.72f, 0.72f), 0.18f)
             .SetTrans(Tween.TransitionType.Quad)
             .SetEase(Tween.EaseType.In);
-        tween.TweenProperty(label, "scale", new Vector3(0.75f, 0.75f, 0.75f), 0.18f)
-            .SetTrans(Tween.TransitionType.Quad)
-            .SetEase(Tween.EaseType.In);
+        foreach (Node child in cluster.GetChildren())
+        {
+            if (child is not Sprite3D sprite)
+                continue;
+
+            tween.TweenProperty(sprite, "modulate:a", 0.0f, 0.18f)
+                .SetTrans(Tween.TransitionType.Quad)
+                .SetEase(Tween.EaseType.In);
+        }
         tween.SetParallel(false);
-        tween.TweenCallback(Callable.From(() => label.QueueFree()));
+        tween.TweenCallback(Callable.From(() => cluster.QueueFree()));
+    }
+
+    private Node3D BuildEffectFlameCluster(MonsterEffectInstance effect, int index, int totalCount)
+    {
+        var cluster = new Node3D();
+        cluster.Name = $"EffectFlame_{effect.Definition.Id}";
+
+        float ringRadius = IsBoss ? 0.42f : IsElite ? 0.34f : 0.28f;
+        float angle = Mathf.Tau * index / Mathf.Max(1, totalCount);
+        cluster.Position = new Vector3(Mathf.Cos(angle) * ringRadius, 0, Mathf.Sin(angle) * ringRadius);
+
+        Color baseColor = GetEffectFlameColor(effect, index);
+        int flameCount = IsBoss ? 4 : 3;
+        for (int i = 0; i < flameCount; i++)
+        {
+            var sprite = SpriteFactory.CreateSprite(SpriteFactory.CreateFlameTexture(baseColor, i), IsBoss ? 0.028f : 0.024f);
+            sprite.Billboard = BaseMaterial3D.BillboardModeEnum.Enabled;
+            sprite.NoDepthTest = false;
+            sprite.Position = new Vector3(
+                (float)GD.RandRange(-0.03, 0.03),
+                0.08f + i * 0.04f + (float)GD.RandRange(-0.01, 0.02),
+                (float)GD.RandRange(-0.03, 0.03));
+            sprite.Modulate = baseColor;
+            sprite.SetMeta("base_modulate", baseColor);
+            sprite.SetMeta("base_position", sprite.Position);
+            cluster.AddChild(sprite);
+            StartFlameLoop(sprite);
+        }
+
+        return cluster;
+    }
+
+    private void StartFlameLoop(Sprite3D sprite)
+    {
+        Vector3 basePosition = (Vector3)sprite.GetMeta("base_position", sprite.Position);
+        Vector3 tallScale = new(
+            (float)GD.RandRange(0.9, 1.05),
+            (float)GD.RandRange(1.08, 1.28),
+            1);
+        Vector3 compactScale = new(
+            (float)GD.RandRange(0.92, 1.08),
+            (float)GD.RandRange(0.88, 1.02),
+            1);
+        float upOffset = (float)GD.RandRange(0.03, 0.07);
+        float riseDuration = (float)GD.RandRange(0.18, 0.28);
+        float fallDuration = (float)GD.RandRange(0.16, 0.24);
+
+        var tween = CreateTween().SetLoops();
+        tween.SetParallel(true);
+        tween.TweenProperty(sprite, "position:y", basePosition.Y + upOffset, riseDuration)
+            .SetTrans(Tween.TransitionType.Sine)
+            .SetEase(Tween.EaseType.Out);
+        tween.TweenProperty(sprite, "scale", tallScale, riseDuration)
+            .SetTrans(Tween.TransitionType.Sine)
+            .SetEase(Tween.EaseType.Out);
+        tween.SetParallel(false);
+        tween.TweenProperty(sprite, "position:y", basePosition.Y, fallDuration)
+            .SetTrans(Tween.TransitionType.Sine)
+            .SetEase(Tween.EaseType.InOut);
+        tween.SetParallel(true);
+        tween.TweenProperty(sprite, "scale", compactScale, fallDuration)
+            .SetTrans(Tween.TransitionType.Sine)
+            .SetEase(Tween.EaseType.InOut);
+    }
+
+    private static Color GetEffectFlameColor(MonsterEffectInstance effect, int index)
+    {
+        if (effect?.Definition != null)
+            return effect.Definition.BadgeColor;
+
+        return (index % 3) switch
+        {
+            0 => new Color(0.97f, 0.34f, 0.12f),
+            1 => new Color(0.96f, 0.58f, 0.12f),
+            _ => new Color(0.98f, 0.82f, 0.28f),
+        };
     }
 
     private Sprite3D GetVisualSprite()

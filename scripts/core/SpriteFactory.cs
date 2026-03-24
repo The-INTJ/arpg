@@ -115,6 +115,46 @@ public static class SpriteFactory
         "..WW..",
     };
 
+    private static readonly string[][] FlameVariants =
+    {
+        new[]
+        {
+            "...M...",
+            "...C...",
+            "..CCC..",
+            "..CCC..",
+            ".CCCCC.",
+            ".CCCCC.",
+            ".MMMMM.",
+            "..MMM..",
+            "...M...",
+        },
+        new[]
+        {
+            "...C...",
+            "..CCC..",
+            "..CCC..",
+            ".CCCCC.",
+            ".CMMMC.",
+            "..MMM..",
+            "..MMM..",
+            "...M...",
+            "...M...",
+        },
+        new[]
+        {
+            "...C...",
+            "...C...",
+            "..CCC..",
+            ".CCCCC.",
+            ".CCMMC.",
+            ".MMMMM.",
+            "..MMM..",
+            "..MMM..",
+            "...M...",
+        },
+    };
+
     // --- Enemy variants ---
 
     // Goblin (original)
@@ -268,6 +308,26 @@ public static class SpriteFactory
         _ => Colors.Transparent,
     };
 
+    private static Color GetFlameColor(char c, Color baseColor)
+    {
+        Color outer = baseColor.Darkened(0.28f);
+        outer.A = 0.65f;
+
+        Color mid = baseColor.Lightened(0.1f);
+        mid.A = 0.82f;
+
+        Color core = baseColor.Lerp(Palette.TextLight, 0.55f);
+        core.A = 0.95f;
+
+        return c switch
+        {
+            'M' => outer,
+            'C' => mid,
+            'H' => core,
+            _ => Colors.Transparent,
+        };
+    }
+
     private static Color GetGoblinColor(char c) => c switch
     {
         'E' => Palette.EnemyBody,
@@ -341,6 +401,12 @@ public static class SpriteFactory
             Archetype.Mage => BuildTexture(MageWeaponPixels, GetMageWeaponColor),
             _ => BuildTexture(FighterWeaponPixels, GetFighterWeaponColor),
         };
+    }
+
+    public static ImageTexture CreateFlameTexture(Color baseColor, int variant = 0)
+    {
+        int index = Mathf.Abs(variant) % FlameVariants.Length;
+        return BuildTexture(FlameVariants[index], c => GetFlameColor(c, baseColor));
     }
 
     public static ImageTexture CreateEnemyTexture(int variant = 0)

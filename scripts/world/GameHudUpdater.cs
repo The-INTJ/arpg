@@ -11,6 +11,7 @@ public partial class GameHudUpdater : Node
     private TurnManager _turnManager;
     private CombatManager _combatManager;
     private AggroSystem _aggroSystem;
+    private PlayerActionHandler _actionHandler;
     private Camera3D _camera;
     private CanvasLayer _canvas;
 
@@ -42,6 +43,7 @@ public partial class GameHudUpdater : Node
         TurnManager turnManager,
         CombatManager combatManager,
         AggroSystem aggroSystem,
+        PlayerActionHandler actionHandler,
         Camera3D camera,
         CanvasLayer canvas,
         Label hpLabel,
@@ -59,6 +61,7 @@ public partial class GameHudUpdater : Node
         _turnManager = turnManager;
         _combatManager = combatManager;
         _aggroSystem = aggroSystem;
+        _actionHandler = actionHandler;
         _camera = camera;
         _canvas = canvas;
         _hpLabel = hpLabel;
@@ -98,7 +101,10 @@ public partial class GameHudUpdater : Node
     {
         var s = _player.Stats;
         _hpLabel.Text = $"HP: {s.CurrentHp} / {s.MaxHp}";
-        _statsLabel.Text = $"ATK: {s.AttackDamage}  |  SPD: {s.MoveSpeed:0.#}  |  Range: {s.AttackRange:0.#}";
+        string itemUsesText = _turnManager.IsPlayerTurn
+            ? $"{_actionHandler.RemainingCombatItemUses}/{_actionHandler.CombatItemUsesPerTurn}"
+            : $"{s.ItemUsesPerTurn}/turn";
+        _statsLabel.Text = $"ATK: {s.AttackDamage}  |  SPD: {s.MoveSpeed:0.#}  |  Range: {s.AttackRange:0.#}  |  Items: {itemUsesText}";
         _killLabel.Text = $"Kills: {killCount}/{totalEnemies}";
     }
 
