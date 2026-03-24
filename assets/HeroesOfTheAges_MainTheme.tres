@@ -146,6 +146,30 @@ content_margin_top = 22.0
 content_margin_right = 22.0
 content_margin_bottom = 22.0
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_progress_fill"]
+bg_color = Color(0.55, 0.2, 0.75, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.7, 0.3, 0.9, 0.9)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_progress_bg"]
+bg_color = Color(0.12, 0.08, 0.06, 0.9)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.5, 0.3, 0.6, 0.5)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
 [resource]
 Button/colors/font_color = Color(0.96, 0.9, 0.8, 1)
 Button/colors/font_hover_color = Color(0.96, 0.9, 0.8, 1)
@@ -168,3 +192,6 @@ SectionPanel/base_type = "PanelContainer"
 SectionPanel/styles/panel = SubResource("StyleBoxFlat_section_panel")
 ConfirmPanel/base_type = "PanelContainer"
 ConfirmPanel/styles/panel = SubResource("StyleBoxFlat_confirm_panel")
+ProgressBar/colors/font_color = Color(0.96, 0.9, 0.8, 1)
+ProgressBar/styles/fill = SubResource("StyleBoxFlat_progress_fill")
+ProgressBar/styles/background = SubResource("StyleBoxFlat_progress_bg")

@@ -5,7 +5,7 @@ namespace ARPG;
 public partial class GameManager : Node3D
 {
     private PlayerController _player;
-    private ExitDoor _exitDoor;
+    private BridgePoint _bridgePoint;
     private TurnManager _turnManager;
     private CombatManager _combatManager;
     private AggroSystem _aggroSystem;
@@ -14,7 +14,7 @@ public partial class GameManager : Node3D
     private ModifyStatsSimple _modifyScreen;
     private PauseScreen _pauseScreen;
 
-    private int _killCount;
+    private DarkEnergy _darkEnergy;
     private int _totalEnemies;
     private bool _isEndingRun;
 
@@ -24,7 +24,7 @@ public partial class GameManager : Node3D
     public override void _Ready()
     {
         _player = GetNode<PlayerController>("World/Player");
-        _exitDoor = GetNode<ExitDoor>("World/ExitDoor");
+        _bridgePoint = GetNode<BridgePoint>("World/ExitDoor");
         var camera = _player.GetNode<Camera3D>("CameraRig/Camera3D");
         var canvas = GetNode<CanvasLayer>("CanvasLayer");
         var monsterEffectProfile = MonsterEffectRoomProfiles.ForRoom(_room);
@@ -77,16 +77,17 @@ public partial class GameManager : Node3D
             GetNode<VBoxContainer>("CanvasLayer/EnemyHpDisplay"));
 
         var roomLabel = GetNode<Label>("CanvasLayer/RoomLabel");
-        roomLabel.Text = $"Room {_room}/{GameState.TotalRooms}";
+        roomLabel.Text = $"{ChunkNames.RandomName()}  ({_room}/{GameState.TotalRooms})";
         var ruleLabel = GetNode<Label>("CanvasLayer/RuleLabel");
         ruleLabel.Text = $"{monsterEffectProfile.DisplayName}\n{monsterEffectProfile.Description}";
 
         var hpLabel = GetNode<Label>("CanvasLayer/HUD/HpLabel");
         var statsLabel = GetNode<Label>("CanvasLayer/HUD/StatsLabel");
-        var killLabel = GetNode<Label>("CanvasLayer/HUD/KillLabel");
+        var darkEnergyLabel = GetNode<Label>("CanvasLayer/HUD/DarkEnergyLabel");
+        var darkEnergyBar = GetNode<ProgressBar>("CanvasLayer/HUD/DarkEnergyBar");
         var statusLabel = GetNode<Label>("CanvasLayer/HUD/StatusLabel");
         GameHudBuilder.StyleHudLabels(
-            new[] { hpLabel, statsLabel, killLabel, statusLabel },
+            new[] { hpLabel, statsLabel, darkEnergyLabel, statusLabel },
             GetViewport().GetVisibleRect().Size.Y);
 
         var itemBarHBox = GetNode<HBoxContainer>("CanvasLayer/ItemBarCenter/ItemBarHBox");
@@ -98,6 +99,10 @@ public partial class GameManager : Node3D
         _hudUpdater.Init(_player, _turnManager, _combatManager, _aggroSystem, _actionHandler, camera, canvas,
             hpLabel, statsLabel, killLabel, statusLabel, attackButton, abilityButton,
             enemyHp, itemSlots, itemIcons, itemLabels, itemStyles);
+            hpLabel, statsLabel, darkEnergyLabel, darkEnergyBar, statusLabel, attackButton, abilityButton,
+            enemyHp, itemSlots, itemLabels, itemStyles);
+
+        _player.EdgeFall += () => _hudUpdater.StatusText = "Too close to the edge! -5 HP";
 
         // Screens
         _modifyScreen = GetNode<ModifyStatsSimple>("CanvasLayer/ModifyStatsSimple");
@@ -110,12 +115,13 @@ public partial class GameManager : Node3D
         var floorCollision = GetNode<CollisionShape3D>("World/Floor/FloorCollision");
         floorCollision.Disabled = true;
 
-        SetupEnvironment();
         SetupAudioManager();
 
-        // Generate map and spawn enemies
+        // Generate map, chunk scenery, and spawn enemies
         var mapGen = GetNode<MapGenerator>("World/MapGenerator");
         var generatedMap = mapGen.Generate();
+        var spawnPositions = mapGen.Generate();
+        GetNode<Node3D>("World").AddChild(DistantChunkGenerator.Generate(_room));
         var enemiesContainer = GetNode<Node3D>("World/Enemies");
         var encounter = EnemySpawner.BuildEncounter(_room);
 
@@ -125,47 +131,14 @@ public partial class GameManager : Node3D
         SpawnCaveChest(generatedMap.CaveChestPosition);
 
         _totalEnemies = encounter.Length;
+        _darkEnergy = new DarkEnergy(DarkEnergy.ThresholdForRoom(_room), GameState.DarkEnergyCarryOver);
+        GameState.DarkEnergyCarryOver = 0;
         _hudUpdater.StatusText = GetRoomIntroText();
 
         AudioManager.Instance?.StartExploreMusic();
     }
 
-    private void SetupEnvironment()
-    {
-        var env = new Godot.Environment();
-        env.BackgroundMode = Godot.Environment.BGMode.Sky;
 
-        var sky = new Sky();
-        var skyMat = new ProceduralSkyMaterial();
-        skyMat.SkyTopColor = new Color(0.35f, 0.55f, 0.82f);
-        skyMat.SkyHorizonColor = new Color(0.65f, 0.75f, 0.85f);
-        skyMat.GroundBottomColor = new Color(0.35f, 0.30f, 0.22f);
-        skyMat.GroundHorizonColor = new Color(0.55f, 0.50f, 0.40f);
-        skyMat.SunAngleMax = 30.0f;
-        sky.SkyMaterial = skyMat;
-        env.Sky = sky;
-
-        env.AmbientLightSource = Godot.Environment.AmbientSource.Sky;
-        env.AmbientLightEnergy = 0.4f;
-        env.AmbientLightColor = new Color(0.8f, 0.85f, 0.95f);
-
-        env.TonemapMode = Godot.Environment.ToneMapper.Filmic;
-        env.SsaoEnabled = false;
-
-        env.FogEnabled = true;
-        env.FogLightColor = new Color(0.65f, 0.60f, 0.50f);
-        env.FogDensity = 0.003f;
-
-        var worldEnv = new WorldEnvironment();
-        worldEnv.Environment = env;
-        GetNode<Node3D>("World").AddChild(worldEnv);
-
-        var sun = GetNode<DirectionalLight3D>("World/DirectionalLight3D");
-        sun.ShadowEnabled = true;
-        sun.LightColor = new Color(1.0f, 0.95f, 0.85f);
-        sun.LightEnergy = 1.2f;
-        sun.DirectionalShadowMode = DirectionalLight3D.ShadowMode.Parallel2Splits;
-    }
 
     private void SetupAudioManager()
     {
@@ -179,14 +152,19 @@ public partial class GameManager : Node3D
     private string GetRoomIntroText()
     {
         if (_isBossRoom)
-            return $"Room {_room}/{GameState.TotalRooms} — Boss ahead! Defeat all enemies!";
-        return $"Room {_room}/{GameState.TotalRooms} — Clear all enemies to proceed";
+            return "Boss chunk! Harvest dark energy to build the final bridge!";
+        return "Harvest dark energy from enemies to bridge to the next chunk";
     }
 
     public override void _UnhandledInput(InputEvent @event)
     {
         if (@event.IsActionPressed(GameKeys.Attack))
-            _actionHandler.OnAttackPressed();
+        {
+            if (_bridgePoint.IsReadyAndPlayerNear && _turnManager.IsExploring)
+                _bridgePoint.TryBuild();
+            else
+                _actionHandler.OnAttackPressed();
+        }
         else if (@event.IsActionPressed(GameKeys.Ability))
             _actionHandler.OnAbilityPressed();
 
@@ -203,7 +181,8 @@ public partial class GameManager : Node3D
 
     public override void _Process(double delta)
     {
-        _hudUpdater.UpdateAll(_killCount, _totalEnemies);
+        _hudUpdater.UpdateAll(_darkEnergy);
+        GameState.DarkEnergyCarryOver = _darkEnergy.Excess;
 
         if (_turnManager.IsExploring)
         {
@@ -216,8 +195,10 @@ public partial class GameManager : Node3D
 
     private void OnCombatEnded()
     {
-        _killCount++;
         bool wasBoss = _combatManager.LastKillWasBoss;
+        bool wasElite = _combatManager.LastKillWasElite;
+        int energy = DarkEnergy.EnergyForKill(wasBoss, wasElite);
+        _darkEnergy.Add(energy);
         GameState.RecordKill(wasBoss);
         _hudUpdater.AttackButton.Visible = false;
         _hudUpdater.AbilityButton.Visible = false;
@@ -233,24 +214,24 @@ public partial class GameManager : Node3D
         if (droppedItem != null)
             SpawnInventoryItem(_combatManager.LastKillPosition + new Vector3(0.75f, 0, 0.4f), droppedItem);
 
-        if (_killCount >= _totalEnemies)
+        if (_darkEnergy.IsThresholdMet)
         {
-            _exitDoor.Unlock();
+            _bridgePoint.SetEnergyReady();
             AudioManager.Instance?.PlayLevelUp();
 
             string clearText = _room >= GameState.TotalRooms
-                ? "All rooms cleared! Find the exit!"
-                : "Room cleared! Find the exit to proceed!";
+                ? "Energy overflowing! Find the bridge point!"
+                : "Enough dark energy! Find the bridge point to cross!";
             _hudUpdater.StatusText = droppedItem == null
                 ? clearText
                 : $"{clearText} {droppedItem.Name} dropped nearby.";
         }
         else
         {
-            int remaining = _totalEnemies - _killCount;
+            string energyText = $"+{energy} dark energy";
             _hudUpdater.StatusText = droppedItem == null
-                ? $"Enemy defeated! {remaining} remaining"
-                : $"Enemy defeated! {remaining} remaining. {droppedItem.Name} dropped nearby.";
+                ? $"Enemy defeated! {energyText}"
+                : $"Enemy defeated! {energyText}. {droppedItem.Name} dropped nearby.";
         }
 
         if (_player.Hp <= 0)

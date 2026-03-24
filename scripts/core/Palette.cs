@@ -19,12 +19,18 @@ public static class Palette
 	public static readonly Color FloorHigh = new(0.52f, 0.44f, 0.28f);
 	public static readonly Color Wall = new(0.42f, 0.31f, 0.24f);
 	public static readonly Color BoundaryWall = new(0.35f, 0.25f, 0.18f);
+	public static readonly Color ChunkEdge = new(0.30f, 0.22f, 0.15f);
+	public static readonly Color AbyssVoid = new(0.05f, 0.02f, 0.08f);
 	public static readonly Color CaveFloor = new(0.31f, 0.26f, 0.24f);
 	public static readonly Color CaveWall = new(0.24f, 0.21f, 0.20f);
 	public static readonly Color CaveShadow = new(0.14f, 0.12f, 0.12f);
 	public static readonly Color Ramp = new(0.48f, 0.39f, 0.28f);
 	public static readonly Color ChestWood = new(0.46f, 0.27f, 0.12f);
 	public static readonly Color ChestMetal = new(0.86f, 0.72f, 0.30f);
+
+	// Dark energy / bridge (3D materials only — UI colors are in the theme)
+	public static readonly Color DarkEnergyGlow = new(0.70f, 0.30f, 0.90f);
+	public static readonly Color BridgePurple = new(0.60f, 0.25f, 0.85f);
 
 	// Characters
 	public static readonly Color PlayerBody = new(0.18f, 0.55f, 0.43f);

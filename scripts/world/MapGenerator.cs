@@ -40,6 +40,11 @@ public partial class MapGenerator : Node3D
     private GeneratedMapResult BuildRidgeLayout(int caveSide)
     {
         int ridgeSide = -caveSide;
+        new[] { new Vector3(12.5f, 0.5f, -12.5f), new Vector3(-15, 0.5f, 7.5f), new Vector3(7.5f, 0.5f, 12.5f), new Vector3(-5, 0.5f, -15), new Vector3(15, 0.5f, 2.5f), new Vector3(-12.5f, 0.5f, -5), new Vector3(5, 0.5f, -5), new Vector3(-7.5f, 0.5f, 15) },
+        new[] { new Vector3(-7.5f, 0.5f, -12.5f), new Vector3(10, 0.5f, -10), new Vector3(-10, 0.5f, 10), new Vector3(7.5f, 0.5f, 12.5f), new Vector3(12.5f, 0.5f, -2.5f), new Vector3(-15, 0.5f, -5), new Vector3(5, 0.5f, 5), new Vector3(-5, 0.5f, -7.5f) },
+        new[] { new Vector3(-12.5f, 0.5f, -5), new Vector3(12.5f, 0.5f, 7.5f), new Vector3(0, 0.5f, -15), new Vector3(-10, 0.5f, 12.5f), new Vector3(12.5f, 0.5f, -12.5f), new Vector3(-15, 0.5f, 2.5f), new Vector3(7.5f, 0.5f, -7.5f), new Vector3(-5, 0.5f, 5) },
+        new[] { new Vector3(15, 0.5f, -12.5f), new Vector3(-15, 0.5f, -7.5f), new Vector3(12.5f, 0.5f, 10), new Vector3(-10, 0.5f, 15), new Vector3(-2.5f, 0.5f, 7.5f), new Vector3(10, 0.5f, -2.5f), new Vector3(-5, 0.5f, -12.5f), new Vector3(7.5f, 0.5f, 5) },
+    };
 
         PlaceSafetyFloor();
         PlaceBoundaryWalls();
@@ -86,20 +91,21 @@ public partial class MapGenerator : Node3D
         PlaceSafetyFloor();
         PlaceBoundaryWalls();
 
-        PlacePlatform(0, -2, 32, 114, GroundTop, SurfaceKind.Ground);
-        PlacePlatform(-24, 8, 18, 84, GroundTop, SurfaceKind.Ground);
-        PlacePlatform(24, 4, 18, 86, GroundTop, SurfaceKind.Ground);
-        PlacePlatform(0, -6, 20, 32, MidTop, SurfaceKind.Mid);
-        PlaceRamp(0, 16, 12, 14, GroundTop, MidTop, alongX: false, ascendPositive: false);
-        PlacePlatform(28, 20, 14, 18, HighTop, SurfaceKind.High);
-        PlaceRamp(18, 18, 10, 12, MidTop, HighTop, alongX: true, ascendPositive: true);
-        PlacePlatform(-30, 26, 14, 18, MidTop, SurfaceKind.Mid);
-        PlaceRamp(-18, 26, 10, 12, GroundTop, MidTop, alongX: true, ascendPositive: false);
+        // Floating chunk geometry (visible cliff sides + bottom)
+        float chunkWidth = 50 * S;
+        float chunkDepth = 50 * S;
+        ChunkBuilder.BuildChunk(this, chunkWidth, chunkDepth);
 
-        PlaceWall(0, -28, 14, 2, 2.5f, Palette.Wall, true);
-        PlaceWall(-8, 10, 2, 10, 2.2f, Palette.Wall, true);
-        PlaceWall(12, -14, 2, 12, 3.0f, Palette.Wall, true);
-        PlaceWall(26, -6, 8, 2, 2.0f, Palette.CaveWall, true);
+        // Invisible low collision walls at edges (knee-height so player can see over)
+        float edgeH = 1.0f;
+        PlaceInvisibleWall(0, -25 * S, 52 * S, 1, edgeH);
+        PlaceInvisibleWall(0, 25 * S, 52 * S, 1, edgeH);
+        PlaceInvisibleWall(-25 * S, 0, 1, 52 * S, edgeH);
+        PlaceInvisibleWall(25 * S, 0, 1, 52 * S, edgeH);
+
+        // Interior walls (scaled positions and sizes)
+        foreach (var wall in layout)
+            PlaceWall(wall.X * S, wall.Y * S, wall.Z * S, wall.W * S, 3f, Palette.Wall, true);
 
         var caveResult = PlaceCavePocket(side: 1, centerZ: -2);
 
@@ -146,6 +152,18 @@ public partial class MapGenerator : Node3D
             new Vector3(caveCenterX - side * 3.0f, GroundTop, centerZ));
     }
 
+    private void PlaceInvisibleWall(float x, float z, float w, float d, float h)
+    {
+        var body = new StaticBody3D();
+        AddChild(body);
+        body.Position = new Vector3(x, h / 2, z);
+
+        var shape = new CollisionShape3D();
+        shape.Shape = new BoxShape3D { Size = new Vector3(w, h, d) };
+        body.AddChild(shape);
+    }
+
+    private void PlaceWall(float x, float z, float w, float d, float h, Color color, bool textured)
     private void PlaceBoundaryWalls()
     {
         PlaceWall(0, -MapExtent, 124, 2, 5.7f, Palette.BoundaryWall, true, SafetyFloorTop);
@@ -422,8 +440,25 @@ public partial class MapGenerator : Node3D
         return gradient;
     }
 
+    /// <summary>
+    /// Creates a textured ground material. Uses res://assets/textures/chunk_top.png if
+    /// real art exists there, otherwise falls back to procedural noise.
+    /// </summary>
     public static StandardMaterial3D CreateGroundMaterial()
     {
+        var mat = new StandardMaterial3D();
+        mat.AlbedoColor = Palette.Floor;
+        mat.Roughness = 0.95f;
+        mat.Uv1Triplanar = true;
+        mat.Uv1Scale = new Vector3(0.1f, 0.1f, 0.1f);
+
+        var custom = TextureLoader.TryLoad("res://assets/textures/chunk_top.png");
+        if (custom != null)
+        {
+            mat.AlbedoTexture = custom;
+            return mat;
+        }
+
         return GetSurfaceMaterial(SurfaceKind.Ground);
     }
 
@@ -444,7 +479,6 @@ public partial class MapGenerator : Node3D
         gradient.SetColor(1, baseColor.Lightened(0.1f));
         noiseTex.ColorRamp = gradient;
 
-        var mat = new StandardMaterial3D();
         mat.AlbedoTexture = noiseTex;
         mat.AlbedoColor = baseColor;
         mat.Roughness = 0.96f;

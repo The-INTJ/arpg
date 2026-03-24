@@ -35,6 +35,9 @@ public static partial class GameState
     /// </summary>
     public static PlayerStats PersistentStats { get; set; }
 
+    /// <summary>Excess dark energy carried from the previous chunk.</summary>
+    public static int DarkEnergyCarryOver { get; set; }
+
     /// <summary>Completed runs for the current app session, newest first.</summary>
     public static IReadOnlyList<RunScoreEntry> RunHistory
     {
@@ -56,6 +59,8 @@ public static partial class GameState
     {
         CurrentRoom = 1;
         PersistentStats = null;
+        DarkEnergyCarryOver = 0;
+        ChunkNames.ResetUsed();
         ResetCurrentRunScore();
     }
 

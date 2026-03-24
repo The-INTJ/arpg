@@ -20,6 +20,11 @@ public partial class PlayerController : CharacterBody3D
     public int AttackDamage => Stats.AttackDamage;
     public bool IsGrounded => IsOnFloor();
 
+    [Signal]
+    public delegate void EdgeFallEventHandler();
+
+    private const float ChunkBoundsLimit = 48f;
+    private float _edgeFallCooldown;
     private float _regenAccumulator;
     private float _presentationTime;
     private float _coyoteTimer;
@@ -136,6 +141,7 @@ public partial class PlayerController : CharacterBody3D
             Velocity = new Vector3(horizontalVelocity.X, Velocity.Y, horizontalVelocity.Z);
 
         MoveAndSlide();
+        CheckChunkBounds((float)delta);
 
         // Flip sprite based on camera-relative horizontal movement
         var facingVelocity = new Vector3(Velocity.X, 0, Velocity.Z);
@@ -151,6 +157,25 @@ public partial class PlayerController : CharacterBody3D
 
         _wasGrounded = groundedNow;
         UpdatePresentation(dt, facingVelocity, input, speed, groundedNow);
+    }
+
+    private void CheckChunkBounds(float delta)
+    {
+        _edgeFallCooldown -= delta;
+        if (_edgeFallCooldown > 0) return;
+
+        var pos = GlobalPosition;
+        if (Mathf.Abs(pos.X) <= ChunkBoundsLimit && Mathf.Abs(pos.Z) <= ChunkBoundsLimit)
+            return;
+
+        // Player went past chunk edge — deal damage and snap back
+        Hp -= 5;
+        _edgeFallCooldown = 1.0f; // prevent rapid damage
+        GlobalPosition = new Vector3(
+            Mathf.Clamp(pos.X, -ChunkBoundsLimit + 2, ChunkBoundsLimit - 2),
+            pos.Y,
+            Mathf.Clamp(pos.Z, -ChunkBoundsLimit + 2, ChunkBoundsLimit - 2));
+        EmitSignal(SignalName.EdgeFall);
     }
 
     public void TickRegen(float delta)
