@@ -93,6 +93,7 @@ public partial class BridgePoint : Node3D
             float tMid = (t0 + t1) * 0.5f;
 
             var segment = new StaticBody3D();
+            segment.AddToGroup(WorldGroups.CameraBlockers);
             segment.Position = new Vector3(
                 Mathf.Lerp(0.0f, localTarget.X, tMid),
                 Mathf.Lerp(0.0f, localTarget.Y, tMid) - BridgeThickness * 0.5f,

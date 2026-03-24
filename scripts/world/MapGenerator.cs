@@ -226,6 +226,7 @@ public partial class MapGenerator : Node3D
     private void PlacePlatform(float x, float z, float width, float depth, float topHeight, WorldSurfaceKind surfaceKind)
     {
         var body = new StaticBody3D();
+        body.AddToGroup(WorldGroups.CameraBlockers);
         body.Position = new Vector3(x, topHeight - FloorThickness / 2.0f, z);
         AddChild(body);
 
@@ -265,6 +266,7 @@ public partial class MapGenerator : Node3D
             : new Vector3(width, RampThickness, slopedLength);
 
         var body = new StaticBody3D();
+        body.AddToGroup(WorldGroups.CameraBlockers);
         body.Position = new Vector3(x, centerY, z);
         body.Rotation = alongX
             ? new Vector3(0, 0, ascendPositive ? angle : -angle)

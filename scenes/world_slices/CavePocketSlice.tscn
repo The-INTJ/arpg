@@ -1,4 +1,4 @@
-[gd_scene load_steps=13 format=3]
+[gd_scene load_steps=14 format=3]
 
 [ext_resource type="Script" path="res://scripts/world/CavePocketSlice.cs" id="1_slice"]
 [ext_resource type="Script" path="res://scripts/world/SceneSliceAnchor.cs" id="2_anchor"]
@@ -34,6 +34,9 @@ size = Vector3(16, 3, 4)
 size = Vector3(16, 3, 4)
 
 [sub_resource type="BoxMesh" id="BoxMesh_ceiling"]
+size = Vector3(18, 0.7, 26)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_ceiling"]
 size = Vector3(18, 0.7, 26)
 
 [node name="CavePocketSlice" type="Node3D"]
@@ -94,9 +97,14 @@ mesh = SubResource("BoxMesh_side_wall")
 [node name="CollisionShape3D" type="CollisionShape3D" parent="SouthWall"]
 shape = SubResource("BoxShape3D_side_wall")
 
-[node name="Ceiling" type="MeshInstance3D" parent="."]
+[node name="Ceiling" type="StaticBody3D" parent="."]
 position = Vector3(6.5, 2.55, 0)
+
+[node name="Mesh" type="MeshInstance3D" parent="Ceiling"]
 mesh = SubResource("BoxMesh_ceiling")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Ceiling"]
+shape = SubResource("BoxShape3D_ceiling")
 
 [node name="Lamp" type="OmniLight3D" parent="."]
 position = Vector3(6, 2, 0)

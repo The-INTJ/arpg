@@ -10,13 +10,14 @@ public partial class CavePocketSlice : Node3D
     {
         _seed = GD.Randi();
 
+        RegisterCameraBlockers();
         ApplyMaterial("CaveFloor/Mesh", WorldMaterials.GetSurfaceMaterial(WorldSurfaceKind.Cave));
         ApplyMaterial("Shelf/Mesh", WorldMaterials.GetSurfaceMaterial(WorldSurfaceKind.Mid));
         ApplyMaterial("Ramp/Mesh", WorldMaterials.GetSurfaceMaterial(WorldSurfaceKind.Ramp));
         ApplyMaterial("BackWall/Mesh", WorldMaterials.GetCaveRockMaterial());
         ApplyMaterial("NorthWall/Mesh", WorldMaterials.GetCaveRockMaterial());
         ApplyMaterial("SouthWall/Mesh", WorldMaterials.GetCaveRockMaterial());
-        ApplyMaterial("Ceiling", WorldMaterials.GetCaveRoofMaterial());
+        ApplyMaterial("Ceiling/Mesh", WorldMaterials.GetCaveRoofMaterial());
 
         var lamp = GetNode<OmniLight3D>("Lamp");
         lamp.LightColor = Palette.CaveLampGlow;
@@ -177,5 +178,11 @@ public partial class CavePocketSlice : Node3D
     private void ApplyMaterial(string meshPath, Material material)
     {
         GetNode<MeshInstance3D>(meshPath).MaterialOverride = material;
+    }
+
+    private void RegisterCameraBlockers()
+    {
+        foreach (string bodyPath in new[] { "CaveFloor", "Shelf", "Ramp", "BackWall", "NorthWall", "SouthWall", "Ceiling" })
+            GetNode<StaticBody3D>(bodyPath).AddToGroup(WorldGroups.CameraBlockers);
     }
 }

@@ -57,6 +57,7 @@ public partial class PlatformRampSlice : Node3D
     private void ConfigurePlatform()
     {
         var platform = GetNode<StaticBody3D>("Platform");
+        platform.AddToGroup(WorldGroups.CameraBlockers);
         platform.Position = new Vector3(_platformOffsetX, _platformTopHeight - FloorThickness / 2.0f, 0);
 
         var mesh = GetNode<MeshInstance3D>("Platform/Mesh");
@@ -77,6 +78,7 @@ public partial class PlatformRampSlice : Node3D
         var rampSize = new Vector3(slopedLength, RampThickness, _rampWidth);
 
         var ramp = GetNode<StaticBody3D>("Ramp");
+        ramp.AddToGroup(WorldGroups.CameraBlockers);
         ramp.Position = new Vector3(0, centerY, 0);
         ramp.Rotation = new Vector3(0, 0, angle);
 

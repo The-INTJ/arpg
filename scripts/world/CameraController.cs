@@ -12,8 +12,12 @@ public partial class CameraController : Node3D
     private const float MinDistance = 3.0f;
     private const float MaxDistance = 12.0f;
     private const float ZoomStep = 0.5f;
+    private const float CollisionPadding = 0.15f;
+    private const float SnapDistanceMultiplier = 2.0f;
+    private const int MaxRaycastPasses = 8;
 
     private Camera3D _camera;
+    private CollisionObject3D _playerBody;
     private float _yaw;
     private float _pitch = DefaultPitch;
     private float _distance = DefaultDistance;
@@ -26,6 +30,7 @@ public partial class CameraController : Node3D
     public override void _Ready()
     {
         _camera = GetNode<Camera3D>("Camera3D");
+        _playerBody = GetParentOrNull<CollisionObject3D>();
         ProcessMode = ProcessModeEnum.Always;
         UpdateCameraTransform();
         UpdateMouseMode();
@@ -34,6 +39,14 @@ public partial class CameraController : Node3D
     public override void _Process(double delta)
     {
         UpdateMouseMode();
+    }
+
+    public override void _PhysicsProcess(double delta)
+    {
+        if (_combatMode)
+            return;
+
+        UpdateCameraTransform();
     }
 
     public override void _UnhandledInput(InputEvent @event)
@@ -117,11 +130,83 @@ public partial class CameraController : Node3D
     {
         // Yaw rotates the rig around Y
         Rotation = new Vector3(0, _yaw, 0);
+        _camera.Rotation = new Vector3(_pitch, 0, 0);
 
-        // Camera orbits at _distance with _pitch angle
+        if (ShouldSnapToPlayer())
+        {
+            _camera.Position = Vector3.Zero;
+            return;
+        }
+
+        _camera.Position = ResolveCameraPosition(CalculateDesiredLocalPosition());
+    }
+
+    private Vector3 CalculateDesiredLocalPosition()
+    {
+        // Camera orbits at _distance with _pitch angle.
         float y = -_distance * Mathf.Sin(_pitch);
         float z = _distance * Mathf.Cos(_pitch);
-        _camera.Position = new Vector3(0, y, z);
-        _camera.Rotation = new Vector3(_pitch, 0, 0);
+        return new Vector3(0, y, z);
+    }
+
+    private Vector3 ResolveCameraPosition(Vector3 desiredLocalPosition)
+    {
+        float desiredDistance = desiredLocalPosition.Length();
+        if (desiredDistance <= Mathf.Epsilon)
+            return Vector3.Zero;
+
+        Vector3 pivotGlobalPosition = GlobalPosition;
+        Vector3 desiredGlobalPosition = ToGlobal(desiredLocalPosition);
+        if (!TryGetBlockingHit(pivotGlobalPosition, desiredGlobalPosition, out Vector3 hitPosition))
+            return desiredLocalPosition;
+
+        float resolvedDistance = Mathf.Max(pivotGlobalPosition.DistanceTo(hitPosition) - CollisionPadding, 0.0f);
+        return desiredLocalPosition.Normalized() * resolvedDistance;
+    }
+
+    private bool TryGetBlockingHit(Vector3 from, Vector3 to, out Vector3 hitPosition)
+    {
+        hitPosition = Vector3.Zero;
+
+        var spaceState = GetWorld3D()?.DirectSpaceState;
+        if (spaceState == null)
+            return false;
+
+        var excludedBodies = new Godot.Collections.Array<Rid>();
+        if (_playerBody != null)
+            excludedBodies.Add(_playerBody.GetRid());
+
+        for (int pass = 0; pass < MaxRaycastPasses; pass++)
+        {
+            var query = PhysicsRayQueryParameters3D.Create(from, to);
+            query.CollideWithBodies = true;
+            query.CollideWithAreas = false;
+            query.Exclude = excludedBodies;
+
+            var result = spaceState.IntersectRay(query);
+            if (result.Count == 0)
+                return false;
+
+            if (result["collider"].AsGodotObject() is Node collider && collider.IsInGroup(WorldGroups.CameraBlockers))
+            {
+                hitPosition = result["position"].AsVector3();
+                return true;
+            }
+
+            if (result["collider"].AsGodotObject() is CollisionObject3D body)
+            {
+                excludedBodies.Add(body.GetRid());
+                continue;
+            }
+
+            return false;
+        }
+
+        return false;
+    }
+
+    private bool ShouldSnapToPlayer()
+    {
+        return _camera.GlobalPosition.DistanceTo(GlobalPosition) >= _distance * SnapDistanceMultiplier;
     }
 }

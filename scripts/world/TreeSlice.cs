@@ -12,6 +12,7 @@ public partial class TreeSlice : StaticBody3D
     public override void _Ready()
     {
         bool isPine = Name.ToString().Contains("Pine");
+        AddToGroup(WorldGroups.CameraBlockers);
 
         GetNode<MeshInstance3D>("Trunk").MaterialOverride = GetTrunkMaterial();
         GetNode<MeshInstance3D>("Canopy").MaterialOverride = isPine
