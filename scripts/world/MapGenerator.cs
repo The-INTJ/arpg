@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Godot;
 
 namespace ARPG;
@@ -5,9 +6,10 @@ namespace ARPG;
 public partial class MapGenerator : Node3D
 {
     private const float MapExtent = 60.0f;
+    private const float SafetyFloorTop = -0.2f;
     private const float GroundTop = 0.0f;
-    private const float MidTop = 1.1f;
-    private const float HighTop = 2.1f;
+    private const float MidTop = 0.9f;
+    private const float HighTop = 1.8f;
     private const float FloorThickness = 1.0f;
     private const float RampThickness = 0.6f;
 
@@ -20,6 +22,7 @@ public partial class MapGenerator : Node3D
     private static StandardMaterial3D _boundaryWallMaterial;
     private static StandardMaterial3D _caveWallMaterial;
     private static StandardMaterial3D _caveRoofMaterial;
+    private readonly List<SurfaceRect> _spawnSurfaces = new();
 
     public GeneratedMapResult Generate()
     {
@@ -38,6 +41,7 @@ public partial class MapGenerator : Node3D
     {
         int ridgeSide = -caveSide;
 
+        PlaceSafetyFloor();
         PlaceBoundaryWalls();
 
         PlacePlatform(0, -2, 34, 114, GroundTop, SurfaceKind.Ground);
@@ -79,6 +83,7 @@ public partial class MapGenerator : Node3D
 
     private GeneratedMapResult BuildMesaLayout()
     {
+        PlaceSafetyFloor();
         PlaceBoundaryWalls();
 
         PlacePlatform(0, -2, 32, 114, GroundTop, SurfaceKind.Ground);
@@ -125,6 +130,7 @@ public partial class MapGenerator : Node3D
 
         PlacePlatform(caveCenterX, centerZ, 20, 30, GroundTop, SurfaceKind.Cave);
         PlacePlatform(shelfCenterX, centerZ, 8, 10, MidTop, SurfaceKind.Mid);
+        PlaceRamp(caveCenterX + side * 2.5f, centerZ, 8, 7, GroundTop, MidTop, alongX: true, ascendPositive: side > 0);
 
         PlaceWall(caveCenterX + side * 9.0f, centerZ, 2, 30, 3.4f, Palette.CaveWall, true);
         PlaceWall(caveCenterX, centerZ - 14.0f, 20, 2, 3.1f, Palette.CaveWall, true);
@@ -142,16 +148,22 @@ public partial class MapGenerator : Node3D
 
     private void PlaceBoundaryWalls()
     {
-        PlaceWall(0, -MapExtent, 124, 2, 5.5f, Palette.BoundaryWall, true);
-        PlaceWall(0, MapExtent, 124, 2, 5.5f, Palette.BoundaryWall, true);
-        PlaceWall(-MapExtent, 0, 2, 124, 5.5f, Palette.BoundaryWall, true);
-        PlaceWall(MapExtent, 0, 2, 124, 5.5f, Palette.BoundaryWall, true);
+        PlaceWall(0, -MapExtent, 124, 2, 5.7f, Palette.BoundaryWall, true, SafetyFloorTop);
+        PlaceWall(0, MapExtent, 124, 2, 5.7f, Palette.BoundaryWall, true, SafetyFloorTop);
+        PlaceWall(-MapExtent, 0, 2, 124, 5.7f, Palette.BoundaryWall, true, SafetyFloorTop);
+        PlaceWall(MapExtent, 0, 2, 124, 5.7f, Palette.BoundaryWall, true, SafetyFloorTop);
     }
 
     private void ClearGeneratedGeometry()
     {
+        _spawnSurfaces.Clear();
         foreach (Node child in GetChildren())
             child.QueueFree();
+    }
+
+    private void PlaceSafetyFloor()
+    {
+        PlacePlatform(0, 0, 118, 118, SafetyFloorTop, SurfaceKind.Ground);
     }
 
     private void PlacePlatform(float x, float z, float width, float depth, float topHeight, SurfaceKind surfaceKind)
@@ -172,6 +184,8 @@ public partial class MapGenerator : Node3D
         var shape = new CollisionShape3D();
         shape.Shape = new BoxShape3D { Size = new Vector3(width, FloorThickness, depth) };
         body.AddChild(shape);
+
+        _spawnSurfaces.Add(new SurfaceRect(x, z, width, depth, topHeight));
     }
 
     private void PlaceRamp(
@@ -318,9 +332,30 @@ public partial class MapGenerator : Node3D
         tree.AddChild(shape);
     }
 
-    private static Vector3 SpawnPoint(float x, float surfaceTop, float z)
+    private Vector3 SpawnPoint(float x, float preferredSurfaceTop, float z)
     {
-        return new Vector3(x, surfaceTop + 0.5f, z);
+        float resolvedTop = ResolveSurfaceTop(x, z, preferredSurfaceTop);
+        return new Vector3(x, resolvedTop + 0.5f, z);
+    }
+
+    private float ResolveSurfaceTop(float x, float z, float fallbackTop)
+    {
+        float bestTop = fallbackTop;
+        bool found = false;
+
+        for (int i = 0; i < _spawnSurfaces.Count; i++)
+        {
+            if (!_spawnSurfaces[i].Contains(x, z))
+                continue;
+
+            if (!found || _spawnSurfaces[i].TopHeight > bestTop)
+            {
+                bestTop = _spawnSurfaces[i].TopHeight;
+                found = true;
+            }
+        }
+
+        return found ? bestTop : fallbackTop;
     }
 
     private static StandardMaterial3D GetSurfaceMaterial(SurfaceKind surfaceKind)
@@ -428,4 +463,11 @@ public partial class MapGenerator : Node3D
     }
 
     private readonly record struct CavePocketResult(Vector3 ChestPosition, Vector3 FallbackItemPosition);
+    private readonly record struct SurfaceRect(float CenterX, float CenterZ, float Width, float Depth, float TopHeight)
+    {
+        public bool Contains(float x, float z)
+        {
+            return Mathf.Abs(x - CenterX) <= Width * 0.5f && Mathf.Abs(z - CenterZ) <= Depth * 0.5f;
+        }
+    }
 }

@@ -9,7 +9,7 @@ public partial class PlayerController : CharacterBody3D
     private const float AirAcceleration = 11.0f;
     private const float AirDeceleration = 8.0f;
     private const float GravityStrength = 18.0f;
-    private const float JumpVelocity = 6.1f;
+    private const float JumpVelocity = 7.0f;
     private const float CoyoteTime = 0.12f;
     private static readonly Vector3 BobRootBasePosition = new(0, 0.25f, 0);
 
@@ -38,7 +38,7 @@ public partial class PlayerController : CharacterBody3D
 
     public override void _Ready()
     {
-        FloorSnapLength = 0.3f;
+        FloorSnapLength = 0.45f;
         _wasGrounded = true;
 
         // Reuse persistent stats across rooms, or create fresh for room 1
