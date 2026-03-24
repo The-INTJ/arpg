@@ -4,6 +4,8 @@ namespace ARPG;
 
 /// <summary>
 /// Builds a purple energy bridge from one zone edge to the next once enough dark energy is gathered.
+/// Static children (arrow indicator, interact zone, prompt label) are defined in BridgePoint.tscn.
+/// Bridge segments are spawned procedurally since their count varies by distance.
 /// </summary>
 public partial class BridgePoint : Node3D
 {
@@ -17,7 +19,6 @@ public partial class BridgePoint : Node3D
     private float _arrowBobTime;
     private Vector3 _targetGroundGlobalPosition;
 
-    private const float InteractRadius = 5f;
     private const float BridgeWidth = 3f;
     private const float BridgeThickness = 0.2f;
     private const float SegmentLength = 1.25f;
@@ -28,9 +29,35 @@ public partial class BridgePoint : Node3D
 
     public override void _Ready()
     {
-        BuildArrowIndicator();
-        BuildInteractZone();
-        BuildPromptLabel();
+        _arrowIndicator = GetNode<Node3D>("ArrowIndicator");
+        _interactZone = GetNode<Area3D>("InteractZone");
+        _promptLabel = GetNode<Label3D>("PromptLabel");
+
+        // Apply runtime material and colors
+        var mesh = _arrowIndicator.GetNode<MeshInstance3D>("Mesh");
+        mesh.MaterialOverride = new StandardMaterial3D
+        {
+            AlbedoColor = new Color(Palette.DarkEnergyGlow, 0.85f),
+            Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+            EmissionEnabled = true,
+            Emission = Palette.DarkEnergyGlow,
+            EmissionEnergyMultiplier = 2.0f,
+            Roughness = 0.2f,
+        };
+
+        _promptLabel.Text = $"Press {GameKeys.DisplayName(GameKeys.Attack)} to bridge";
+        _promptLabel.Modulate = Palette.DarkEnergyGlow;
+
+        _interactZone.BodyEntered += body =>
+        {
+            if (body is PlayerController)
+                _playerInZone = true;
+        };
+        _interactZone.BodyExited += body =>
+        {
+            if (body is PlayerController)
+                _playerInZone = false;
+        };
     }
 
     public void Configure(Vector3 targetGroundGlobalPosition)
@@ -126,75 +153,6 @@ public partial class BridgePoint : Node3D
                 }));
             }
         }
-    }
-
-    private void BuildArrowIndicator()
-    {
-        _arrowIndicator = new Node3D();
-        _arrowIndicator.Name = "ArrowIndicator";
-        _arrowIndicator.Position = new Vector3(0, 3.5f, 0);
-        _arrowIndicator.Visible = false;
-
-        var mesh = new MeshInstance3D();
-        mesh.CastShadow = GeometryInstance3D.ShadowCastingSetting.Off;
-        var cone = new CylinderMesh
-        {
-            TopRadius = 0f,
-            BottomRadius = 0.5f,
-            Height = 1.0f,
-            RadialSegments = 12,
-        };
-        cone.Material = new StandardMaterial3D
-        {
-            AlbedoColor = new Color(Palette.DarkEnergyGlow, 0.85f),
-            Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
-            EmissionEnabled = true,
-            Emission = Palette.DarkEnergyGlow,
-            EmissionEnergyMultiplier = 2.0f,
-            Roughness = 0.2f,
-        };
-        mesh.Mesh = cone;
-        mesh.RotationDegrees = new Vector3(180, 0, 0);
-        _arrowIndicator.AddChild(mesh);
-
-        AddChild(_arrowIndicator);
-    }
-
-    private void BuildInteractZone()
-    {
-        _interactZone = new Area3D();
-        _interactZone.Name = "InteractZone";
-
-        var shape = new CollisionShape3D();
-        shape.Shape = new SphereShape3D { Radius = InteractRadius };
-        _interactZone.AddChild(shape);
-
-        _interactZone.BodyEntered += body =>
-        {
-            if (body is PlayerController)
-                _playerInZone = true;
-        };
-        _interactZone.BodyExited += body =>
-        {
-            if (body is PlayerController)
-                _playerInZone = false;
-        };
-
-        AddChild(_interactZone);
-    }
-
-    private void BuildPromptLabel()
-    {
-        _promptLabel = new Label3D();
-        _promptLabel.Name = "PromptLabel";
-        _promptLabel.Text = $"Press {GameKeys.DisplayName(GameKeys.Attack)} to bridge";
-        _promptLabel.FontSize = 48;
-        _promptLabel.Position = new Vector3(0, 2.2f, 0);
-        _promptLabel.Billboard = BaseMaterial3D.BillboardModeEnum.Enabled;
-        _promptLabel.Modulate = Palette.DarkEnergyGlow;
-        _promptLabel.OutlineSize = 8;
-        _promptLabel.Visible = false;
-        AddChild(_promptLabel);
     }
 
     private static StandardMaterial3D CreateBridgeMaterial()

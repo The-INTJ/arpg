@@ -1,0 +1,36 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/world/BridgePoint.cs" id="1_script"]
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_arrow"]
+top_radius = 0.0
+bottom_radius = 0.5
+height = 1.0
+radial_segments = 12
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_interact"]
+radius = 5.0
+
+[node name="BridgePoint" type="Node3D"]
+script = ExtResource("1_script")
+
+[node name="ArrowIndicator" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.5, 0)
+visible = false
+
+[node name="Mesh" type="MeshInstance3D" parent="ArrowIndicator"]
+transform = Transform3D(1, 0, 0, 0, -1, 0, 0, 0, -1, 0, 0, 0)
+cast_shadow = 0
+mesh = SubResource("CylinderMesh_arrow")
+
+[node name="InteractZone" type="Area3D" parent="."]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="InteractZone"]
+shape = SubResource("SphereShape3D_interact")
+
+[node name="PromptLabel" type="Label3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.2, 0)
+visible = false
+billboard = 1
+font_size = 48
+outline_size = 8

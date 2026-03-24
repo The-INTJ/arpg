@@ -1,0 +1,23 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/BackpackItemRow.cs" id="1_script"]
+
+[node name="BackpackItemRow" type="PanelContainer"]
+script = ExtResource("1_script")
+size_flags_horizontal = 3
+
+[node name="Row" type="HBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="DescriptionLabel" type="Label" parent="Row"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.96, 0.9, 0.8, 1)
+theme_override_font_sizes/font_size = 16
+autowrap_mode = 2
+size_flags_horizontal = 3
+
+[node name="SelectButton" type="Button" parent="Row"]
+layout_mode = 2
+custom_minimum_size = Vector2(92, 0)
+focus_mode = 0

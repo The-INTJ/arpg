@@ -1,0 +1,48 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/RunHistoryCard.cs" id="1_script"]
+
+[node name="RunHistoryCard" type="PanelContainer"]
+script = ExtResource("1_script")
+size_flags_horizontal = 3
+
+[node name="CardVBox" type="VBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Header" type="Label" parent="CardVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+horizontal_alignment = 1
+
+[node name="Meta" type="Label" parent="CardVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.96, 0.9, 0.8, 1)
+theme_override_font_sizes/font_size = 16
+horizontal_alignment = 1
+
+[node name="ScoreSection" type="Label" parent="CardVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.83, 0.65, 0.22, 1)
+theme_override_font_sizes/font_size = 18
+text = "Score"
+
+[node name="ScoreGrid" type="GridContainer" parent="CardVBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+columns = 2
+theme_override_constants/h_separation = 16
+theme_override_constants/v_separation = 6
+
+[node name="StatsSection" type="Label" parent="CardVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.83, 0.65, 0.22, 1)
+theme_override_font_sizes/font_size = 18
+text = "Stats"
+
+[node name="StatsGrid" type="GridContainer" parent="CardVBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+columns = 2
+theme_override_constants/h_separation = 16
+theme_override_constants/v_separation = 6

@@ -10,6 +10,12 @@ public static class ModifyStatsTheme
 	public static PanelContainer CreateSectionPanel()
 	{
 		var panel = new PanelContainer();
+		ApplySectionPanelStyle(panel);
+		return panel;
+	}
+
+	public static void ApplySectionPanelStyle(PanelContainer panel)
+	{
 		var style = new StyleBoxFlat();
 		style.BgColor = new Color(0.12f, 0.09f, 0.06f, 0.92f);
 		style.BorderColor = new Color(Palette.TextDisabled, 0.55f);
@@ -17,7 +23,6 @@ public static class ModifyStatsTheme
 		style.SetCornerRadiusAll(12);
 		style.SetContentMarginAll(18);
 		panel.AddThemeStyleboxOverride("panel", style);
-		return panel;
 	}
 
 	public static void ApplyChannelButtonTheme(Button button, bool canAssign, bool hasSelection, bool hasPreview)
