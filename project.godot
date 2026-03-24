@@ -25,6 +25,10 @@ window/size/mode=2
 
 project/assembly_name="ARPG"
 
+[gui]
+
+theme/custom="uid://c5ekn6wb3wjor"
+
 [input]
 
 move_forward={
