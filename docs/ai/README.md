@@ -12,7 +12,7 @@ This folder explains how the game is actually put together today:
 - `patterns.md`: repo conventions, Godot usage patterns, and current implementation habits
 - `flows.md`: runtime flows from boot through combat, loot, rooms, pause, and victory
 - `inventory-and-items.md`: current item inventory implementation, hotkeys, combat behavior, and intended future direction
-- `blender-mcp.md`: BlenderMCP server usage guide — tools, export workflows, texture baking, and Godot integration rules
+- `blender-mcp.md`: BlenderMCP server usage guide — project `.mcp.json` setup, tools, export workflows, texture baking, and Godot integration rules
 - `abstraction-watchlist.md`: hotspots, drift risks, and the next seams to carve out as the project scales
 
 ## Read Order For Agents

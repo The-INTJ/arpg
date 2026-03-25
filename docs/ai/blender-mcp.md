@@ -5,8 +5,25 @@ This doc teaches AI agents how to use the BlenderMCP server to create and export
 ## Prerequisites
 
 - Blender must be running with the BlenderMCP addon active (default port 9876)
-- The MCP server named `blender` must be configured in Claude Code settings
+- The MCP server named `blender` must be configured in the project `.mcp.json`
+- Use the direct `blender-mcp` command in this repo, not `uvx blender-mcp`
 - All tools below are prefixed `mcp__blender__` in the tool list
+
+### Required Project MCP Config
+
+Use this exact project-level config:
+
+```json
+{
+  "mcpServers": {
+    "blender": {
+      "command": "blender-mcp"
+    }
+  }
+}
+```
+
+Do not switch this repo to `uvx blender-mcp`. In this environment, `uvx` can fail on a Python build dependency even when the locally installed `blender-mcp` command works.
 
 ## Available Tools
 
@@ -194,6 +211,7 @@ The physics body is always the root. The imported mesh lives under a visual chil
 ## Common Pitfalls
 
 - **Forgetting `get_scene_summary()` first** — you will reference wrong object names
+- **Configuring the server as `uvx blender-mcp`** — in this repo, use the installed `blender-mcp` command directly
 - **Not applying transforms** — Godot import will have wrong scale/rotation
 - **Exporting cameras and lights** — these conflict with Godot's scene setup
 - **Hardcoding colors in Blender materials** — use Palette-driven materials in Godot instead

@@ -10,3 +10,8 @@ obj/
 
 # Local agent worktrees
 .claude/worktrees/
+
+# Blender source-art noise
+*.blend1
+*.blend2
+assets/source/**/*.blend.import
