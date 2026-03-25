@@ -10,7 +10,7 @@ namespace ARPG;
 /// </summary>
 public partial class ModifyStatsSimple : Control
 {
-	private static readonly PackedScene BackpackRowScene = GD.Load<PackedScene>("res://scenes/ui_components/BackpackItemRow.tscn");
+	private static readonly PackedScene BackpackRowScene = GD.Load<PackedScene>(Scenes.BackpackItemRow);
 
 	private PlayerStats _stats;
 	private Label _weaponTitle;

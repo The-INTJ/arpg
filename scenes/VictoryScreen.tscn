@@ -1,7 +1,7 @@
 [gd_scene load_steps=5 format=3 uid="uid://dyqmcmc72p28a"]
 
 [ext_resource type="Script" path="res://scripts/ui/VictoryScreen.cs" id="1_vic"]
-[ext_resource type="PackedScene" path="res://scenes/RunHistorySnippet.tscn" id="2_history"]
+[ext_resource type="PackedScene" path="res://scenes/ui/RunHistorySnippet.tscn" id="2_history"]
 [ext_resource type="Texture2D" path="res://assets/ui/title_ornament.svg" id="3_ornament"]
 [ext_resource type="Texture2D" path="res://assets/ui/crest_medallion.svg" id="4_crest"]
 

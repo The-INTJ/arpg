@@ -6,16 +6,14 @@ namespace ARPG;
 
 public partial class CaveChest : Area3D
 {
-    private const float HoverLowY = 0.30f;
-    private const float HoverHighY = 0.42f;
     private const double OpenAnimationFallbackDuration = 0.38;
     private static readonly string[] OpenAnimationTokens = { "open", "lid", "004" };
 
     private InventoryItem _item;
     private PlayerController _nearbyPlayer;
-    private Node3D _visualRoot;
     private MeshInstance3D _pedestal;
     private Node _chestModelRoot;
+    private OmniLight3D _glowLight;
     private AnimationPlayer _animationPlayer;
     private string _openAnimationName;
     private Node3D _lidNode;
@@ -31,9 +29,9 @@ public partial class CaveChest : Area3D
     public void Init(InventoryItem item)
     {
         _item = item;
-        _visualRoot = GetNode<Node3D>("VisualRoot");
-        _pedestal = GetNode<MeshInstance3D>("VisualRoot/Pedestal");
+        _pedestal = GetNodeOrNull<MeshInstance3D>("VisualRoot/Pedestal");
         _chestModelRoot = GetNode<Node>("VisualRoot/ChestModelRoot");
+        _glowLight = GetNodeOrNull<OmniLight3D>("VisualRoot/ChestGlow");
         ConfigureVisuals();
 
         _nameLabel = GetNode<Label3D>("NameLabel");
@@ -47,14 +45,6 @@ public partial class CaveChest : Area3D
         _promptLabel.Modulate = item.DisplayColor;
         _promptLabel.OutlineModulate = Palette.BgDark;
         _promptLabel.Visible = false;
-
-        var tween = CreateTween().SetLoops();
-        tween.TweenProperty(_visualRoot, "position:y", HoverHighY, 1.0f)
-            .SetTrans(Tween.TransitionType.Sine)
-            .SetEase(Tween.EaseType.InOut);
-        tween.TweenProperty(_visualRoot, "position:y", HoverLowY, 1.0f)
-            .SetTrans(Tween.TransitionType.Sine)
-            .SetEase(Tween.EaseType.InOut);
 
         Monitoring = true;
         BodyEntered += OnBodyEntered;
@@ -105,10 +95,19 @@ public partial class CaveChest : Area3D
 
     private void ConfigureVisuals()
     {
-        _pedestal.MaterialOverride = WorldMaterials.GetCaveRockMaterial();
+        if (_pedestal != null)
+            _pedestal.MaterialOverride = WorldMaterials.GetCaveRockMaterial();
 
         foreach (var mesh in EnumerateMeshInstances(_chestModelRoot))
             mesh.MaterialOverride = UsesWoodMaterial(mesh) ? WorldMaterials.GetChestWoodMaterial() : WorldMaterials.GetChestMetalMaterial();
+
+        if (_glowLight != null)
+        {
+            _glowLight.LightColor = Palette.ChestMetal.Lightened(0.08f);
+            _glowLight.LightEnergy = 0.38f;
+            _glowLight.OmniRange = 2.4f;
+            _glowLight.ShadowEnabled = false;
+        }
 
         _animationPlayer = FindAnimationPlayer(_chestModelRoot);
         _openAnimationName = FindOpenAnimationName(_animationPlayer);

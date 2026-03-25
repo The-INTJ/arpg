@@ -5,7 +5,7 @@ namespace ARPG;
 
 public partial class RunHistorySnippet : VBoxContainer
 {
-	private static readonly PackedScene CardScene = GD.Load<PackedScene>("res://scenes/ui_components/RunHistoryCard.tscn");
+	private static readonly PackedScene CardScene = GD.Load<PackedScene>(Scenes.RunHistoryCard);
 
 	private VBoxContainer _historyList;
 

@@ -126,7 +126,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.5, 2.55, 0)
 shape = SubResource("BoxShape3D_ceiling")
 
 [node name="Lamp" type="OmniLight3D" parent="." unique_id=616377761]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 2, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12.946807, 3.0465374, 0.60743403)
 
 [node name="ChestAnchor" type="Marker3D" parent="." unique_id=1753599678]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 1.15, 0)

@@ -209,7 +209,7 @@ public partial class GameManager : Node3D
         if (room >= GameState.TotalRooms)
             return;
 
-        var bridge = GD.Load<PackedScene>("res://scenes/BridgePoint.tscn").Instantiate<BridgePoint>();
+        var bridge = GD.Load<PackedScene>(Scenes.BridgePoint).Instantiate<BridgePoint>();
         bridge.Name = $"Bridge{room}To{room + 1}";
         bridge.Position = zoneOrigin + ZoneExitOffset;
         _bridgePointsRoot.AddChild(bridge);

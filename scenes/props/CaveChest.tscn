@@ -1,0 +1,44 @@
+[gd_scene format=3 uid="uid://caqn4fxk4git3"]
+
+[ext_resource type="Script" uid="uid://vya2ddsg8qbh" path="res://scripts/world/CaveChest.cs" id="1_cc"]
+[ext_resource type="PackedScene" uid="uid://xpn3i605qosa" path="res://assets/models/props/chest.glb" id="2_mesh"]
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_trigger"]
+radius = 1.15
+
+[node name="CaveChest" type="Area3D" unique_id=1735397243]
+script = ExtResource("1_cc")
+
+[node name="VisualRoot" type="Node3D" parent="." unique_id=1199513629]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.3, 0)
+
+[node name="ChestModelRoot" parent="VisualRoot" unique_id=1467413993 instance=ExtResource("2_mesh")]
+transform = Transform3D(0.43393406, 0, -0.1931999, 0, 0.475, 0, 0.1931999, 0, 0.43393406, 0, 0.15, 0)
+
+[node name="ChestGlow" type="OmniLight3D" parent="VisualRoot"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, 0)
+light_color = Color(1, 0.878431, 0.560784, 1)
+light_energy = 0.38
+omni_range = 2.4
+shadow_enabled = false
+
+[node name="NameLabel" type="Label3D" parent="." unique_id=1798403445]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
+visible = false
+pixel_size = 0.004
+billboard = 1
+fixed_size = true
+font_size = 14
+outline_size = 4
+
+[node name="PromptLabel" type="Label3D" parent="." unique_id=1111190055]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.16, 0)
+visible = false
+pixel_size = 0.004
+billboard = 1
+fixed_size = true
+font_size = 12
+outline_size = 3
+
+[node name="CollisionShape" type="CollisionShape3D" parent="." unique_id=1284639815]
+shape = SubResource("SphereShape3D_trigger")

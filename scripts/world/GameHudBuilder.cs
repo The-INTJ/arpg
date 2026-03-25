@@ -8,7 +8,7 @@ namespace ARPG;
 public static class GameHudBuilder
 {
 	private static readonly PackedScene ItemSlotScene =
-		GD.Load<PackedScene>("res://scenes/ItemSlot.tscn");
+		GD.Load<PackedScene>(Scenes.ItemSlot);
 
 	public static void StyleHudLabels(Label[] labels, float viewportHeight)
 	{
