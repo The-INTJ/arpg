@@ -11,7 +11,6 @@ public partial class CaveChest : Area3D
 
     private InventoryItem _item;
     private PlayerController _nearbyPlayer;
-    private MeshInstance3D _pedestal;
     private Node _chestModelRoot;
     private OmniLight3D _glowLight;
     private AnimationPlayer _animationPlayer;
@@ -29,7 +28,6 @@ public partial class CaveChest : Area3D
     public void Init(InventoryItem item)
     {
         _item = item;
-        _pedestal = GetNodeOrNull<MeshInstance3D>("VisualRoot/Pedestal");
         _chestModelRoot = GetNode<Node>("VisualRoot/ChestModelRoot");
         _glowLight = GetNodeOrNull<OmniLight3D>("VisualRoot/ChestGlow");
         ConfigureVisuals();
@@ -95,9 +93,6 @@ public partial class CaveChest : Area3D
 
     private void ConfigureVisuals()
     {
-        if (_pedestal != null)
-            _pedestal.MaterialOverride = WorldMaterials.GetCaveRockMaterial();
-
         foreach (var mesh in EnumerateMeshInstances(_chestModelRoot))
             mesh.MaterialOverride = UsesWoodMaterial(mesh) ? WorldMaterials.GetChestWoodMaterial() : WorldMaterials.GetChestMetalMaterial();
 
