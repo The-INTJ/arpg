@@ -2,37 +2,73 @@ using Godot;
 
 namespace ARPG;
 
+[Tool]
 public partial class RockWallSlice : StaticBody3D
 {
-    [Export]
-    public bool UseCaveMaterial { get; set; }
+    private bool _useCaveMaterial = true;
+    private Vector3 _collisionSize = new(4.0f, 3.0f, 0.8f);
 
     [Export]
-    public Vector3 CollisionSize { get; set; } = new(4.0f, 3.0f, 0.8f);
+    public bool UseCaveMaterial
+    {
+        get => _useCaveMaterial;
+        set
+        {
+            _useCaveMaterial = value;
+            if (IsInsideTree())
+                ApplyConfiguredState();
+        }
+    }
+
+    [Export]
+    public Vector3 CollisionSize
+    {
+        get => _collisionSize;
+        set
+        {
+            _collisionSize = value;
+            if (IsInsideTree())
+                ApplyConfiguredState();
+        }
+    }
 
     public override void _Ready()
     {
-        AddToGroup(WorldGroups.CameraBlockers);
+        if (!Engine.IsEditorHint() && !IsInGroup(WorldGroups.CameraBlockers))
+            AddToGroup(WorldGroups.CameraBlockers);
+
+        ApplyConfiguredState();
+    }
+
+    private void ApplyConfiguredState()
+    {
         ConfigureCollision();
         ApplyMaterialOverrides();
     }
 
     private void ConfigureCollision()
     {
-        var collision = GetNode<CollisionShape3D>("CollisionShape3D");
-        collision.Position = new Vector3(0, CollisionSize.Y * 0.5f, 0);
+        var collision = GetNodeOrNull<CollisionShape3D>("CollisionShape3D");
+        if (collision == null)
+            return;
+
+        collision.Position = new Vector3(0, _collisionSize.Y * 0.5f, 0);
 
         if (collision.Shape is BoxShape3D box)
-            box.Size = CollisionSize;
+            box.Size = _collisionSize;
     }
 
     private void ApplyMaterialOverrides()
     {
-        Material material = UseCaveMaterial
+        var visualRoot = GetNodeOrNull<Node3D>("VisualRoot");
+        if (visualRoot == null)
+            return;
+
+        Material material = _useCaveMaterial
             ? WorldMaterials.GetCaveRockMaterial()
             : WorldMaterials.GetRockMaterial();
 
-        ApplyMaterialRecursive(GetNode<Node3D>("VisualRoot"), material);
+        ApplyMaterialRecursive(visualRoot, material);
     }
 
     private static void ApplyMaterialRecursive(Node node, Material material)

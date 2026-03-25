@@ -31,9 +31,13 @@ Those decisions stay in code for now.
 
 Current live slices:
 
+- `res://scenes/world_slices/RockWallSlice.tscn`
+  - placement: composed inside other slice scenes where authored walls are needed
+  - reuse: repeat the slice instead of creating one-off wall meshes in each scene
 - `res://scenes/world_slices/CavePocketSlice.tscn`
   - placement: `MapGenerator.PlaceCavePocket(...)`
   - reuse: rotated `0` or `180` degrees around Y for left/right cave variants
+  - composition: cave walls are built from repeated `RockWallSlice` instances rather than cave-owned wall meshes
 - `res://scenes/world_slices/PlatformRampSlice.tscn`
   - placement: builder-configured single-ramp rises used for the repeated ground-to-mid and mid-to-high set pieces
 - `res://scenes/world_slices/PineTreeSlice.tscn`
@@ -66,6 +70,12 @@ Strong next candidates:
 - twin-ramp hub slices for the ridge spine and mesa center
 - rock dressing clusters
 - distant background chunk variants
+
+When adding authored walls:
+
+- start with `RockWallSlice.tscn`
+- repeat that slice to build longer runs
+- do not reintroduce bespoke box-mesh wall geometry inside each room slice unless the gameplay contract truly differs
 
 Keep these in code for now:
 

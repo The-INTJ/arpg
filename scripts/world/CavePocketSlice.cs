@@ -10,14 +10,11 @@ public partial class CavePocketSlice : Node3D
     {
         _seed = GD.Randi();
 
-        RegisterCameraBlockers();
         ApplyMaterial("CaveFloor/Mesh", WorldMaterials.GetSurfaceMaterial(WorldSurfaceKind.Cave));
         ApplyMaterial("Shelf/Mesh", WorldMaterials.GetSurfaceMaterial(WorldSurfaceKind.Mid));
         ApplyMaterial("Ramp/Mesh", WorldMaterials.GetSurfaceMaterial(WorldSurfaceKind.Ramp));
-        ApplyMaterial("BackWall/Mesh", WorldMaterials.GetCaveRockMaterial());
-        ApplyMaterial("NorthWall/Mesh", WorldMaterials.GetCaveRockMaterial());
-        ApplyMaterial("SouthWall/Mesh", WorldMaterials.GetCaveRockMaterial());
         ApplyMaterial("Ceiling/Mesh", WorldMaterials.GetCaveRoofMaterial());
+        RegisterCameraBlockers();
 
         var lamp = GetNode<OmniLight3D>("Lamp");
         lamp.LightColor = Palette.CaveLampGlow;
@@ -27,7 +24,6 @@ public partial class CavePocketSlice : Node3D
 
         AddStalactites();
         AddStalagmites();
-        AddWallProtrusions();
         AddFloorRocks();
     }
 
@@ -88,63 +84,6 @@ public partial class CavePocketSlice : Node3D
         }
     }
 
-    private void AddWallProtrusions()
-    {
-        var rng = new RandomNumberGenerator();
-        rng.Seed = _seed ^ 0xD00D;
-        var rockMat = WorldMaterials.GetCaveRockMaterial();
-
-        // Back wall bulges (x ~= 11..16)
-        for (int i = 0; i < 6; i++)
-        {
-            float z = rng.RandfRange(-11.0f, 11.0f);
-            float y = rng.RandfRange(0.2f, 2.8f);
-            float radius = rng.RandfRange(0.5f, 1.2f);
-
-            var mesh = new MeshInstance3D();
-            mesh.Mesh = new SphereMesh
-            {
-                Radius = radius,
-                Height = radius * rng.RandfRange(1.2f, 1.8f),
-            };
-            mesh.MaterialOverride = rockMat;
-            mesh.Position = new Vector3(11.0f + rng.RandfRange(0, 1.5f), y, z);
-            mesh.Scale = new Vector3(
-                rng.RandfRange(0.6f, 1.0f),
-                rng.RandfRange(0.7f, 1.2f),
-                rng.RandfRange(0.8f, 1.3f));
-            mesh.CastShadow = GeometryInstance3D.ShadowCastingSetting.Off;
-            AddChild(mesh);
-        }
-
-        // Side wall bulges
-        foreach (float wallZ in new[] { -11.0f, 11.0f })
-        {
-            float sign = wallZ > 0 ? -1.0f : 1.0f;
-            for (int i = 0; i < 3; i++)
-            {
-                float x = rng.RandfRange(-2.0f, 12.0f);
-                float y = rng.RandfRange(0.3f, 2.2f);
-                float radius = rng.RandfRange(0.4f, 0.9f);
-
-                var mesh = new MeshInstance3D();
-                mesh.Mesh = new SphereMesh
-                {
-                    Radius = radius,
-                    Height = radius * rng.RandfRange(1.0f, 1.6f),
-                };
-                mesh.MaterialOverride = rockMat;
-                mesh.Position = new Vector3(x, y, wallZ + sign * rng.RandfRange(0, 1.0f));
-                mesh.Scale = new Vector3(
-                    rng.RandfRange(0.7f, 1.2f),
-                    rng.RandfRange(0.6f, 1.0f),
-                    rng.RandfRange(0.5f, 0.9f));
-                mesh.CastShadow = GeometryInstance3D.ShadowCastingSetting.Off;
-                AddChild(mesh);
-            }
-        }
-    }
-
     private void AddFloorRocks()
     {
         var rng = new RandomNumberGenerator();
@@ -182,7 +121,7 @@ public partial class CavePocketSlice : Node3D
 
     private void RegisterCameraBlockers()
     {
-        foreach (string bodyPath in new[] { "CaveFloor", "Shelf", "Ramp", "BackWall", "NorthWall", "SouthWall", "Ceiling" })
+        foreach (string bodyPath in new[] { "CaveFloor", "Shelf", "Ramp", "Ceiling" })
             GetNode<StaticBody3D>(bodyPath).AddToGroup(WorldGroups.CameraBlockers);
     }
 }

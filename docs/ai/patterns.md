@@ -110,6 +110,11 @@ Prefer `.tscn` scenes when a thing benefits from editor ownership, reusable stru
 - reusable world slices and set pieces under `scenes/world_slices/`
 - nearly all UI
 
+Concrete example:
+
+- `RockWallSlice.tscn` is the canonical authored wall unit
+- longer cave or room walls should be composed from repeated `RockWallSlice` instances instead of scene-local wall meshes
+
 When those scenes are gameplay-facing, keep the visual subtree replaceable and the physics root authoritative.
 
 ### Keep Builders As The Decision Makers
