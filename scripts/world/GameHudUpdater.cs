@@ -31,6 +31,10 @@ public partial class GameHudUpdater : Node
     private HBoxContainer _itemBarHBox;
     private readonly List<GameHudBuilder.ItemSlotEntry> _itemSlots = new();
 
+    private Label _buildModeLabel;
+    private bool _buildModeActive;
+    private BuildableStructure _buildModeSelectedTemplate;
+
     public string StatusText
     {
         get => _statusLabel.Text;
@@ -98,6 +102,40 @@ public partial class GameHudUpdater : Node
         _enemyHpDisplay.Visible = false;
     }
 
+    public void SetBuildModeActive(bool active, BuildableStructure selected)
+    {
+        _buildModeActive = active;
+        _buildModeSelectedTemplate = selected;
+
+        if (_buildModeLabel == null)
+        {
+            _buildModeLabel = new Label();
+            _buildModeLabel.HorizontalAlignment = HorizontalAlignment.Center;
+            _buildModeLabel.VerticalAlignment = VerticalAlignment.Center;
+            _buildModeLabel.AddThemeFontSizeOverride("font_size", 16);
+            _buildModeLabel.AddThemeColorOverride("font_color", Palette.TextLight);
+            _buildModeLabel.AnchorLeft = 0.5f;
+            _buildModeLabel.AnchorRight = 0.5f;
+            _buildModeLabel.AnchorTop = 0.0f;
+            _buildModeLabel.GrowHorizontal = Control.GrowDirection.Both;
+            _buildModeLabel.OffsetTop = 60;
+            _canvas.AddChild(_buildModeLabel);
+        }
+
+        if (active && selected != null)
+        {
+            string buildKey = GameKeys.DisplayName(GameKeys.BuildMode);
+            string rotateKey = GameKeys.DisplayName(GameKeys.RotateBuild);
+            string confirmKey = GameKeys.DisplayName(GameKeys.Attack);
+            _buildModeLabel.Text = $"BUILD MODE: {selected.DisplayName} ({selected.EnergyCost} energy)  |  Scroll: cycle  |  {rotateKey}: rotate  |  {confirmKey}: place  |  {buildKey}: exit";
+            _buildModeLabel.Visible = true;
+        }
+        else
+        {
+            _buildModeLabel.Visible = false;
+        }
+    }
+
     private void UpdateHud(DarkEnergy darkEnergy)
     {
         var s = _player.Stats;
@@ -106,7 +144,15 @@ public partial class GameHudUpdater : Node
             ? $"{_actionHandler.RemainingCombatItemUses}/{_actionHandler.CombatItemUsesPerTurn}"
             : $"{s.ItemUsesPerTurn}/turn";
         _statsLabel.Text = $"ATK: {s.AttackDamage}  |  SPD: {s.MoveSpeed:0.#}  |  Range: {s.AttackRange:0.#}  |  Items: {itemUsesText}";
-        _darkEnergyLabel.Text = $"Dark Energy: {darkEnergy.Current}/{darkEnergy.Threshold}";
+        if (_buildModeActive)
+        {
+            int spendable = darkEnergy.Spendable(false);
+            _darkEnergyLabel.Text = $"Dark Energy: {darkEnergy.Current}/{darkEnergy.Threshold}  (+{spendable} spendable)";
+        }
+        else
+        {
+            _darkEnergyLabel.Text = $"Dark Energy: {darkEnergy.Current}/{darkEnergy.Threshold}";
+        }
         _darkEnergyBar.Value = darkEnergy.FillPercent;
     }
 
