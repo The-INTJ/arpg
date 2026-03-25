@@ -12,6 +12,8 @@ public static partial class WorldMaterials
     private static StandardMaterial3D _rockMaterial;
     private static StandardMaterial3D _caveRockMaterial;
     private static StandardMaterial3D _caveRoofMaterial;
+    private static StandardMaterial3D _chestWoodMaterial;
+    private static StandardMaterial3D _chestMetalMaterial;
 
     public static StandardMaterial3D GetSurfaceMaterial(WorldSurfaceKind surfaceKind)
     {
@@ -42,6 +44,49 @@ public static partial class WorldMaterials
             AlbedoColor = Palette.CaveShadow,
             Roughness = 0.98f,
         };
+    }
+
+    public static StandardMaterial3D GetChestWoodMaterial()
+    {
+        if (_chestWoodMaterial != null)
+            return _chestWoodMaterial;
+
+        _chestWoodMaterial = new StandardMaterial3D
+        {
+            AlbedoColor = Palette.ChestWood,
+            AlbedoTexture = TextureLoader.TryLoad("res://assets/textures/props/chest_wood.png")
+                ?? CreateTintedNoiseTexture(Palette.ChestWood.Darkened(0.24f), Palette.ChestWood.Lightened(0.12f), 0.075f, 128, 48),
+            Roughness = 0.94f,
+            Metallic = 0.02f,
+            Uv1Triplanar = true,
+            Uv1TriplanarSharpness = 0.85f,
+            Uv1Scale = new Vector3(5.5f, 9.0f, 5.5f),
+        };
+
+        return _chestWoodMaterial;
+    }
+
+    public static StandardMaterial3D GetChestMetalMaterial()
+    {
+        if (_chestMetalMaterial != null)
+            return _chestMetalMaterial;
+
+        _chestMetalMaterial = new StandardMaterial3D
+        {
+            AlbedoColor = Palette.ChestMetal,
+            AlbedoTexture = TextureLoader.TryLoad("res://assets/textures/props/chest_metal.png")
+                ?? CreateTintedNoiseTexture(Palette.ChestMetal.Darkened(0.22f), Palette.TextLight.Lerp(Palette.ChestMetal, 0.40f), 0.14f, 96, 96),
+            Roughness = 0.34f,
+            Metallic = 0.82f,
+            EmissionEnabled = true,
+            Emission = Palette.ChestMetal.Darkened(0.10f),
+            EmissionEnergyMultiplier = 0.15f,
+            Uv1Triplanar = true,
+            Uv1TriplanarSharpness = 0.9f,
+            Uv1Scale = new Vector3(7.0f, 7.0f, 7.0f),
+        };
+
+        return _chestMetalMaterial;
     }
 
     public static StandardMaterial3D CreatePrimaryGroundMaterial()
@@ -91,6 +136,25 @@ public static partial class WorldMaterials
         gradient.SetColor(0, baseColor.Darkened(0.3f));
         gradient.SetColor(1, baseColor.Lightened(0.15f));
         return gradient;
+    }
+
+    private static Texture2D CreateTintedNoiseTexture(Color darkColor, Color lightColor, float frequency, int width, int height)
+    {
+        var noise = new FastNoiseLite();
+        noise.NoiseType = FastNoiseLite.NoiseTypeEnum.Simplex;
+        noise.Frequency = frequency;
+        noise.FractalOctaves = 4;
+
+        var noiseTex = new NoiseTexture2D();
+        noiseTex.Noise = noise;
+        noiseTex.Width = width;
+        noiseTex.Height = height;
+
+        var gradient = new Gradient();
+        gradient.SetColor(0, darkColor);
+        gradient.SetColor(1, lightColor);
+        noiseTex.ColorRamp = gradient;
+        return noiseTex;
     }
 
     private static StandardMaterial3D CreateGroundMaterial(Color baseColor, float noiseFrequency, float uvScale)
