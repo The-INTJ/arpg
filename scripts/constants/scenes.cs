@@ -22,6 +22,7 @@ public static partial class Scenes
 	public const string ItemSlot = UiRoot + "ItemSlot.tscn";
 	public const string GameOverScreen = Root + "GameOverScreen.tscn";
 	public const string GodModePanel = UiDevRoot + "GodModePanel.tscn";
+	public const string IslandMainSlice = WorldSliceRoot + "IslandMainSlice.tscn";
 	public const string LootPickup = PickupRoot + "LootPickup.tscn";
 	public const string MainMenu = Root + "MainMenu.tscn";
 	public const string ModifyStatsSimple = UiRoot + "ModifyStatsSimple.tscn";

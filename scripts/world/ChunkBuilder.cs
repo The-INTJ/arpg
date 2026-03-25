@@ -9,6 +9,7 @@ namespace ARPG;
 public static class ChunkBuilder
 {
 	private const float DefaultThickness = 15f;
+	private static PackedScene _islandMainSliceScene;
 
 	/// <summary>
 	/// Adds floating island geometry to the given parent node.
@@ -16,6 +17,9 @@ public static class ChunkBuilder
 	/// </summary>
 	public static void BuildChunk(Node3D parent, float width, float depth, float thickness = DefaultThickness)
 	{
+		if (TryPlaceIslandSlice(parent, width, depth, thickness))
+			return;
+
 		float halfW = width / 2f;
 		float halfD = depth / 2f;
 
@@ -29,6 +33,23 @@ public static class ChunkBuilder
 		AddTrimStrip(parent, new Vector3(0, trimH / 2f, halfD), new Vector3(width + trimW, trimH, trimW));
 		AddTrimStrip(parent, new Vector3(-halfW, trimH / 2f, 0), new Vector3(trimW, trimH, depth + trimW));
 		AddTrimStrip(parent, new Vector3(halfW, trimH / 2f, 0), new Vector3(trimW, trimH, depth + trimW));
+	}
+
+	private static bool TryPlaceIslandSlice(Node3D parent, float width, float depth, float thickness)
+	{
+		var scene = LoadIslandMainSlice();
+		if (scene == null)
+			return false;
+
+		var slice = scene.Instantiate<IslandMainSlice>();
+		slice.Name = "IslandMainSlice";
+		parent.AddChild(slice);
+		return true;
+	}
+
+	private static PackedScene LoadIslandMainSlice()
+	{
+		return _islandMainSliceScene ??= GD.Load<PackedScene>(Scenes.IslandMainSlice);
 	}
 
 	private static void AddBottomCap(Node3D parent, float width, float depth, float yPos)

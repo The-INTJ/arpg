@@ -42,10 +42,6 @@ public partial class MapGenerator : Node3D
         shell.Name = "ChunkShell";
         AddChild(shell);
         ChunkBuilder.BuildChunk(shell, ChunkWidth, ChunkDepth, ChunkThickness);
-
-        // Keep the main floor slightly larger than the code-defined zone bounds so the
-        // player can visibly step off into the void before the fall recovery kicks in.
-        PlacePlatform(0, 0, PlayWidth, PlayDepth, GroundTop, WorldSurfaceKind.Ground);
     }
 
     private GeneratedMapResult BuildRidgeLayout(int caveSide)
