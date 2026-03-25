@@ -4,10 +4,17 @@ namespace ARPG;
 
 public static class GameKeys
 {
+	public const string MoveForward = "move_forward";
+	public const string MoveBack = "move_back";
+	public const string MoveLeft = "move_left";
+	public const string MoveRight = "move_right";
 	public const string Attack = "attack";
 	public const string Ability = "ability";
+	public const string Sprint = "sprint";
 	public const string Jump = "jump";
 	public const string Pause = "pause";
+	public const string DevAscend = "dev_ascend";
+	public const string DevDescend = "dev_descend";
 	private static readonly string[] KeyboardItemSlotActions =
 	{
 		"item_slot_1",

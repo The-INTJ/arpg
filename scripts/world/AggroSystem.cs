@@ -5,9 +5,13 @@ namespace ARPG;
 /// <summary>
 /// Detects enemies in range and manages the aggro delay timer before combat starts.
 /// </summary>
-public partial class AggroSystem : Node
+public partial class AggroSystem : Node, IDeveloperEffectProvider
 {
+    public const string EncounterWatchEffectId = "encounter_watch";
+    public const string EncounterCommitEffectId = "encounter_commit";
+
     private PlayerController _player;
+    private DeveloperToolsManager _developerTools;
     private Enemy _aggroEnemy;
     private float _aggroTimer;
     private const float AggroDelay = 0.6f;
@@ -29,6 +33,34 @@ public partial class AggroSystem : Node
         _aggroEnemy = null;
     }
 
+    public void RegisterDeveloperEffects(DeveloperToolsManager developerTools)
+    {
+        if (_developerTools != null)
+            return;
+
+        _developerTools = developerTools;
+        _developerTools?.RegisterEffect(
+            this,
+            new DeveloperEffectDescriptor(
+                EncounterWatchEffectId,
+                "Encounter Watch",
+                "Scan nearby enemies during exploration and mark them as spotting the player.",
+                DeveloperEffectKind.Toggle,
+                DeveloperEffectGroups.Encounter,
+                OwnerLabel: "Aggro",
+                Order: 10));
+        _developerTools?.RegisterEffect(
+            this,
+            new DeveloperEffectDescriptor(
+                EncounterCommitEffectId,
+                "Encounter Commit",
+                "Let a spotted enemy finish its timer and start combat.",
+                DeveloperEffectKind.Toggle,
+                DeveloperEffectGroups.Encounter,
+                OwnerLabel: "Aggro",
+                Order: 20));
+    }
+
     public void Tick(float delta)
     {
         if (_aggroEnemy != null)
@@ -39,6 +71,9 @@ public partial class AggroSystem : Node
                 return;
             }
 
+            if (!IsEffectEnabled(EncounterCommitEffectId))
+                return;
+
             _aggroTimer -= delta;
             if (_aggroTimer <= 0)
             {
@@ -48,6 +83,9 @@ public partial class AggroSystem : Node
             }
             return;
         }
+
+        if (!IsEffectEnabled(EncounterWatchEffectId))
+            return;
 
         foreach (var node in GetTree().GetNodesInGroup("enemies"))
         {
@@ -120,5 +158,10 @@ public partial class AggroSystem : Node
 
         var result = spaceState.IntersectRay(query);
         return result.Count == 0;
+    }
+
+    private bool IsEffectEnabled(string effectId)
+    {
+        return _developerTools?.IsEffectEnabled(this, effectId) ?? true;
     }
 }

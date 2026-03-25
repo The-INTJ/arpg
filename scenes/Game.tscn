@@ -8,7 +8,7 @@
 [ext_resource type="PackedScene" uid="uid://8xhkehkpijak" path="res://scenes/ui/ModifyStatsSimple.tscn" id="7_mss"]
 [ext_resource type="Script" uid="uid://crwgl38eka6td" path="res://scripts/world/CameraController.cs" id="8_cc"]
 [ext_resource type="Theme" uid="uid://c5ekn6wb3wjor" path="res://assets/HeroesOfTheAges_MainTheme.tres" id="9_theme"]
-[ext_resource type="Environment" path="res://assets/environments/splintered_world.tres" id="10_env"]
+[ext_resource type="Environment" uid="uid://b832ykxndumen" path="res://assets/environments/splintered_world.tres" id="10_env"]
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_floor"]
 size = Vector2(100, 100)

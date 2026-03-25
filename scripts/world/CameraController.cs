@@ -2,8 +2,10 @@ using Godot;
 
 namespace ARPG;
 
-public partial class CameraController : Node3D
+public partial class CameraController : Node3D, IDeveloperEffectProvider
 {
+    public const string CameraCollisionEffectId = "camera_collision";
+
     private const float MouseSensitivity = 0.003f;
     private const float MinPitch = -1.2f;   // ~-69 degrees (looking down)
     private const float MaxPitch = -0.25f;  // ~-14 degrees (nearly level)
@@ -18,6 +20,7 @@ public partial class CameraController : Node3D
 
     private Camera3D _camera;
     private CollisionObject3D _playerBody;
+    private DeveloperToolsManager _developerTools;
     private float _yaw;
     private float _pitch = DefaultPitch;
     private float _distance = DefaultDistance;
@@ -26,6 +29,7 @@ public partial class CameraController : Node3D
 
     /// <summary>Current yaw in radians, used by PlayerController for camera-relative movement.</summary>
     public float Yaw => _yaw;
+    public Basis CameraBasis => _camera?.GlobalTransform.Basis ?? Basis.Identity;
 
     public override void _Ready()
     {
@@ -109,6 +113,29 @@ public partial class CameraController : Node3D
         UpdateCameraTransform();
     }
 
+    public void RegisterDeveloperEffects(DeveloperToolsManager developerTools)
+    {
+        if (_developerTools != null)
+            return;
+
+        _developerTools = developerTools;
+        _developerTools?.RegisterEffect(
+            this,
+            new DeveloperEffectDescriptor(
+                CameraCollisionEffectId,
+                "Camera Collision",
+                "Keep the explore camera snapped in front of world blockers.",
+                DeveloperEffectKind.Toggle,
+                DeveloperEffectGroups.Movement,
+                OwnerLabel: "Camera",
+                Order: 10),
+            enabled =>
+            {
+                _developerTools.GodMode.SetCameraCollisionEnabled(enabled);
+                UpdateCameraTransform();
+            });
+    }
+
     private bool ShouldCaptureMouse()
     {
         if (!_windowFocused) return false;
@@ -151,6 +178,9 @@ public partial class CameraController : Node3D
 
     private Vector3 ResolveCameraPosition(Vector3 desiredLocalPosition)
     {
+        if (_developerTools?.GodMode.EffectiveCameraCollisionEnabled == false)
+            return desiredLocalPosition;
+
         float desiredDistance = desiredLocalPosition.Length();
         if (desiredDistance <= Mathf.Epsilon)
             return Vector3.Zero;

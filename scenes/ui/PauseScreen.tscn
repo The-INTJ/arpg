@@ -1,7 +1,8 @@
-[gd_scene load_steps=3 format=3 uid="uid://twjsjihh04h2"]
+[gd_scene load_steps=4 format=3 uid="uid://twjsjihh04h2"]
 
 [ext_resource type="Script" path="res://scripts/ui/PauseScreen.cs" id="1_ps"]
 [ext_resource type="Theme" uid="uid://c5ekn6wb3wjor" path="res://assets/HeroesOfTheAges_MainTheme.tres" id="2_theme"]
+[ext_resource type="PackedScene" path="res://scenes/ui/dev/GodModePanel.tscn" id="3_god"]
 
 [node name="PauseScreen" type="Control"]
 layout_mode = 3
@@ -55,7 +56,15 @@ layout_mode = 2
 theme_override_font_sizes/font_size = 22
 text = "View Stats"
 
+[node name="GodModeButton" type="Button" parent="VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "Enable God Mode"
+
 [node name="QuitButton" type="Button" parent="VBox"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 22
 text = "Quit to Menu"
+
+[node name="GodModePanel" parent="." instance=ExtResource("3_god")]
+visible = false

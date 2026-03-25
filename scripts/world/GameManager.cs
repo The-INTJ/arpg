@@ -2,8 +2,12 @@ using Godot;
 
 namespace ARPG;
 
-public partial class GameManager : Node3D
+public partial class GameManager : Node3D, IDeveloperEffectProvider
 {
+    public const string ActiveZoneDetectionEffectId = "active_zone_detection";
+    public const string ExploreRegenEffectId = "explore_regen";
+    public const string BridgeEnergyRequirementEffectId = "bridge_energy_requirement";
+
     private static readonly Vector3[] ZoneOrigins =
     {
         new(0, 0, 0),
@@ -20,6 +24,7 @@ public partial class GameManager : Node3D
     private TurnManager _turnManager;
     private CombatManager _combatManager;
     private AggroSystem _aggroSystem;
+    private DeveloperToolsManager _developerTools;
     private GameHudUpdater _hudUpdater;
     private PlayerActionHandler _actionHandler;
     private ModifyStatsSimple _modifyScreen;
@@ -46,6 +51,11 @@ public partial class GameManager : Node3D
         _bridgePointsRoot = EnsureWorldChild("BridgePoints");
         var camera = _player.GetNode<Camera3D>("CameraRig/Camera3D");
         var canvas = GetNode<CanvasLayer>("CanvasLayer");
+        var cameraController = _player.GetNode<CameraController>("CameraRig");
+
+        _developerTools = new DeveloperToolsManager();
+        _developerTools.Name = "DeveloperToolsManager";
+        AddChild(_developerTools);
 
         _turnManager = new TurnManager();
         AddChild(_turnManager);
@@ -110,11 +120,14 @@ public partial class GameManager : Node3D
             hpLabel, statsLabel, darkEnergyLabel, darkEnergyBar, statusLabel, attackButton, abilityButton,
             enemyHp, itemBarHBox);
 
-        _player.EdgeFall += () => _hudUpdater.StatusText = "Fell into the abyss! -5 HP";
+        _player.EdgeFall += appliedDamage => _hudUpdater.StatusText = appliedDamage
+            ? "Fell into the abyss! -5 HP"
+            : "Boundary recovery triggered.";
 
         _modifyScreen = GetNode<ModifyStatsSimple>("CanvasLayer/ModifyStatsSimple");
         _pauseScreen = GetNode<PauseScreen>("CanvasLayer/PauseScreen");
         _pauseScreen.ViewStatsRequested += () => _modifyScreen.Open(_player.Stats);
+        _pauseScreen.Init(_developerTools);
 
         var floorMesh = GetNode<MeshInstance3D>("World/Floor/FloorMesh");
         floorMesh.Visible = false;
@@ -127,6 +140,11 @@ public partial class GameManager : Node3D
 
         SetupAudioManager();
         BuildRunWorld();
+        _developerTools.BindProvider(_player, _player);
+        _developerTools.BindProvider(cameraController, cameraController);
+        _developerTools.BindProvider(_aggroSystem, _aggroSystem);
+        _developerTools.BindProvider(this, this);
+        RefreshBridgeReadiness();
 
         _player.GlobalPosition = ZoneOrigins[0] + PlayerSpawnOffset;
         _player.SetZoneBounds(BuildZoneBoundsArray());
@@ -216,8 +234,7 @@ public partial class GameManager : Node3D
         bridge.Configure(ZoneOrigins[room] + ZoneEntryOffset);
         _zoneBridges[room] = bridge;
 
-        if (_zoneEnergy[room].IsThresholdMet)
-            bridge.SetEnergyReady();
+        bridge.SetEnergyRequirementSatisfied(IsBridgeEnergySatisfied(room));
     }
 
     private static Aabb CreateZoneBounds(Vector3 zoneOrigin)
@@ -272,7 +289,7 @@ public partial class GameManager : Node3D
         if (bridge != null && bridge.IsBuilt)
             return "Bridge is built. Cross to the next zone when you're ready.";
 
-        if (_zoneEnergy[room].IsThresholdMet)
+        if (IsBridgeEnergySatisfied(room))
             return "Enough dark energy! Find the bridge point to cross!";
 
         return "Defeat enemies to gather dark energy for the bridge.";
@@ -314,9 +331,12 @@ public partial class GameManager : Node3D
 
     public override void _Process(double delta)
     {
-        int detectedZone = FindZoneForPosition(_player.GlobalPosition);
-        if (detectedZone != 0)
-            SetActiveZone(detectedZone);
+        if (IsEffectEnabled(ActiveZoneDetectionEffectId))
+        {
+            int detectedZone = FindZoneForPosition(_player.GlobalPosition);
+            if (detectedZone != 0)
+                SetActiveZone(detectedZone);
+        }
 
         _hudUpdater.UpdateAll(_zoneEnergy[_activeZoneRoom]);
 
@@ -328,7 +348,8 @@ public partial class GameManager : Node3D
 
         if (_turnManager.IsExploring)
         {
-            _player.TickRegen((float)delta);
+            if (IsEffectEnabled(ExploreRegenEffectId))
+                _player.TickRegen((float)delta);
             _aggroSystem.Tick((float)delta);
         }
     }
@@ -339,8 +360,9 @@ public partial class GameManager : Node3D
         bool wasBoss = _combatManager.LastKillWasBoss;
         bool wasElite = _combatManager.LastKillWasElite;
         int energy = DarkEnergy.EnergyForKill(wasBoss, wasElite);
-        bool thresholdWasMet = _zoneEnergy[room].IsThresholdMet;
+        bool thresholdWasMet = IsBridgeEnergySatisfied(room);
         _zoneEnergy[room].Add(energy);
+        RefreshBridgeReadiness(room);
         GameState.RecordKill(wasBoss);
         _hudUpdater.AttackButton.Visible = false;
         _hudUpdater.AbilityButton.Visible = false;
@@ -370,9 +392,9 @@ public partial class GameManager : Node3D
         if (droppedItem != null)
             SpawnInventoryItem(_combatManager.LastKillPosition + new Vector3(0.75f, 0, 0.4f), droppedItem);
 
-        if (room < GameState.TotalRooms && !thresholdWasMet && _zoneEnergy[room].IsThresholdMet)
+        bool thresholdIsMet = IsBridgeEnergySatisfied(room);
+        if (room < GameState.TotalRooms && !thresholdWasMet && thresholdIsMet)
         {
-            _zoneBridges[room]?.SetEnergyReady();
             AudioManager.Instance?.PlayLevelUp();
             _hudUpdater.StatusText = droppedItem == null
                 ? "Enough dark energy! Find the bridge point to cross!"
@@ -481,5 +503,82 @@ public partial class GameManager : Node3D
             AudioManager.Instance?.PlayPickup();
         };
         _worldRoot.AddChild(pickup);
+    }
+
+    public void RegisterDeveloperEffects(DeveloperToolsManager developerTools)
+    {
+        if (_developerTools != developerTools)
+            _developerTools = developerTools;
+
+        _developerTools?.RegisterEffect(
+            this,
+            new DeveloperEffectDescriptor(
+                ActiveZoneDetectionEffectId,
+                "Active Zone Detection",
+                "Update the current room and HUD labels from the player's world position.",
+                DeveloperEffectKind.Toggle,
+                DeveloperEffectGroups.Boundary,
+                OwnerLabel: "World",
+                Order: 30),
+            enabled =>
+            {
+                if (!enabled || _player == null)
+                    return;
+
+                int detectedZone = FindZoneForPosition(_player.GlobalPosition);
+                if (detectedZone != 0)
+                    SetActiveZone(detectedZone);
+            });
+        _developerTools?.RegisterEffect(
+            this,
+            new DeveloperEffectDescriptor(
+                ExploreRegenEffectId,
+                "Explore Regen",
+                "Tick passive HP regeneration while the run is in exploration mode.",
+                DeveloperEffectKind.Toggle,
+                DeveloperEffectGroups.Progression,
+                OwnerLabel: "World",
+                Order: 10));
+        _developerTools?.RegisterEffect(
+            this,
+            new DeveloperEffectDescriptor(
+                BridgeEnergyRequirementEffectId,
+                "Bridge Energy Requirement",
+                "Require the dark energy threshold before a bridge becomes ready.",
+                DeveloperEffectKind.Toggle,
+                DeveloperEffectGroups.Progression,
+                OwnerLabel: "World",
+                Order: 20),
+            _ => RefreshBridgeReadiness());
+    }
+
+    private bool IsEffectEnabled(string effectId)
+    {
+        return _developerTools?.IsEffectEnabled(this, effectId) ?? true;
+    }
+
+    private bool IsBridgeEnergySatisfied(int room)
+    {
+        if (room < 1 || room >= GameState.TotalRooms)
+            return true;
+
+        return !IsEffectEnabled(BridgeEnergyRequirementEffectId) || _zoneEnergy[room].IsThresholdMet;
+    }
+
+    private void RefreshBridgeReadiness()
+    {
+        if (_zoneBridges == null)
+            return;
+
+        for (int room = 1; room < _zoneBridges.Length; room++)
+            RefreshBridgeReadiness(room);
+    }
+
+    private void RefreshBridgeReadiness(int room)
+    {
+        if (_zoneBridges == null || room <= 0 || room >= _zoneBridges.Length)
+            return;
+
+        _zoneBridges[room]?.SetEnergyRequirementSatisfied(IsBridgeEnergySatisfied(room));
     }
 }

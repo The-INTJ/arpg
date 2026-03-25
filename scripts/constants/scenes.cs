@@ -9,6 +9,7 @@ public static partial class Scenes
 	private const string PropRoot = Root + "props/";
 	private const string UiRoot = Root + "ui/";
 	private const string UiComponentRoot = UiRoot + "components/";
+	private const string UiDevRoot = UiRoot + "dev/";
 	private const string WorldSliceRoot = Root + "world_slices/";
 
 	public const string ArchetypeSelect = Root + "ArchetypeSelect.tscn";
@@ -20,10 +21,13 @@ public static partial class Scenes
 	public const string ItemPickup = PickupRoot + "ItemPickup.tscn";
 	public const string ItemSlot = UiRoot + "ItemSlot.tscn";
 	public const string GameOverScreen = Root + "GameOverScreen.tscn";
+	public const string GodModePanel = UiDevRoot + "GodModePanel.tscn";
 	public const string LootPickup = PickupRoot + "LootPickup.tscn";
 	public const string MainMenu = Root + "MainMenu.tscn";
 	public const string ModifyStatsSimple = UiRoot + "ModifyStatsSimple.tscn";
 	public const string PauseScreen = UiRoot + "PauseScreen.tscn";
+	public const string DeveloperEffectGroupPanel = UiDevRoot + "DeveloperEffectGroupPanel.tscn";
+	public const string DeveloperEffectRow = UiDevRoot + "DeveloperEffectRow.tscn";
 	public const string PineTreeSlice = WorldSliceRoot + "PineTreeSlice.tscn";
 	public const string PlatformRampSlice = WorldSliceRoot + "PlatformRampSlice.tscn";
 	public const string RoundTreeSlice = WorldSliceRoot + "RoundTreeSlice.tscn";

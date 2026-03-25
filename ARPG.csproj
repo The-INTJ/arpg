@@ -4,4 +4,10 @@
     <TargetFramework Condition=" '$(GodotTargetPlatform)' == 'android' ">net9.0</TargetFramework>
     <EnableDynamicLoading>true</EnableDynamicLoading>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="ARPG.Tests\\**\\*.cs" />
+    <EmbeddedResource Remove="ARPG.Tests\\**\\*" />
+    <None Remove="ARPG.Tests\\**\\*" />
+  </ItemGroup>
 </Project>

@@ -3,8 +3,12 @@ using Godot;
 
 namespace ARPG;
 
-public partial class PlayerController : CharacterBody3D
+public partial class PlayerController : CharacterBody3D, IDeveloperEffectProvider
 {
+    public const string ZoneBoundsGuardEffectId = "zone_bounds_guard";
+    public const string VoidFallPenaltyEffectId = "void_fall_penalty";
+
+    private const float DefaultFloorSnapLength = 0.45f;
     private const float GroundAcceleration = 28.0f;
     private const float GroundDeceleration = 34.0f;
     private const float AirAcceleration = 11.0f;
@@ -13,6 +17,8 @@ public partial class PlayerController : CharacterBody3D
     private const float JumpVelocity = 7.0f;
     private const float CoyoteTime = 0.12f;
     private const float VoidFallGracePeriod = 1.0f;
+    private const float GodFlightSpeedMultiplier = 2.4f;
+    private const float GodFlightVeryFastMultiplier = 8.0f;
     private static readonly Vector3 BobRootBasePosition = new(0, 0.25f, 0);
 
     public PlayerStats Stats { get; private set; }
@@ -23,7 +29,7 @@ public partial class PlayerController : CharacterBody3D
     public bool IsGrounded => IsOnFloor();
 
     [Signal]
-    public delegate void EdgeFallEventHandler();
+    public delegate void EdgeFallEventHandler(bool appliedDamage);
 
     private float _voidFallTimer;
     private float _regenAccumulator;
@@ -32,9 +38,14 @@ public partial class PlayerController : CharacterBody3D
     private float _landingImpact;
     private float _presentationLean;
     private float _weaponLagTilt;
+    private double _godModeElapsed;
     private bool _movementLocked;
     private bool _wasGrounded;
+    private bool _lastGodModeEnabled;
+    private bool _lastPassThroughEnabled;
     private CameraController _cameraController;
+    private CollisionShape3D _playerCollision;
+    private DeveloperToolsManager _developerTools;
     private Node3D _visualRoot;
     private Node3D _bobRoot;
     private Sprite3D _sprite;
@@ -44,10 +55,11 @@ public partial class PlayerController : CharacterBody3D
     private Aabb[] _zoneBounds = Array.Empty<Aabb>();
     private Vector3 _lastGroundedPosition;
     private bool _hasLastGroundedPosition;
+    private readonly ForwardDoubleTapDetector _forwardBurstDetector = new();
 
     public override void _Ready()
     {
-        FloorSnapLength = 0.45f;
+        FloorSnapLength = DefaultFloorSnapLength;
         _wasGrounded = true;
         _lastGroundedPosition = GlobalPosition;
         _hasLastGroundedPosition = true;
@@ -95,9 +107,56 @@ public partial class PlayerController : CharacterBody3D
         _weaponPivot.AddChild(_weaponSprite);
 
         _cameraController = GetNode<CameraController>("CameraRig");
+        _playerCollision = GetNode<CollisionShape3D>("PlayerCollision");
     }
 
     public override void _PhysicsProcess(double delta)
+    {
+        SyncDeveloperTraversalState();
+        if (CurrentTraversalMode == PlayerTraversalMode.GodFlight)
+        {
+            RunGodFlightPhysics(delta);
+            return;
+        }
+
+        _developerTools?.GodMode.SetVeryFastBurstActive(false);
+        _forwardBurstDetector.Reset();
+        RunGroundedPhysics(delta);
+    }
+
+    public void RegisterDeveloperEffects(DeveloperToolsManager developerTools)
+    {
+        if (_developerTools != null)
+            return;
+
+        _developerTools = developerTools;
+        _developerTools?.RegisterEffect(
+            this,
+            new DeveloperEffectDescriptor(
+                ZoneBoundsGuardEffectId,
+                "Zone Bounds Guard",
+                "Track when the player leaves the active map bounds and start boundary recovery.",
+                DeveloperEffectKind.Toggle,
+                DeveloperEffectGroups.Boundary,
+                OwnerLabel: "Player",
+                Order: 10));
+        _developerTools?.RegisterEffect(
+            this,
+            new DeveloperEffectDescriptor(
+                VoidFallPenaltyEffectId,
+                "Void Fall Penalty",
+                "Apply the HP loss when boundary recovery snaps the player back.",
+                DeveloperEffectKind.Toggle,
+                DeveloperEffectGroups.Boundary,
+                OwnerLabel: "Player",
+                Order: 20));
+    }
+
+    private PlayerTraversalMode CurrentTraversalMode => _developerTools?.GodMode.Enabled == true && _developerTools.GodMode.FlightEnabled
+        ? PlayerTraversalMode.GodFlight
+        : PlayerTraversalMode.Grounded;
+
+    private void RunGroundedPhysics(double delta)
     {
         float dt = (float)delta;
 
@@ -105,8 +164,8 @@ public partial class PlayerController : CharacterBody3D
         var raw = Vector3.Zero;
         if (!_movementLocked)
         {
-            raw.X = Input.GetActionStrength("move_right") - Input.GetActionStrength("move_left");
-            raw.Z = Input.GetActionStrength("move_back") - Input.GetActionStrength("move_forward");
+            raw.X = Input.GetActionStrength(GameKeys.MoveRight) - Input.GetActionStrength(GameKeys.MoveLeft);
+            raw.Z = Input.GetActionStrength(GameKeys.MoveBack) - Input.GetActionStrength(GameKeys.MoveForward);
         }
 
         if (raw.LengthSquared() > 0)
@@ -117,7 +176,7 @@ public partial class PlayerController : CharacterBody3D
         var input = new Basis(Vector3.Up, yaw) * raw;
 
         float speed = Stats.MoveSpeed;
-        if (!_movementLocked && Input.IsKeyPressed(Key.Shift))
+        if (!_movementLocked && Input.IsActionPressed(GameKeys.Sprint))
             speed *= Stats.SprintMultiplier;
 
         bool grounded = IsOnFloor();
@@ -168,6 +227,57 @@ public partial class PlayerController : CharacterBody3D
         UpdatePresentation(dt, facingVelocity, input, speed, groundedNow);
     }
 
+    private void RunGodFlightPhysics(double delta)
+    {
+        float dt = (float)delta;
+        _godModeElapsed += delta;
+
+        bool forwardHeld = !_movementLocked && Input.IsActionPressed(GameKeys.MoveForward);
+        bool forwardJustPressed = !_movementLocked && Input.IsActionJustPressed(GameKeys.MoveForward);
+        _forwardBurstDetector.Update(forwardJustPressed, forwardHeld, _godModeElapsed);
+        bool veryFastBurst = _forwardBurstDetector.IsBurstActive(forwardHeld);
+        _developerTools?.GodMode.SetVeryFastBurstActive(veryFastBurst);
+
+        Vector3 movementDirection = Vector3.Zero;
+        if (!_movementLocked)
+        {
+            Basis viewBasis = _cameraController.CameraBasis;
+            Vector3 forward = -viewBasis.Z.Normalized();
+            Vector3 right = viewBasis.X.Normalized();
+            float horizontalX = Input.GetActionStrength(GameKeys.MoveRight) - Input.GetActionStrength(GameKeys.MoveLeft);
+            float horizontalZ = Input.GetActionStrength(GameKeys.MoveForward) - Input.GetActionStrength(GameKeys.MoveBack);
+            float vertical = Input.GetActionStrength(GameKeys.DevAscend) - Input.GetActionStrength(GameKeys.DevDescend);
+
+            movementDirection = right * horizontalX + forward * horizontalZ + Vector3.Up * vertical;
+            if (movementDirection.LengthSquared() > 0.001f)
+                movementDirection = movementDirection.Normalized();
+        }
+
+        float speedMultiplier = veryFastBurst ? GodFlightVeryFastMultiplier : GodFlightSpeedMultiplier;
+        float speed = Stats.MoveSpeed * speedMultiplier;
+        Velocity = movementDirection * speed;
+
+        if (_developerTools?.GodMode.PassThroughEnabled == true)
+            GlobalPosition += Velocity * dt;
+        else
+            MoveAndSlide();
+
+        bool groundedNow = IsOnFloor();
+        if (UpdateVoidFallRecovery(dt, groundedNow))
+            groundedNow = true;
+
+        var facingVelocity = new Vector3(Velocity.X, 0, Velocity.Z);
+        if (facingVelocity.LengthSquared() > 0.01f)
+        {
+            var cameraRight = new Vector3(Mathf.Cos(_cameraController.Yaw), 0, -Mathf.Sin(_cameraController.Yaw));
+            _sprite.FlipH = facingVelocity.Dot(cameraRight) < 0;
+        }
+
+        var presentationInput = new Vector3(movementDirection.X, 0, movementDirection.Z);
+        UpdatePresentation(dt, facingVelocity, presentationInput, speed, groundedNow);
+        _wasGrounded = groundedNow;
+    }
+
     public void SetZoneBounds(Aabb[] zoneBounds)
     {
         _zoneBounds = zoneBounds ?? Array.Empty<Aabb>();
@@ -175,6 +285,12 @@ public partial class PlayerController : CharacterBody3D
 
     private bool UpdateVoidFallRecovery(float delta, bool grounded)
     {
+        if (!IsEffectEnabled(ZoneBoundsGuardEffectId))
+        {
+            _voidFallTimer = 0.0f;
+            return false;
+        }
+
         if (grounded)
         {
             _lastGroundedPosition = GlobalPosition;
@@ -216,7 +332,10 @@ public partial class PlayerController : CharacterBody3D
 
     private void RecoverFromVoidFall()
     {
-        Hp = Mathf.Max(0, Hp - 5);
+        bool applyPenalty = IsEffectEnabled(VoidFallPenaltyEffectId);
+        if (applyPenalty)
+            Hp = Mathf.Max(0, Hp - 5);
+
         Velocity = Vector3.Zero;
         _voidFallTimer = 0.0f;
         _coyoteTimer = 0.0f;
@@ -224,7 +343,7 @@ public partial class PlayerController : CharacterBody3D
         if (_hasLastGroundedPosition)
             GlobalPosition = _lastGroundedPosition + new Vector3(0, 0.1f, 0);
 
-        EmitSignal(SignalName.EdgeFall);
+        EmitSignal(SignalName.EdgeFall, applyPenalty);
     }
 
     public void TickRegen(float delta)
@@ -284,7 +403,11 @@ public partial class PlayerController : CharacterBody3D
     {
         _movementLocked = locked;
         if (locked)
-            Velocity = new Vector3(0, Velocity.Y, 0);
+        {
+            Velocity = Vector3.Zero;
+            _forwardBurstDetector.Reset();
+            _developerTools?.GodMode.SetVeryFastBurstActive(false);
+        }
     }
 
     public void PlayHitReaction()
@@ -358,5 +481,31 @@ public partial class PlayerController : CharacterBody3D
         _sprite.Modulate = Colors.White;
         _weaponSprite.Scale = Vector3.One;
         _weaponSprite.RotationDegrees = Vector3.Zero;
+    }
+
+    private void SyncDeveloperTraversalState()
+    {
+        bool godModeEnabled = _developerTools?.GodMode.Enabled == true && _developerTools.GodMode.FlightEnabled;
+        bool passThroughEnabled = godModeEnabled && _developerTools.GodMode.PassThroughEnabled;
+        if (godModeEnabled == _lastGodModeEnabled && passThroughEnabled == _lastPassThroughEnabled)
+            return;
+
+        _lastGodModeEnabled = godModeEnabled;
+        _lastPassThroughEnabled = passThroughEnabled;
+        FloorSnapLength = godModeEnabled ? 0.0f : DefaultFloorSnapLength;
+        if (_playerCollision != null)
+            _playerCollision.Disabled = passThroughEnabled;
+
+        if (!godModeEnabled)
+        {
+            Velocity = Vector3.Zero;
+            _forwardBurstDetector.Reset();
+            _developerTools?.GodMode.SetVeryFastBurstActive(false);
+        }
+    }
+
+    private bool IsEffectEnabled(string effectId)
+    {
+        return _developerTools?.IsEffectEnabled(this, effectId) ?? true;
     }
 }

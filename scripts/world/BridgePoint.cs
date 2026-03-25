@@ -9,13 +9,13 @@ namespace ARPG;
 /// </summary>
 public partial class BridgePoint : Node3D
 {
-    private enum BridgeState { Inactive, Ready, Building, Built }
-
-    private BridgeState _state = BridgeState.Inactive;
     private Node3D _arrowIndicator;
     private Label3D _promptLabel;
     private Area3D _interactZone;
     private bool _playerInZone;
+    private bool _energyRequirementSatisfied;
+    private bool _isBuilding;
+    private bool _isBuilt;
     private float _arrowBobTime;
     private Vector3 _targetGroundGlobalPosition;
 
@@ -24,8 +24,8 @@ public partial class BridgePoint : Node3D
     private const float SegmentLength = 1.25f;
     private const float MaxStepHeight = 0.12f;
 
-    public bool IsBuilt => _state == BridgeState.Built;
-    public bool IsReadyAndPlayerNear => _state == BridgeState.Ready && _playerInZone;
+    public bool IsBuilt => _isBuilt;
+    public bool IsReadyAndPlayerNear => !_isBuilt && !_isBuilding && _energyRequirementSatisfied && _playerInZone;
 
     public override void _Ready()
     {
@@ -51,13 +51,21 @@ public partial class BridgePoint : Node3D
         _interactZone.BodyEntered += body =>
         {
             if (body is PlayerController)
+            {
                 _playerInZone = true;
+                UpdateReadyVisuals();
+            }
         };
         _interactZone.BodyExited += body =>
         {
             if (body is PlayerController)
+            {
                 _playerInZone = false;
+                UpdateReadyVisuals();
+            }
         };
+
+        UpdateReadyVisuals();
     }
 
     public void Configure(Vector3 targetGroundGlobalPosition)
@@ -65,32 +73,30 @@ public partial class BridgePoint : Node3D
         _targetGroundGlobalPosition = targetGroundGlobalPosition;
     }
 
-    /// <summary>Called by GameManager when dark energy threshold is met.</summary>
-    public void SetEnergyReady()
+    public void SetEnergyRequirementSatisfied(bool satisfied)
     {
-        if (_state != BridgeState.Inactive)
+        if (_isBuilt)
             return;
 
-        _state = BridgeState.Ready;
-        _arrowIndicator.Visible = true;
+        _energyRequirementSatisfied = satisfied;
+        UpdateReadyVisuals();
     }
 
     /// <summary>Attempt to build the bridge. Returns true if building started.</summary>
     public bool TryBuild()
     {
-        if (_state != BridgeState.Ready || !_playerInZone)
+        if (_isBuilt || _isBuilding || !_energyRequirementSatisfied || !_playerInZone)
             return false;
 
-        _state = BridgeState.Building;
-        _arrowIndicator.Visible = false;
-        _promptLabel.Visible = false;
+        _isBuilding = true;
+        UpdateReadyVisuals();
         SpawnBridge();
         return true;
     }
 
     public override void _Process(double delta)
     {
-        if (_state != BridgeState.Ready)
+        if (_isBuilt || _isBuilding || !_energyRequirementSatisfied)
             return;
 
         _arrowBobTime += (float)delta;
@@ -149,7 +155,9 @@ public partial class BridgePoint : Node3D
             {
                 tween.TweenCallback(Callable.From(() =>
                 {
-                    _state = BridgeState.Built;
+                    _isBuilding = false;
+                    _isBuilt = true;
+                    UpdateReadyVisuals();
                 }));
             }
         }
@@ -172,5 +180,12 @@ public partial class BridgePoint : Node3D
             mat.AlbedoTexture = custom;
 
         return mat;
+    }
+
+    private void UpdateReadyVisuals()
+    {
+        bool ready = !_isBuilt && !_isBuilding && _energyRequirementSatisfied;
+        _arrowIndicator.Visible = ready;
+        _promptLabel.Visible = ready && _playerInZone;
     }
 }

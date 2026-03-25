@@ -1,0 +1,124 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/dev/GodModePanel.cs" id="1_script"]
+[ext_resource type="Theme" uid="uid://c5ekn6wb3wjor" path="res://assets/HeroesOfTheAges_MainTheme.tres" id="2_theme"]
+
+[node name="GodModePanel" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("2_theme")
+script = ExtResource("1_script")
+
+[node name="RootVBox" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 56.0
+offset_top = 40.0
+offset_right = -56.0
+offset_bottom = -40.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 16
+
+[node name="TitleLabel" type="Label" parent="RootVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.83, 0.65, 0.22, 1)
+theme_override_font_sizes/font_size = 32
+text = "DEVELOPER GOD MODE"
+horizontal_alignment = 1
+
+[node name="MovementPanel" type="PanelContainer" parent="RootVBox"]
+layout_mode = 2
+theme_type_variation = "SectionPanel"
+
+[node name="MovementVBox" type="VBoxContainer" parent="RootVBox/MovementPanel"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="MovementTitle" type="Label" parent="RootVBox/MovementPanel/MovementVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.83, 0.65, 0.22, 1)
+theme_override_font_sizes/font_size = 22
+text = "Traversal"
+
+[node name="StatusLabel" type="Label" parent="RootVBox/MovementPanel/MovementVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.96, 0.9, 0.8, 1)
+theme_override_font_sizes/font_size = 16
+text = "Mode: Off"
+
+[node name="ButtonRow" type="HBoxContainer" parent="RootVBox/MovementPanel/MovementVBox"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="GodModeButton" type="Button" parent="RootVBox/MovementPanel/MovementVBox/ButtonRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(160, 0)
+focus_mode = 0
+text = "Enable God Mode"
+
+[node name="PassThroughButton" type="Button" parent="RootVBox/MovementPanel/MovementVBox/ButtonRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(150, 0)
+focus_mode = 0
+text = "Pass-Through On"
+
+[node name="CameraCollisionButton" type="Button" parent="RootVBox/MovementPanel/MovementVBox/ButtonRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(170, 0)
+focus_mode = 0
+text = "Camera Collision On"
+
+[node name="EffectsPanel" type="PanelContainer" parent="RootVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_type_variation = "SectionPanel"
+
+[node name="EffectsVBox" type="VBoxContainer" parent="RootVBox/EffectsPanel"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 12
+
+[node name="EffectsTitle" type="Label" parent="RootVBox/EffectsPanel/EffectsVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.83, 0.65, 0.22, 1)
+theme_override_font_sizes/font_size = 22
+text = "Active Effects"
+
+[node name="EffectsSubtitle" type="Label" parent="RootVBox/EffectsPanel/EffectsVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.96, 0.9, 0.8, 0.78)
+theme_override_font_sizes/font_size = 15
+text = "Toggle the live exploration checks the current run is using."
+
+[node name="ScrollContainer" type="ScrollContainer" parent="RootVBox/EffectsPanel/EffectsVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="GroupsList" type="VBoxContainer" parent="RootVBox/EffectsPanel/EffectsVBox/ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 18
+
+[node name="FooterRow" type="HBoxContainer" parent="RootVBox"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="FooterLabel" type="Label" parent="RootVBox/FooterRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.96, 0.9, 0.8, 0.6)
+theme_override_font_sizes/font_size = 15
+text = "Pause again to resume. Effects are session-local and reset when the game scene reloads."
+
+[node name="BackButton" type="Button" parent="RootVBox/FooterRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(120, 0)
+focus_mode = 0
+text = "Back"
