@@ -7,13 +7,15 @@ namespace ARPG;
 /// </summary>
 public static class EnemySpawner
 {
+    private static PackedScene _slimeVisualScene;
+
     public static EnemySpawnPlan[] BuildEncounter(int room)
     {
         return room switch
         {
             1 => new[]
             {
-                EnemySpawnPlan.Normal(),
+                EnemySpawnPlan.Normal(forcedVariant: SpriteFactory.SlimeVariant),
                 EnemySpawnPlan.Normal(),
                 EnemySpawnPlan.Normal(),
                 EnemySpawnPlan.Normal(),
@@ -21,7 +23,7 @@ public static class EnemySpawner
             },
             2 => new[]
             {
-                EnemySpawnPlan.Normal(),
+                EnemySpawnPlan.Normal(forcedVariant: SpriteFactory.SlimeVariant),
                 EnemySpawnPlan.Normal(),
                 EnemySpawnPlan.Normal(),
                 EnemySpawnPlan.Normal(),
@@ -32,7 +34,7 @@ public static class EnemySpawner
             3 => new[]
             {
                 EnemySpawnPlan.Boss(InventoryItem.CreateEnemyDrop(room, fromBoss: true)),
-                EnemySpawnPlan.Elite(InventoryItem.CreateEnemyDrop(room)),
+                EnemySpawnPlan.Elite(InventoryItem.CreateEnemyDrop(room), forcedVariant: SpriteFactory.SlimeVariant),
                 EnemySpawnPlan.Elite(InventoryItem.CreateEnemyDrop(room)),
                 EnemySpawnPlan.Normal(),
                 EnemySpawnPlan.Normal(),
@@ -42,7 +44,7 @@ public static class EnemySpawner
             },
             _ => new[]
             {
-                EnemySpawnPlan.Normal(),
+                EnemySpawnPlan.Normal(forcedVariant: SpriteFactory.SlimeVariant),
                 EnemySpawnPlan.Normal(),
                 EnemySpawnPlan.Normal(),
                 EnemySpawnPlan.Normal(),
@@ -57,6 +59,10 @@ public static class EnemySpawner
         enemy.Position = position;
         enemy.AddToGroup("enemies");
 
+        var visualRoot = new Node3D();
+        visualRoot.Name = "VisualRoot";
+        enemy.AddChild(visualRoot);
+
         enemy.ScaleForRoom(room);
         enemy.AssignItemDrop(plan.ItemDrop);
 
@@ -68,16 +74,19 @@ public static class EnemySpawner
             enemy.MakeBoss();
             var sprite = SpriteFactory.CreateSprite(SpriteFactory.CreateBossTexture(), 0.07f);
             sprite.Position = new Vector3(0, 0.35f, 0);
-            enemy.AddChild(sprite);
+            visualRoot.AddChild(sprite);
         }
         else
         {
-            int variant = SpriteFactory.RandomEnemyVariant();
-            string baseName = SpriteFactory.EnemyVariantName(variant);
-            enemy.VariantName = baseName;
-            var sprite = SpriteFactory.CreateSprite(SpriteFactory.CreateEnemyTexture(variant), plan.IsElite ? 0.055f : 0.05f);
-            sprite.Position = new Vector3(0, 0.25f, 0);
-            enemy.AddChild(sprite);
+            int variant = plan.ForcedVariant ?? SpriteFactory.RandomEnemyVariant();
+            enemy.VariantName = SpriteFactory.EnemyVariantName(variant);
+
+            if (!TryAddVariantVisual(visualRoot, variant, plan.IsElite))
+            {
+                var sprite = SpriteFactory.CreateSprite(SpriteFactory.CreateEnemyTexture(variant), plan.IsElite ? 0.055f : 0.05f);
+                sprite.Position = new Vector3(0, 0.25f, 0);
+                visualRoot.AddChild(sprite);
+            }
 
             if (plan.IsElite)
                 AddEliteMarker(enemy);
@@ -104,6 +113,28 @@ public static class EnemySpawner
         enemy.SetMonsterEffects(effectPlan);
 
         return enemy;
+    }
+
+    private static bool TryAddVariantVisual(Node3D visualRoot, int variant, bool isElite)
+    {
+        if (variant != SpriteFactory.SlimeVariant)
+            return false;
+
+        var scene = GetSlimeVisualScene();
+        if (scene == null)
+            return false;
+
+        var slimeVisual = scene.Instantiate<Node3D>();
+        slimeVisual.Name = "SlimeVisual";
+        slimeVisual.Scale = isElite ? new Vector3(1.08f, 1.08f, 1.08f) : Vector3.One;
+        visualRoot.AddChild(slimeVisual);
+        return true;
+    }
+
+    private static PackedScene GetSlimeVisualScene()
+    {
+        _slimeVisualScene ??= ResourceLoader.Load<PackedScene>(Scenes.SlimeVisual);
+        return _slimeVisualScene;
     }
 
     private static void AddEliteMarker(Enemy enemy)

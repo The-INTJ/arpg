@@ -41,6 +41,9 @@ public static class Palette
 	public static readonly Color EnemyBody = new(0.63f, 0.32f, 0.18f);
 	public static readonly Color EnemyHead = new(0.83f, 0.39f, 0.17f);
 	public static readonly Color EnemyGlow = new(0.5f, 0.15f, 0.0f);
+	public static readonly Color SlimeBody = new(0.28f, 0.68f, 0.32f);
+	public static readonly Color SlimeCore = new(0.82f, 0.93f, 0.46f);
+	public static readonly Color SlimeEye = new(0.10f, 0.16f, 0.08f);
 	public static readonly Color ItemHeal = new(0.35f, 0.82f, 0.56f);
 	public static readonly Color ItemHealMajor = new(0.62f, 0.95f, 0.68f);
 	public static readonly Color ItemBomb = new(0.92f, 0.46f, 0.16f);

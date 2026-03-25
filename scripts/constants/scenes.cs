@@ -3,6 +3,7 @@ namespace ARPG;
 public static partial class Scenes
 {
 	private const string Root = "res://scenes/";
+	private const string ActorRoot = Root + "actors/";
 	private const string WorldSliceRoot = Root + "world_slices/";
 
 	public const string ArchetypeSelect = Root + "ArchetypeSelect.tscn";
@@ -20,5 +21,6 @@ public static partial class Scenes
 	public const string PlatformRampSlice = WorldSliceRoot + "PlatformRampSlice.tscn";
 	public const string RoundTreeSlice = WorldSliceRoot + "RoundTreeSlice.tscn";
 	public const string RunHistorySnippet = Root + "RunHistorySnippet.tscn";
+	public const string SlimeVisual = ActorRoot + "SlimeVisual.tscn";
 	public const string VictoryScreen = Root + "VictoryScreen.tscn";
 }

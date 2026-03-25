@@ -9,6 +9,11 @@ namespace ARPG;
 /// </summary>
 public static class SpriteFactory
 {
+    public const int GoblinVariant = 0;
+    public const int SkeletonVariant = 1;
+    public const int SlimeVariant = 2;
+    public const int DemonVariant = 3;
+
     // --- Player sprites per archetype ---
 
     private static readonly string[] FighterPixels =
@@ -457,8 +462,8 @@ public static class SpriteFactory
 
     private static Color GetSlimeColor(char c) => c switch
     {
-        'G' => new Color(0.25f, 0.70f, 0.30f),  // green body
-        'M' => new Color(0.90f, 0.90f, 0.10f),  // yellow eyes
+        'G' => Palette.SlimeBody,
+        'M' => Palette.SlimeCore,
         _ => Colors.Transparent,
     };
 

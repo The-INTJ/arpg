@@ -1,0 +1,11 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/actors/SlimeVisual.cs" id="1_script"]
+[ext_resource type="PackedScene" path="res://assets/models/characters/slime_monster.glb" id="2_mesh"]
+
+[node name="SlimeVisual" type="Node3D"]
+script = ExtResource("1_script")
+
+[node name="BobRoot" type="Node3D" parent="."]
+
+[node name="ImportedMeshRoot" parent="BobRoot" instance=ExtResource("2_mesh")]

@@ -98,61 +98,69 @@ public partial class Enemy : StaticBody3D
 
     public void PlayAttackAnimation(Vector3 targetPosition)
     {
-        var sprite = GetVisualSprite();
-        if (sprite == null)
+        var visualRoot = GetVisualRoot();
+        if (visualRoot == null)
             return;
 
-        Vector3 basePosition = GetSpriteBasePosition();
         Vector3 direction = (targetPosition - GlobalPosition).Normalized();
         Vector3 localOffset = ToLocal(GlobalPosition + direction * (IsBoss ? 0.22f : 0.14f));
-        Vector3 lungePosition = basePosition + new Vector3(localOffset.X, 0, localOffset.Z);
+        Vector3 lungePosition = new(localOffset.X, 0, localOffset.Z);
 
-        ResetVisualTween(sprite, basePosition);
+        ResetVisualTween(visualRoot);
         _visualTween = CreateTween();
         _visualTween.SetParallel(true);
-        _visualTween.TweenProperty(sprite, "position", lungePosition, 0.08f)
+        _visualTween.TweenProperty(visualRoot, "position", lungePosition, 0.08f)
             .SetTrans(Tween.TransitionType.Quad)
             .SetEase(Tween.EaseType.Out);
-        _visualTween.TweenProperty(sprite, "scale", new Vector3(IsBoss ? 1.16f : 1.1f, IsBoss ? 1.16f : 1.1f, 1), 0.08f)
+        _visualTween.TweenProperty(visualRoot, "scale", Vector3.One * (IsBoss ? 1.16f : 1.1f), 0.08f)
             .SetTrans(Tween.TransitionType.Quad)
             .SetEase(Tween.EaseType.Out);
         _visualTween.SetParallel(false);
-        _visualTween.TweenProperty(sprite, "position", basePosition, 0.14f)
+        _visualTween.TweenProperty(visualRoot, "position", Vector3.Zero, 0.14f)
             .SetTrans(Tween.TransitionType.Bounce)
             .SetEase(Tween.EaseType.Out);
         _visualTween.SetParallel(true);
-        _visualTween.TweenProperty(sprite, "scale", Vector3.One, 0.14f)
+        _visualTween.TweenProperty(visualRoot, "scale", Vector3.One, 0.14f)
             .SetTrans(Tween.TransitionType.Quad)
             .SetEase(Tween.EaseType.InOut);
     }
 
     public void PlayHitAnimation()
     {
+        var visualRoot = GetVisualRoot();
         var sprite = GetVisualSprite();
-        if (sprite == null)
+        if (visualRoot == null)
             return;
 
-        Vector3 basePosition = GetSpriteBasePosition();
-        ResetVisualTween(sprite, basePosition);
+        ResetVisualTween(visualRoot);
         _visualTween = CreateTween();
         _visualTween.SetParallel(true);
-        _visualTween.TweenProperty(sprite, "modulate", new Color(1.0f, 0.72f, 0.72f), 0.06f)
+        _visualTween.TweenProperty(visualRoot, "position", new Vector3(0, 0, IsBoss ? 0.06f : 0.04f), 0.06f)
             .SetTrans(Tween.TransitionType.Quad)
             .SetEase(Tween.EaseType.Out);
-        _visualTween.TweenProperty(sprite, "scale", new Vector3(1.14f, 0.92f, 1), 0.06f)
+        _visualTween.TweenProperty(visualRoot, "scale", new Vector3(1.14f, 0.92f, 1.14f), 0.06f)
             .SetTrans(Tween.TransitionType.Quad)
             .SetEase(Tween.EaseType.Out);
+        if (sprite != null)
+        {
+            _visualTween.TweenProperty(sprite, "modulate", new Color(1.0f, 0.72f, 0.72f), 0.06f)
+                .SetTrans(Tween.TransitionType.Quad)
+                .SetEase(Tween.EaseType.Out);
+        }
         _visualTween.SetParallel(false);
-        _visualTween.TweenProperty(sprite, "scale", Vector3.One, 0.14f)
+        _visualTween.TweenProperty(visualRoot, "scale", Vector3.One, 0.14f)
             .SetTrans(Tween.TransitionType.Cubic)
             .SetEase(Tween.EaseType.Out);
         _visualTween.SetParallel(true);
-        _visualTween.TweenProperty(sprite, "modulate", Colors.White, 0.14f)
-            .SetTrans(Tween.TransitionType.Quad)
-            .SetEase(Tween.EaseType.InOut);
-        _visualTween.TweenProperty(sprite, "position", basePosition, 0.14f)
+        _visualTween.TweenProperty(visualRoot, "position", Vector3.Zero, 0.14f)
             .SetTrans(Tween.TransitionType.Quad)
             .SetEase(Tween.EaseType.Out);
+        if (sprite != null)
+        {
+            _visualTween.TweenProperty(sprite, "modulate", Colors.White, 0.14f)
+                .SetTrans(Tween.TransitionType.Quad)
+                .SetEase(Tween.EaseType.InOut);
+        }
     }
 
     public void SetMonsterEffects(MonsterEffectAssignmentPlan plan)
@@ -493,27 +501,42 @@ public partial class Enemy : StaticBody3D
         };
     }
 
+    private Node3D GetVisualRoot()
+    {
+        return GetNodeOrNull<Node3D>("VisualRoot");
+    }
+
     private Sprite3D GetVisualSprite()
     {
-        foreach (Node child in GetChildren())
+        return FindSpriteRecursive(GetVisualRoot());
+    }
+
+    private static Sprite3D FindSpriteRecursive(Node node)
+    {
+        if (node == null)
+            return null;
+
+        if (node is Sprite3D sprite)
+            return sprite;
+
+        foreach (Node child in node.GetChildren())
         {
-            if (child is Sprite3D sprite)
-                return sprite;
+            var found = FindSpriteRecursive(child);
+            if (found != null)
+                return found;
         }
 
         return null;
     }
 
-    private Vector3 GetSpriteBasePosition()
-    {
-        return new Vector3(0, IsBoss ? 0.35f : 0.25f, 0);
-    }
-
-    private void ResetVisualTween(Sprite3D sprite, Vector3 basePosition)
+    private void ResetVisualTween(Node3D visualRoot)
     {
         _visualTween?.Kill();
-        sprite.Position = basePosition;
-        sprite.Scale = Vector3.One;
-        sprite.Modulate = Colors.White;
+        visualRoot.Position = Vector3.Zero;
+        visualRoot.Scale = Vector3.One;
+
+        var sprite = GetVisualSprite();
+        if (sprite != null)
+            sprite.Modulate = Colors.White;
     }
 }
