@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Godot;
 
@@ -33,7 +34,7 @@ public partial class GameHudUpdater : Node
 
     private Label _buildModeLabel;
     private bool _buildModeActive;
-    private BuildableStructure _buildModeSelectedTemplate;
+    private Func<bool> _isActiveBridgeBuilt = () => false;
 
     public string StatusText
     {
@@ -60,7 +61,8 @@ public partial class GameHudUpdater : Node
         Button attackButton,
         Button abilityButton,
         GameHudBuilder.EnemyHpDisplay enemyHp,
-        HBoxContainer itemBarHBox)
+        HBoxContainer itemBarHBox,
+        Func<bool> isActiveBridgeBuilt)
     {
         _player = player;
         _turnManager = turnManager;
@@ -81,6 +83,7 @@ public partial class GameHudUpdater : Node
         _enemyEffectInfoLabel = enemyHp.EffectInfoLabel;
         _enemyHpDisplay = enemyHp.Container;
         _itemBarHBox = itemBarHBox;
+        _isActiveBridgeBuilt = isActiveBridgeBuilt ?? (() => false);
     }
 
     public void UpdateAll(DarkEnergy darkEnergy)
@@ -108,7 +111,6 @@ public partial class GameHudUpdater : Node
     public void SetBuildModeActive(bool active, BuildableStructure selected)
     {
         _buildModeActive = active;
-        _buildModeSelectedTemplate = selected;
 
         if (_buildModeLabel == null)
         {
@@ -143,23 +145,12 @@ public partial class GameHudUpdater : Node
     {
         var s = _player.Stats;
         _hpLabel.Text = $"HP: {s.CurrentHp} / {s.MaxHp}";
-        string itemUsesText = _turnManager.IsPlayerTurn
-            ? $"{_actionHandler.RemainingCombatItemUses}/{_actionHandler.CombatItemUsesPerTurn}"
-            : $"{s.ItemUsesPerTurn}/turn";
-        _statsLabel.Text = $"ATK: {s.AttackDamage}  |  SPD: {s.MoveSpeed:0.#}  |  Range: {s.AttackRange:0.#}  |  Items: {itemUsesText}";
-        if (_buildModeActive)
-        {
-            int spendable = darkEnergy.Spendable(false);
-            _darkEnergyLabel.Text = $"Dark Energy: {darkEnergy.Current}/{darkEnergy.Threshold}  (+{spendable} spendable)";
-        }
-        else
-        {
-            _darkEnergyLabel.Text = $"Dark Energy: {darkEnergy.Current}/{darkEnergy.Threshold}";
-        }
-        // what to do with ^^ and below
         string inventoryText = $"{s.Inventory.OccupiedSlotCount}/{s.Inventory.Capacity}";
         _statsLabel.Text = $"ATK: {s.AttackDamage}  |  SPD: {s.MoveSpeed:0.#}  |  Range: {s.AttackRange:0.##}  |  Bag: {inventoryText}";
-        _darkEnergyLabel.Text = $"Dark Energy: {darkEnergy.Current}/{darkEnergy.Threshold}";
+        int spendable = darkEnergy.Spendable(_isActiveBridgeBuilt());
+        _darkEnergyLabel.Text = _buildModeActive
+            ? $"Dark Energy: {darkEnergy.Current}/{darkEnergy.Threshold}  (+{spendable} spendable)"
+            : $"Dark Energy: {darkEnergy.Current}/{darkEnergy.Threshold}";
         _darkEnergyBar.Value = darkEnergy.FillPercent;
     }
 

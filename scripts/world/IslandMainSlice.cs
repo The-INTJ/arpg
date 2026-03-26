@@ -30,6 +30,9 @@ public partial class IslandMainSlice : Node3D
         if (ApplyFallbackTerrainMaterial)
             ApplyFallbackMaterialRecursive(visualRoot);
 
+        // Generated faces are already expressed in TerrainBody local space.
+        // Keep the collision node itself untransformed so the collider matches the mesh exactly.
+        collision.Transform = Transform3D.Identity;
         collision.Shape = BuildCollisionShape(visualRoot);
     }
 

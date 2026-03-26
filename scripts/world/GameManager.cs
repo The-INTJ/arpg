@@ -72,15 +72,9 @@ public partial class GameManager : Node3D, IDeveloperEffectProvider
         _aggroSystem = new AggroSystem();
         AddChild(_aggroSystem);
         _aggroSystem.Init(_player);
-        // this work here?
-        _aggroSystem.AggroTriggered += enemy =>
-        {
-            _buildMode?.ForceExit();
-            _hudUpdater.StatusText = "Combat!";
-            _combatManager.EnterCombat(enemy);
-        };
         _aggroSystem.AggroSpotted += (enemy, message) =>
         {
+            _buildMode?.ForceExit();
             _hudUpdater.StatusText = message;
         };
 
@@ -122,7 +116,7 @@ public partial class GameManager : Node3D, IDeveloperEffectProvider
         AddChild(_hudUpdater);
         _hudUpdater.Init(_player, _turnManager, _combatManager, _aggroSystem, _actionHandler, camera, canvas,
             hpLabel, statsLabel, darkEnergyLabel, darkEnergyBar, statusLabel, attackButton, abilityButton,
-            enemyHp, itemBarHBox);
+            enemyHp, itemBarHBox, () => _zoneBridges?[_activeZoneRoom]?.IsBuilt ?? false);
 
         _playerStructuresRoot = EnsureWorldChild("PlayerStructures");
 
