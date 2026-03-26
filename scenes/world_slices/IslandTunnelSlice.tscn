@@ -6,6 +6,9 @@
 [node name="IslandTunnelSlice" type="Node3D"]
 script = ExtResource("1_slice")
 AlignVisualTopToGround = true
+ForceTerrainMaterialOverride = true
+UseDoubleSidedTerrainMaterial = true
+EnableTunnelInteriorGlow = true
 
 [node name="TerrainBody" type="StaticBody3D" parent="."]
 

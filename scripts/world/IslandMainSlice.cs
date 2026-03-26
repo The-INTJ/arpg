@@ -14,6 +14,15 @@ public partial class IslandMainSlice : Node3D
     [Export]
     public bool AlignVisualTopToGround { get; set; }
 
+    [Export]
+    public bool ForceTerrainMaterialOverride { get; set; }
+
+    [Export]
+    public bool UseDoubleSidedTerrainMaterial { get; set; }
+
+    [Export]
+    public bool EnableTunnelInteriorGlow { get; set; }
+
     public override void _Ready()
     {
         RefreshTerrain();
@@ -34,7 +43,10 @@ public partial class IslandMainSlice : Node3D
             AlignVisualRootToGround(visualRoot);
 
         if (ApplyFallbackTerrainMaterial)
-            ApplyFallbackMaterialRecursive(visualRoot);
+            ApplyFallbackMaterialRecursive(visualRoot, forceOverride: ForceTerrainMaterialOverride);
+
+        if (EnableTunnelInteriorGlow)
+            RefreshTunnelInteriorGlow(visualRoot);
 
         // Generated faces are already expressed in TerrainBody local space.
         // Keep the collision node itself untransformed so the collider matches the mesh exactly.
@@ -59,6 +71,7 @@ public partial class IslandMainSlice : Node3D
 
         var shape = new ConcavePolygonShape3D();
         shape.Data = faces.ToArray();
+        shape.BackfaceCollision = true;
         return shape;
     }
 
@@ -154,13 +167,50 @@ public partial class IslandMainSlice : Node3D
         faces.Add(transform * c);
     }
 
-    private static void ApplyFallbackMaterialRecursive(Node node)
+    private void ApplyFallbackMaterialRecursive(Node node, bool forceOverride)
     {
-        if (node is MeshInstance3D meshInstance && meshInstance.Mesh != null && !HasMaterial(meshInstance))
+        if (node is MeshInstance3D meshInstance && meshInstance.Mesh != null && (forceOverride || !HasMaterial(meshInstance)))
             meshInstance.MaterialOverride = GetFallbackTerrainMaterial();
 
         foreach (Node child in node.GetChildren())
-            ApplyFallbackMaterialRecursive(child);
+            ApplyFallbackMaterialRecursive(child, forceOverride);
+    }
+
+    private void RefreshTunnelInteriorGlow(Node3D visualRoot)
+    {
+        bool foundTunnelMesh = false;
+        var tunnelBounds = default(Aabb);
+
+        foreach (MeshInstance3D meshInstance in EnumerateMeshInstances(visualRoot))
+        {
+            if (!IsTunnelInteriorMesh(meshInstance))
+                continue;
+
+            meshInstance.MaterialOverlay = WorldMaterials.GetTunnelGlowOverlayMaterial();
+
+            if (!TryGetMeshBoundsRelativeTo(visualRoot, meshInstance, out var meshBounds))
+                continue;
+
+            if (!foundTunnelMesh)
+            {
+                tunnelBounds = meshBounds;
+                foundTunnelMesh = true;
+                continue;
+            }
+
+            tunnelBounds = tunnelBounds.Merge(meshBounds);
+        }
+
+        var glowLight = visualRoot.GetNodeOrNull<OmniLight3D>("TunnelGlowLight");
+        if (!foundTunnelMesh)
+        {
+            glowLight?.QueueFree();
+            return;
+        }
+
+        glowLight ??= CreateTunnelGlowLight(visualRoot);
+        glowLight.Position = tunnelBounds.GetCenter();
+        glowLight.OmniRange = Mathf.Max(8.0f, Mathf.Max(tunnelBounds.Size.X, Mathf.Max(tunnelBounds.Size.Y, tunnelBounds.Size.Z)) * 0.35f);
     }
 
     private static bool HasMaterial(MeshInstance3D meshInstance)
@@ -180,8 +230,71 @@ public partial class IslandMainSlice : Node3D
         return false;
     }
 
-    private static StandardMaterial3D GetFallbackTerrainMaterial()
+    private StandardMaterial3D GetFallbackTerrainMaterial()
     {
+        if (UseDoubleSidedTerrainMaterial)
+            return WorldMaterials.GetDoubleSidedPrimaryGroundMaterial();
+
         return _fallbackTerrainMaterial ??= WorldMaterials.CreatePrimaryGroundMaterial();
+    }
+
+    private static OmniLight3D CreateTunnelGlowLight(Node3D visualRoot)
+    {
+        var light = new OmniLight3D();
+        light.Name = "TunnelGlowLight";
+        light.LightColor = Palette.DarkEnergyGlow.Lightened(0.15f);
+        light.LightEnergy = 1.8f;
+        light.ShadowEnabled = false;
+        visualRoot.AddChild(light);
+        return light;
+    }
+
+    private static bool IsTunnelInteriorMesh(MeshInstance3D meshInstance)
+    {
+        return meshInstance.Name.ToString().Contains("Cylinder");
+    }
+
+    private static IEnumerable<MeshInstance3D> EnumerateMeshInstances(Node node)
+    {
+        if (node is MeshInstance3D meshInstance)
+            yield return meshInstance;
+
+        foreach (Node child in node.GetChildren())
+        {
+            foreach (MeshInstance3D nested in EnumerateMeshInstances(child))
+                yield return nested;
+        }
+    }
+
+    private static bool TryGetMeshBoundsRelativeTo(Node3D relativeTo, MeshInstance3D meshInstance, out Aabb bounds)
+    {
+        if (meshInstance.Mesh == null)
+        {
+            bounds = default;
+            return false;
+        }
+
+        var localBounds = meshInstance.Mesh.GetAabb();
+        bool found = false;
+        Vector3 min = Vector3.Zero;
+        Vector3 max = Vector3.Zero;
+
+        foreach (Vector3 corner in EnumerateAabbCorners(localBounds))
+        {
+            Vector3 relativeCorner = relativeTo.ToLocal(meshInstance.ToGlobal(corner));
+            if (!found)
+            {
+                min = relativeCorner;
+                max = relativeCorner;
+                found = true;
+                continue;
+            }
+
+            min = min.Min(relativeCorner);
+            max = max.Max(relativeCorner);
+        }
+
+        bounds = new Aabb(min, max - min);
+        return found;
     }
 }

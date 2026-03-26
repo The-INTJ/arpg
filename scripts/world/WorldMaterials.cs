@@ -5,6 +5,7 @@ namespace ARPG;
 public static partial class WorldMaterials
 {
     private static StandardMaterial3D _groundMaterial;
+    private static StandardMaterial3D _doubleSidedGroundMaterial;
     private static StandardMaterial3D _midGroundMaterial;
     private static StandardMaterial3D _highGroundMaterial;
     private static StandardMaterial3D _caveGroundMaterial;
@@ -14,6 +15,7 @@ public static partial class WorldMaterials
     private static StandardMaterial3D _caveRoofMaterial;
     private static StandardMaterial3D _chestWoodMaterial;
     private static StandardMaterial3D _chestMetalMaterial;
+    private static StandardMaterial3D _tunnelGlowOverlayMaterial;
 
     public static StandardMaterial3D GetSurfaceMaterial(WorldSurfaceKind surfaceKind)
     {
@@ -105,6 +107,36 @@ public static partial class WorldMaterials
         }
 
         return GetSurfaceMaterial(WorldSurfaceKind.Ground);
+    }
+
+    public static StandardMaterial3D GetDoubleSidedPrimaryGroundMaterial()
+    {
+        if (_doubleSidedGroundMaterial != null)
+            return _doubleSidedGroundMaterial;
+
+        _doubleSidedGroundMaterial = (StandardMaterial3D)CreatePrimaryGroundMaterial().Duplicate();
+        _doubleSidedGroundMaterial.CullMode = BaseMaterial3D.CullModeEnum.Disabled;
+        return _doubleSidedGroundMaterial;
+    }
+
+    public static StandardMaterial3D GetTunnelGlowOverlayMaterial()
+    {
+        if (_tunnelGlowOverlayMaterial != null)
+            return _tunnelGlowOverlayMaterial;
+
+        _tunnelGlowOverlayMaterial = new StandardMaterial3D
+        {
+            AlbedoColor = new Color(Palette.DarkEnergyGlow, 0.16f),
+            Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+            CullMode = BaseMaterial3D.CullModeEnum.Disabled,
+            Roughness = 0.2f,
+            ShadingMode = BaseMaterial3D.ShadingModeEnum.PerPixel,
+            EmissionEnabled = true,
+            Emission = Palette.DarkEnergyGlow,
+            EmissionEnergyMultiplier = 1.1f,
+        };
+
+        return _tunnelGlowOverlayMaterial;
     }
 
     private static StandardMaterial3D CreateStoneMaterial(Color baseColor)
