@@ -13,6 +13,8 @@ public static class GameKeys
 	public const string Sprint = "sprint";
 	public const string Jump = "jump";
 	public const string Pause = "pause";
+	public const string BuildMode = "build_mode";
+	public const string RotateBuild = "rotate_build";
 	public const string DevAscend = "dev_ascend";
 	public const string DevDescend = "dev_descend";
 	private static readonly string[] KeyboardItemSlotActions =

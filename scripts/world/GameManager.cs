@@ -29,9 +29,11 @@ public partial class GameManager : Node3D, IDeveloperEffectProvider
     private PlayerActionHandler _actionHandler;
     private ModifyStatsSimple _modifyScreen;
     private PauseScreen _pauseScreen;
+    private BuildModeController _buildMode;
     private Node3D _worldRoot;
     private Node3D _zonesRoot;
     private Node3D _bridgePointsRoot;
+    private Node3D _playerStructuresRoot;
     private Label _roomLabel;
     private Label _ruleLabel;
 
@@ -70,6 +72,13 @@ public partial class GameManager : Node3D, IDeveloperEffectProvider
         _aggroSystem = new AggroSystem();
         AddChild(_aggroSystem);
         _aggroSystem.Init(_player);
+        // this work here?
+        _aggroSystem.AggroTriggered += enemy =>
+        {
+            _buildMode?.ForceExit();
+            _hudUpdater.StatusText = "Combat!";
+            _combatManager.EnterCombat(enemy);
+        };
         _aggroSystem.AggroSpotted += (enemy, message) =>
         {
             _hudUpdater.StatusText = message;
@@ -114,6 +123,31 @@ public partial class GameManager : Node3D, IDeveloperEffectProvider
         _hudUpdater.Init(_player, _turnManager, _combatManager, _aggroSystem, _actionHandler, camera, canvas,
             hpLabel, statsLabel, darkEnergyLabel, darkEnergyBar, statusLabel, attackButton, abilityButton,
             enemyHp, itemBarHBox);
+
+        _playerStructuresRoot = EnsureWorldChild("PlayerStructures");
+
+        _buildMode = new BuildModeController();
+        _buildMode.Name = "BuildModeController";
+        AddChild(_buildMode);
+        _buildMode.Init(
+            _player,
+            camera,
+            () => _zoneBounds != null && _activeZoneRoom > 0 && _activeZoneRoom < _zoneBounds.Length
+                ? _zoneBounds[_activeZoneRoom]
+                : new Aabb(),
+            () => _zoneEnergy?[_activeZoneRoom],
+            () => _zoneBridges?[_activeZoneRoom]?.IsBuilt ?? false,
+            () => _turnManager.IsExploring,
+            _playerStructuresRoot);
+        _buildMode.StructureBuilt += energyCost =>
+        {
+            RefreshBridgeReadiness(_activeZoneRoom);
+            _hudUpdater.StatusText = $"Structure placed! (-{energyCost} energy)";
+        };
+        _buildMode.BuildModeToggled += active =>
+        {
+            _hudUpdater.SetBuildModeActive(active, _buildMode.SelectedTemplate);
+        };
 
         _player.EdgeFall += appliedDamage => _hudUpdater.StatusText = appliedDamage
             ? "Fell into the abyss! -5 HP"

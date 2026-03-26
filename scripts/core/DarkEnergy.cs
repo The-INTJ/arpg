@@ -13,6 +13,12 @@ public class DarkEnergy
 	public float FillPercent => Threshold > 0 ? (float)Current / Threshold : 1f;
 	public int Excess => Current > Threshold ? Current - Threshold : 0;
 
+	/// <summary>
+	/// Energy available for building structures. If the bridge is already built,
+	/// all current energy is spendable; otherwise only excess above the threshold.
+	/// </summary>
+	public int Spendable(bool bridgeBuilt) => bridgeBuilt ? Current : Excess;
+
 	public DarkEnergy(int threshold, int initialEnergy = 0)
 	{
 		Threshold = threshold;
@@ -22,6 +28,18 @@ public class DarkEnergy
 	public void Add(int amount)
 	{
 		Current += amount;
+	}
+
+	/// <summary>
+	/// Attempt to spend energy on a player-built structure. Returns false if insufficient.
+	/// </summary>
+	public bool TrySpend(int amount, bool bridgeBuilt)
+	{
+		if (amount <= 0 || amount > Spendable(bridgeBuilt))
+			return false;
+
+		Current -= amount;
+		return true;
 	}
 
 	public static int EnergyForKill(bool isBoss, bool isElite)
