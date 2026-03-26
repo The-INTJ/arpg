@@ -2,9 +2,11 @@
 
 ## What This Project Is
 
-A tactical roguelike RPG with Baldur's Gate–style turn-based combat and a player-driven modifier system. Built with Godot 4.6 and C# (.NET 8.0). See `GAME_IDEA.md` for the full vision.
+A real-time, exploration-first action RPG / roguelite set on a shattered planet of fractured floating islands. Built with Godot 4.6 and C# (.NET 8.0). See `GAME_IDEA.md` for the full vision and `docs/ai/direction.md` for the authoritative direction document.
 
-The MVP game loop is complete (menu → explore → fight → win). We are now building real systems on top of that foundation.
+The player traverses a fractured vertical world, discovering routes, navigating dangerous enemies, collecting modifiers that physically change how they interact with space, and restoring the planet piece by piece through a hub-based meta-progression loop.
+
+**The prototype was built around turn-based combat. That direction is now deprecated.** All new work should assume real-time combat and exploration-first design. See `docs/ai/current-state-assessment.md` for what existing code is reusable vs dead ends.
 
 ## Development Philosophy
 
@@ -16,11 +18,53 @@ The MVP game loop is complete (menu → explore → fight → win). We are now b
 - Avoid premature abstraction, but don't avoid *appropriate* abstraction. If three scripts are doing the same thing, that's a sign to extract — not a sign to keep copying
 - Keep scripts focused. If one grows past ~150 lines, consider whether it's doing too many jobs
 
+## Direction Litmus Test
+
+For every proposed system, ask: **Does this make the player more excited to move through the world, discover routes, and feel their build physically changing how they interact with space?**
+
+If not, it is probably secondary, mis-scoped, or the wrong direction.
+
+## Design Pillars (Priority Order)
+
+1. **Traversal & spatial curiosity** — Movement should feel good. The world presents visible possibilities.
+2. **Real-time combat that supports movement** — Combat punctuates exploration, not replaces it. No mode swap. No movement lock.
+3. **Build experimentation through modifiers** — Any modifier can affect any ability. Players feel changes physically.
+4. **World restoration & hub expansion** — Returning fragments heals the planet. Hub grows with NPCs and services.
+5. **Optional narrative depth** — Story enriches without slowing the core loop.
+
+## Key Architectural Rules
+
+### Combat Is Real-Time
+
+- No turn-based sequencing. No movement locking during combat. No mode swap between exploration and combat.
+- Hitbox/hurtbox model with animation-driven timing (wind-up, active frames, recovery).
+- Combat happens in the same traversal space as exploration.
+- Enemies use AI state machines (idle → patrol → alert → chase → attack → stagger → leash).
+
+### Exploration Is Primary Progression
+
+- Energy nodes and world pickups are the main progression fuel, not enemy drops.
+- Enemies are sparse, dangerous, and consequential — not constant filler.
+- The player should often choose whether to engage or avoid enemies.
+- Reward exploration with energy, secrets, NPC discoveries, and fragments.
+
+### Hub and Excursion Are Separate
+
+- Excursions: movement, exploration, combat, fragment pursuit.
+- Hub: story, NPC interaction, upgrades, world restoration, slower pacing.
+- Persistent state (hub level, NPCs, fragments) survives death. Transient state (HP, energy, loadout) resets.
+
+### Continuous Simulation, Not Mode Switching
+
+- The old architecture had hard exploration → combat mode switches. Remove this pattern.
+- The player controller should always have movement. Combat layers on top of exploration.
+- AggroSystem should trigger enemy pursuit, not a game-state mode change.
+
 ## Multiplayer Awareness
 
 Multiplayer is a core consideration from day one. This doesn't mean every feature ships multiplayer immediately, but:
 
-- Data structures should assume multiple players exist (e.g., turn order as a list, not a single player reference)
+- Data structures should assume multiple players exist
 - Combat flow should not hardcode "the player" as a singleton concept
 - Nothing should be designed in a way that makes multiplayer painful to retrofit
 
@@ -45,12 +89,18 @@ Multiplayer is a core consideration from day one. This doesn't mean every featur
 ## Shared Systems
 
 - **Palette** (`scripts/core/Palette.cs`): All colors and UI button styling. Vibrant earth-tone palette. Every material/color in the game should reference Palette — don't hardcode color values elsewhere.
-- **GameKeys** (`scripts/core/GameKeys.cs`): Key binding display names. Actions defined in `project.godot` InputMap; `GameKeys.DisplayName(action)` reads the actual bound key at runtime. Change a key binding in one place (`project.godot`) and the UI updates everywhere.
-- **GameState** (`scripts/core/GameState.cs`): Static state passed between scenes (e.g., selected archetype).
+- **GameKeys** (`scripts/core/GameKeys.cs`): Key binding display names. Actions defined in `project.godot` InputMap; `GameKeys.DisplayName(action)` reads the actual bound key at runtime.
+- **GameState** (`scripts/core/GameState.cs`): Static state passed between scenes. Will evolve into RunState with persistent/transient separation.
 - **SpriteFactory** (`scripts/core/SpriteFactory.cs`): Generates procedural pixel-art textures for characters at runtime.
 - **PlayerStats** (`scripts/player/PlayerStats.cs`): Base stats + modifier stack. Effective stats computed on the fly. Archetype sets base values; modifiers layer with `+N → +N% → ×M → −N%` ordering.
-- **CombatManager** (`scripts/combat/CombatManager.cs`): Handles combat flow — zoom in/out, attack/ability/retaliate exchange, damage numbers, camera shake.
 - **ModifierGenerator** (`scripts/modifiers/ModifierGenerator.cs`): Random modifier creation for loot drops.
+
+## Deprecated Systems (Turn-Based)
+
+These systems exist in the codebase but reflect the old turn-based direction. They should not be extended. See `docs/ai/current-state-assessment.md` for what's reusable from each.
+
+- **CombatManager** (`scripts/combat/CombatManager.cs`): Turn-based combat orchestration. Camera shake and damage numbers are reusable; turn alternation is not.
+- **TurnManager** (`scripts/core/TurnManager.cs`): Turn-based state machine. The phase-tracking concept may be lightly reusable; the turn-specific states are dead ends.
 
 ## File Layout
 
@@ -64,6 +114,7 @@ scripts/
   monster_effects/         — Enemy effect system (definitions, generator, instances, tags, roll contexts)
   world/                   — Game scene controller, map generation, pickups, camera, room profiles
   ui/                      — All screen-level UI scripts (menus, overlays, history)
+  dev/                     — Developer tools, god mode
 plans/                     — development roadmap docs
 docs/ai/                   — architecture and design documentation
 ```

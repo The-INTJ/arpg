@@ -1,178 +1,141 @@
 # Abstraction Watchlist
 
-This file tracks the places where today's simple implementation is most likely to break down as the repo scales.
+> **Direction change:** Priorities have been reordered for the real-time exploration-first direction. See `direction.md` and `architecture-plan.md`.
 
-## Priority 1 Hotspots
+This file tracks the places where today's implementation is most likely to break down as the repo transitions to the new direction.
 
-### `scripts/GameManager.cs`
+## Priority 1: Direction-Critical Changes
 
-Current problem:
+### `scripts/combat/CombatManager.cs` **(DEPRECATED)**
 
-- owns too many responsibilities
-- is the main multi-agent merge-conflict magnet
-- mixes world setup, HUD, aggro, combat entry, room progression, pause integration, and loot callbacks
+Current state:
+- Turn-based combat orchestrator: movement lock, turn alternation, single-target damage exchange
+- This is the single largest architectural dead end in the codebase
+
+What to do:
+- Do NOT extend this system
+- Salvage: camera shake, damage number spawning, combat entry/exit camera behavior (for bosses)
+- Replace with: real-time `CombatSystem` using hitbox/hurtbox model (see `architecture-plan.md`)
+
+### `scripts/core/TurnManager.cs` **(DEPRECATED)**
+
+Current state:
+- State machine with turn-based states (Exploring, PlayerTurn, EnemyTurn, Busy, Victory, Defeat)
+
+What to do:
+- Do NOT extend
+- The concept of a game-phase tracker may be lightly reusable, but the turn-specific states are dead ends
+- May be removed entirely if combat is seamless with exploration
+
+### `scripts/combat/Enemy.cs` — Needs Real-Time AI
+
+Current state:
+- Data bag with turn-based damage resolution methods
+- No behavior or movement of its own
+
+What to do:
+- Preserve: HP/stats model, elite/boss flags, visual root pattern, effect badges
+- Replace: `ResolveIncomingDamage` exchange model with hitbox-based damage
+- Add: AI state machine (idle → patrol → alert → chase → attack → stagger → leash)
+- Add: Navigation/pathfinding for real-time chase behavior
+
+### `scripts/world/AggroSystem.cs` — Needs Behavior Change
+
+Current state:
+- Triggers a mode swap from exploration to turn-based combat
+
+What to do:
+- Preserve: sight range checking, LOS validation, delay-before-engagement
+- Change: aggro should trigger enemy pursuit/attack behavior, NOT a game-state mode change
+
+## Priority 2: Structural Splits Needed
+
+### `scripts/world/GameManager.cs`
+
+Current problem (unchanged from before, now more urgent):
+- Owns too many responsibilities: world setup, HUD, aggro, combat entry, room progression, pause, loot
+- Is the main multi-agent merge-conflict magnet
+- Contains turn-based assumptions throughout
 
 Likely future split:
+- `ExcursionManager` — thin composition root for an excursion scene
+- `WorldBuilder` — island/chunk generation and assembly
+- `EnemyManager` — enemy spawning and lifecycle
+- `ExcursionHud` — HUD presentation
+- `PickupSystem` — loot and reward spawning/collection
 
-- `RunFlowController` or `RoomFlowController`
-- `GameHudController`
-- `AggroSystem`
-- `EncounterSpawner`
-- a thin gameplay composition root that wires them together
-
-### `scripts/CombatManager.cs`
-
-Current problem:
-
-- assumes one player and one enemy target
-- assumes no movement during combat
-- current action surface is still hand-authored: attack, weapon ability, and a tiny item-action path
-
-Likely future split:
-
-- combat state model
-- action resolution pipeline
-- turn order / initiative system
-- target selection system
-- combat presentation layer for camera and VFX
-
-### `scripts/GameState.cs`
+### `scripts/core/GameState.cs`
 
 Current problem:
-
-- static global state is convenient, but will become brittle for richer run state, saves, multiplayer, or meta-progression
+- Static global state with linear room progression tracking
+- Will need hub/excursion state, world restoration state, NPC discovery flags
 
 Likely future split:
+- `RunState` with explicit persistent vs transient data
+- Hub progression state
+- Save/load layer (later)
 
-- explicit run/session model
-- save/load layer
-- clearer ownership of transient versus persistent state
+### `scripts/player/PlayerStats.cs`
 
-## Priority 2 Drift Risks
+Current problem:
+- Owns stat math AND inventory state
+- Will grow further as abilities get real-time cooldowns and new modifier targets are added
+
+Likely future split:
+- `PlayerBuild` or `Loadout`
+- `Inventory` (separate from stat math)
+- Stat calculation service
+
+## Priority 3: Systems To Extend
+
+### Modifier Pipeline
+
+Current state: Sound math, correct operator ordering, flexible/fixed targets.
+
+Needed extensions:
+- New stat targets: movement speed, dash distance, hitbox size, attack speed, cooldown reduction, traversal properties
+- Real-time cooldown tracking (seconds, not turns)
+- Ability definitions as data with modifiable properties
+
+### Scene Slice System
+
+Current state: Working slice architecture with anchors.
+
+Needed extensions:
+- Island chunk scenes (larger than current room slices)
+- Connection point anchors (where chunks link to other chunks)
+- Traversal anchors (where players can reach from/to)
+- Reward anchors (energy nodes, chests, secrets)
+
+### Monster Effect System
+
+Current state: Composable effect hooks with tiers and badges.
+
+Needed extensions:
+- Replace turn-based hooks (`OwnerTurnStarted`, `OwnerTurnEnded`) with real-time equivalents
+- New hooks: `OnHit`, `OnDamaged`, `PeriodicTick`, `AuraPulse`, `OnDeath`
+- Possibly extend to player buffs/debuffs (same pattern, different direction)
+
+## Priority 4: Drift Risks (Unchanged)
 
 ### Scene Versus Code Ownership
-
-Current problem:
-
-- some reusable nodes exist as scene files, but runtime creation happens directly in code
-- this makes it unclear whether the canonical source is the `.tscn` file or the C# constructor logic
-
-Examples:
-
-- reusable pickups are already scene-backed
-- reusable world geometry is only starting to move toward scene ownership through scene slices
-- `scenes/PauseScreen.tscn` exists, but `Game.tscn` embeds a node with the script directly
-
-Recommended rule:
-
-- pick one canonical ownership model per reusable thing
-- if a scene exists for reuse, prefer instancing the scene
-- if code-only construction is the intent, keep the scene out of the critical path and document that choice
+- Pick one canonical ownership model per reusable thing
+- Default to `.tscn` scenes for reuse; code creation only when runtime generation is clearly better
 
 ### Styling Drift
-
-Current problem:
-
-- `Palette` is supposed to centralize colors, but runtime scripts and scene resources still introduce direct color values
-
-Recommended rule:
-
-- route all stable world and UI colors through `Palette`
-- only allow local one-off colors when the value is truly ephemeral presentation logic
+- Route all stable colors through `Palette`
 
 ### Input Drift
-
-Current problem:
-
-- `GameKeys` centralizes action names for some inputs, but movement still uses raw strings
-
-Recommended rule:
-
-- use `GameKeys` for all action names that appear in gameplay code or UI text
-
-## Priority 3 Domain Boundaries To Strengthen
-
-### Player Build And Inventory
-
-Current problem:
-
-- `PlayerStats` already owns stat math, current HP, weapon slots, backpack modifiers, and the current item inventory
-- the current item MVP is consumable-based, but the intended direction is permanent items with cooldown skills
-- future items, equipment, temporary buffs, and multiplayer loadouts can easily turn it into a second god object
-
-Likely future split:
-
-- `PlayerBuild` or `Loadout`
-- `Inventory`
-- `ItemInstance` or cooldown-bearing item state
-- temporary combat effects or status layer
-- stat calculation service or aggregator
-
-### Enemy Definitions
-
-Current problem:
-
-- enemy stats and presentation are composed ad hoc in `GameManager` and `Enemy`
-- boss logic is a one-off mutation path, not a reusable enemy definition model
-
-Likely future split:
-
-- enemy definition/data object
-- enemy factory or scene variants
-- behavior-specific scripts
-
-### Room Generation
-
-Current problem:
-
-- `MapGenerator` handles wall placement and spawn-set selection, while `GameManager` decides encounter counts and boss designation
-- room geometry was previously almost entirely hand-built in code, which made visual iteration slower than it needs to be
-
-Current progress:
-
-- reusable world scene slices are now a live seam
-- the cave pocket, repeated single-ramp rises, and tree variants are all slice-backed now
-
-Likely future split:
-
-- room layout generation
-- room layout scenes composed from reusable slices
-- encounter generation
-- progression-based difficulty rules
-
-Best next targets:
-
-- full ridge and mesa layout scenes
-- twin-ramp hub feature groups
-- rock dressing clusters
-- distant chunk variants
+- Use `GameKeys` for all action names in gameplay code and UI text
 
 ## Multi-Agent Collision Areas
 
 If several contributors are working at once, these files will collide first:
 
-- `scripts/GameManager.cs`
-- `scripts/PlayerStats.cs`
-- `scripts/GameState.cs`
-- `scripts/CombatManager.cs`
+- `scripts/world/GameManager.cs`
+- `scripts/player/PlayerStats.cs`
+- `scripts/core/GameState.cs`
+- `scripts/combat/CombatManager.cs` (until replaced)
 - `scenes/Game.tscn`
 
-Try to land new work by creating or extending smaller owned units around those files instead of stacking more unrelated logic into them.
-
-## Concrete Risks Already Visible
-
-- `scripts/GameManager.cs` is far past the repo's preferred script size guideline.
-- item behavior is still a kind-switch in `scripts/GameManager.cs`, which is acceptable for now but will not scale to many item skills.
-- `scripts/PlayerStats.cs` now owns both modifier math and inventory state, which increases cross-system merge pressure.
-- current combat and state flow are not yet multiplayer-shaped even though the project wants multiplayer-aware foundations.
-
-## Suggested Documentation Growth
-
-As the project expands, this folder should eventually gain:
-
-- `combat.md`
-- `rooms-and-progression.md`
-- `ui-ownership.md`
-- `multiplayer-readiness.md`
-
-`inventory-and-items.md` exists now because the subsystem crossed that threshold. Keep it updated as item intent and implementation evolve.
+Land new work by creating smaller owned units around these files instead of stacking into them.

@@ -1,5 +1,7 @@
 # Existing Patterns
 
+> **Direction change:** The project is redirecting to real-time exploration-first design. Patterns below still apply unless noted. New patterns for the real-time direction are listed at the end.
+
 ## Stable Patterns To Preserve
 
 ### Godot-First Composition
@@ -64,7 +66,7 @@ Menu and victory scenes are straightforward:
 
 `GameOverScreen` follows the same pattern. This is a healthy pattern and easy for agents to extend safely.
 
-### Central Orchestrator In Gameplay
+### Central Orchestrator In Gameplay **(needs splitting)**
 
 `GameManager` currently acts as:
 
@@ -76,7 +78,7 @@ Menu and victory scenes are straightforward:
 - loot flow coordinator
 - room progression tracker
 
-This is the repo's clearest current pattern and also its biggest scaling risk.
+This is the repo's clearest current pattern and also its biggest scaling risk. Under the new direction, this should split into smaller owned systems (see `architecture-plan.md`).
 
 ### Consumable MVP For A Permanent Item Goal
 
@@ -154,3 +156,38 @@ Good future seams include:
 - Runtime-created nodes should be discoverable from one obvious composition root.
 - Avoid hidden coupling through string node paths spread across many files.
 - If you change a canonical shared utility, search its callers before editing behavior.
+
+## New Direction Patterns
+
+These patterns apply under the real-time exploration-first direction. See `direction.md`.
+
+### Combat Is Continuous, Not Modal
+
+- Do not create mode-swap logic between exploration and combat
+- The player controller should always have movement enabled
+- Enemy aggro triggers behavior changes in the enemy, not game-state changes
+- Hitbox/hurtbox overlap detection drives damage, not turn resolution methods
+
+### Exploration Drives Reward
+
+- Place reward sources (energy nodes, chests, secrets) through exploration space
+- Enemy drops should be supplemental, not dominant
+- World pickups should be the primary progression fuel
+
+### Hub and Excursion Are Distinct Scenes
+
+- Hub is a separate scene with its own manager, NPC registry, and restoration state
+- Excursion scenes own combat, traversal, and reward systems
+- RunState bridges persistent and transient data between them
+
+### Prefer AI State Machines For Enemies
+
+- Enemies should have behavior states (idle, patrol, alert, chase, attack, stagger, leash)
+- Enemies should navigate the world, not stand still waiting for combat mode
+- Aggro and leash ranges shape encounter design
+
+### Animation-Driven Combat Timing
+
+- Attacks have wind-up frames (can be interrupted), active frames (hitbox on), and recovery frames (vulnerable)
+- This applies to both player and enemies
+- Do not use timer-based delays as a substitute for animation states

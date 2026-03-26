@@ -4,40 +4,54 @@ This folder is the living system map for AI contributors.
 
 `AGENTS.md` is the policy file. It tells agents how to behave.
 
-This folder explains how the game is actually put together today:
+## Direction Change Notice
+
+**The project has redirected from turn-based combat to real-time exploration-first design.** Read `direction.md` before making any architectural or design decisions. Documents written before this redirect may contain references to turn-based systems — those references describe deprecated architecture unless explicitly noted as reusable.
+
+## Document Index
+
+### Direction & Planning (read first for new work)
+
+- `direction.md`: **authoritative game direction** — design pillars, architectural rules, anti-goals, development priorities, and the litmus test for every proposed system
+- `current-state-assessment.md`: codebase audit — what's reusable, what's partially reusable, what's a dead end under the new direction
+- `architecture-plan.md`: target architecture proposal — core systems, ownership boundaries, data flow, and migration path
+- `vertical-slice-plan.md`: MVP plan — milestones, success criteria, what to defer, risk flags
+
+### Current State (describes what exists today)
 
 - `architecture.md`: current scene graph, code boundaries, shared systems, and state ownership
 - `../assets-pipeline.md`: asset creation, import, wrapper-scene ownership, and physics-vs-visual rules
 - `rooms-and-slices.md`: current room-building contract, scene-slice rules, and world-authoring seams
 - `patterns.md`: repo conventions, Godot usage patterns, and current implementation habits
-- `flows.md`: runtime flows from boot through combat, loot, rooms, pause, and victory
+- `flows.md`: runtime flows from boot through combat, loot, rooms, pause, and victory (**describes deprecated turn-based flows**)
 - `inventory-and-items.md`: current item inventory implementation, hotkeys, combat behavior, and intended future direction
-- `blender-mcp.md`: BlenderMCP server usage guide — project `.mcp.json` setup, tools, export workflows, texture baking, and Godot integration rules
-- `abstraction-watchlist.md`: hotspots, drift risks, and the next seams to carve out as the project scales
+- `blender-mcp.md`: BlenderMCP server usage guide
+- `abstraction-watchlist.md`: hotspots, drift risks, and next seams to carve out
 
 ## Read Order For Agents
 
-Read these in this order before making broad or cross-cutting changes:
-
+### For new features or architectural work:
 1. `AGENTS.md`
-2. `docs/ai/architecture.md`
-3. `docs/assets-pipeline.md` if your change touches models, materials, world slices, actor visuals, or collision ownership
-4. `docs/ai/rooms-and-slices.md` if your change touches room building, reusable world geometry, or level-authoring seams
-5. `docs/ai/flows.md`
-6. `docs/ai/inventory-and-items.md` if your change touches item flow, inventory, or hotkeys
-7. `docs/ai/patterns.md`
-8. `docs/ai/abstraction-watchlist.md`
+2. `docs/ai/direction.md`
+3. `docs/ai/current-state-assessment.md`
+4. `docs/ai/architecture-plan.md`
+5. `docs/ai/architecture.md` (current state)
+6. Relevant domain doc for the area you're touching
 
-For small local changes, read `AGENTS.md` plus the doc most related to the area you are touching.
+### For small local changes:
+1. `AGENTS.md`
+2. `docs/ai/direction.md` (just the litmus test and anti-goals)
+3. The doc most related to the area you're touching
 
 ## Source Of Truth
 
 Use this precedence when docs and code disagree:
 
-1. Runtime code and scene references
-2. `AGENTS.md`
-3. This folder
-4. `plans/`
+1. `docs/ai/direction.md` (game direction and design rules)
+2. Runtime code and scene references (current implementation)
+3. `AGENTS.md` (agent behavior policy)
+4. This folder (architecture, flows, patterns)
+5. `plans/` (forward-looking notes)
 
 If you discover drift, update this folder in the same change when practical.
 
@@ -50,6 +64,7 @@ Update this folder whenever a change does one of these:
 - changes the order of a player-facing flow
 - introduces a new abstraction boundary
 - removes or replaces a hotspot listed in `abstraction-watchlist.md`
+- migrates a system from the old turn-based architecture to the new real-time architecture
 
 ## Multi-Agent Working Rules
 
@@ -57,18 +72,16 @@ When multiple humans and AIs are working here, prefer narrow ownership:
 
 - Treat `scripts/GameManager.cs` as a coordination hotspot. Avoid mixing unrelated features in the same change.
 - Treat `scripts/PlayerStats.cs`, `scripts/GameState.cs`, and `scripts/CombatManager.cs` as shared core systems. Read their current callers before editing them.
-- Prefer `.tscn` scene files for UI work. Only create UI controls in code when that is genuinely the best Godot pattern for the job, and document that choice if you do it.
+- Prefer `.tscn` scene files for UI work. Only create UI controls in code when that is genuinely the best Godot pattern for the job.
 - If you add runtime-created nodes in code, document where they are created and who owns them.
 - If you add a reusable system, give it a single obvious home instead of splitting logic across many temporary helpers.
 
 ## Current Stage
 
-The repo is still in vertical-slice mode:
+The repo is in **direction transition**:
 
-- one main gameplay scene
-- simple room progression
-- single-target combat
-- hardcoded numbers
-- increasing investment in persistent player state and modifier systems
-
-That is fine for now. The goal of these docs is to help the project grow without losing clarity.
+- The old turn-based vertical slice is complete but deprecated
+- New direction: real-time exploration-first action RPG
+- Next milestone: movement feel + real-time combat prototype (see `vertical-slice-plan.md`)
+- Existing modifier/stat systems are reusable and should be preserved
+- Turn-based combat code should not be extended, only mined for reusable parts
