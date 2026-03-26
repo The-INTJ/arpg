@@ -41,7 +41,7 @@ public partial class PlayerStats
     public float MoveSpeed => GetEffectiveStatValue(StatTarget.MoveSpeed);
     public float AttackRange => GetEffectiveStatValue(StatTarget.AttackRange);
     public float JumpHeight => GetEffectiveStatValue(StatTarget.JumpHeight);
-    public int JumpCount => (int)GetEffectiveStatValue(StatTarget.JumpCount);
+    public float JumpCount => GetEffectiveStatValue(StatTarget.JumpCount);
     public int DesiredInventorySlotCount => ClampInventorySlots((int)GetEffectiveStatValue(StatTarget.InventorySlots));
     public float RawItemUsesPerTurn => GetEffectiveStatValue(StatTarget.ItemUsesPerTurn);
     public int ItemUsesPerTurn => ClampItemUsesPerTurn((int)RawItemUsesPerTurn);

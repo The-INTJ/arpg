@@ -13,7 +13,7 @@ public static partial class StatTargetInfo
         new StatTargetMetadata(StatTarget.MoveSpeed, "Move Speed", IsDiscrete: false, MinimumValue: 1.0f, DisplayOrder: 30),
         new StatTargetMetadata(StatTarget.AttackRange, "Attack Range", IsDiscrete: false, MinimumValue: 1.0f, DisplayOrder: 40),
         new StatTargetMetadata(StatTarget.JumpHeight, "Jump Height", IsDiscrete: false, MinimumValue: 0.1f, DisplayOrder: 50),
-        new StatTargetMetadata(StatTarget.JumpCount, "Jump Count", IsDiscrete: true, MinimumValue: 1.0f, DisplayOrder: 60, AllowFlexiblePercentAdd: false),
+        new StatTargetMetadata(StatTarget.JumpCount, "Jump Count", IsDiscrete: false, MinimumValue: 1.0f, DisplayOrder: 60),
         new StatTargetMetadata(StatTarget.InventorySlots, "Item Slots", IsDiscrete: true, MinimumValue: 1.0f, DisplayOrder: 70),
         new StatTargetMetadata(StatTarget.ItemUsesPerTurn, "Item Uses", IsDiscrete: true, MinimumValue: 1.0f, DisplayOrder: 80),
     }

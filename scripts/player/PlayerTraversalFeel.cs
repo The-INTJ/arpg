@@ -59,7 +59,6 @@ public static partial class PlayerTraversalFeel
 
     public static float ComputeJumpVelocity(float jumpHeight)
     {
-        float clampedHeight = StatTargetInfo.ClampValue(StatTarget.JumpHeight, jumpHeight);
-        return MathF.Sqrt(2.0f * RisingGravity * clampedHeight);
+        return MathF.Sqrt(2.0f * RisingGravity * MathF.Max(jumpHeight, 0.0f));
     }
 }

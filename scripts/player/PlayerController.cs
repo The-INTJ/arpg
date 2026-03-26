@@ -25,7 +25,7 @@ public partial class PlayerController : CharacterBody3D, IDeveloperEffectProvide
     private float _presentationLean;
     private float _weaponLagTilt;
     private double _godModeElapsed;
-    private int _remainingJumps;
+    private float _remainingJumpBudget;
     private bool _movementLocked;
     private bool _wasGrounded;
     private bool _lastGodModeEnabled;
@@ -151,8 +151,6 @@ public partial class PlayerController : CharacterBody3D, IDeveloperEffectProvide
 
         if (grounded)
             ResetAvailableJumps();
-        else
-            _remainingJumps = Math.Min(_remainingJumps, Stats.JumpCount);
 
         var horizontalVelocity = new Vector3(Velocity.X, 0, Velocity.Z);
         var targetHorizontalVelocity = input * speed * (grounded ? 1.0f : PlayerTraversalFeel.AirControlSpeedFactor);
@@ -449,7 +447,7 @@ public partial class PlayerController : CharacterBody3D, IDeveloperEffectProvide
 
     private void ResetAvailableJumps()
     {
-        _remainingJumps = Math.Max(1, Stats?.JumpCount ?? 1);
+        _remainingJumpBudget = MathF.Max(1.0f, Stats?.JumpCount ?? 1.0f);
     }
 
     private bool TryConsumeBufferedJump(bool grounded)
@@ -458,13 +456,14 @@ public partial class PlayerController : CharacterBody3D, IDeveloperEffectProvide
             return false;
 
         bool canUseGroundJump = grounded || _coyoteTimer > 0.0f;
-        if (!canUseGroundJump && _remainingJumps <= 0)
+        if (!canUseGroundJump && _remainingJumpBudget <= 0.001f)
             return false;
 
-        Velocity = new Vector3(Velocity.X, PlayerTraversalFeel.ComputeJumpVelocity(Stats.JumpHeight), Velocity.Z);
+        float jumpScale = canUseGroundJump ? 1.0f : MathF.Min(_remainingJumpBudget, 1.0f);
+        Velocity = new Vector3(Velocity.X, PlayerTraversalFeel.ComputeJumpVelocity(Stats.JumpHeight * jumpScale), Velocity.Z);
         _jumpBufferTimer = 0.0f;
         _coyoteTimer = 0.0f;
-        _remainingJumps = Math.Max(0, _remainingJumps - 1);
+        _remainingJumpBudget = MathF.Max(0.0f, _remainingJumpBudget - 1.0f);
         return true;
     }
 }
