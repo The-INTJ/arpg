@@ -1,3 +1,5 @@
+using System;
+
 namespace ARPG;
 
 public enum AbilityType
@@ -8,27 +10,31 @@ public enum AbilityType
     Fireball   // Mage: 2.5x damage
 }
 
-public class Ability
+public partial class Ability
 {
     public AbilityType Type { get; }
     public string Name { get; }
-    public int Cooldown { get; }
-    public int TurnsRemaining { get; set; }
+    public float CooldownSeconds { get; }
+    public float CooldownRemainingSeconds { get; private set; }
 
-    public bool IsReady => TurnsRemaining <= 0;
+    public bool IsReady => CooldownRemainingSeconds <= 0.001f;
+    public int TurnsRemaining => (int)Math.Ceiling(CooldownRemainingSeconds);
 
-    private Ability(AbilityType type, string name, int cooldown)
+    private Ability(AbilityType type, string name, float cooldownSeconds)
     {
         Type = type;
         Name = name;
-        Cooldown = cooldown;
+        CooldownSeconds = cooldownSeconds;
     }
 
-    public void Use() => TurnsRemaining = Cooldown;
-
-    public void TickCooldown()
+    public void Use()
     {
-        if (TurnsRemaining > 0) TurnsRemaining--;
+        CooldownRemainingSeconds = CooldownSeconds;
+    }
+
+    public void TickCooldown(float deltaSeconds)
+    {
+        CooldownRemainingSeconds = Math.Max(0.0f, CooldownRemainingSeconds - Math.Max(0.0f, deltaSeconds));
     }
 
     /// <summary>
@@ -45,20 +51,22 @@ public class Ability
 
     public static Ability ForArchetype(Archetype archetype) => archetype switch
     {
-        Archetype.Fighter => new Ability(AbilityType.Cleave, "Cleave", 2),
-        Archetype.Archer => new Ability(AbilityType.Snipe, "Snipe", 3),
-        Archetype.Mage => new Ability(AbilityType.Fireball, "Fireball", 3),
+        Archetype.Fighter => new Ability(AbilityType.Cleave, "Cleave", 1.5f),
+        Archetype.Archer => new Ability(AbilityType.Snipe, "Snipe", 2.4f),
+        Archetype.Mage => new Ability(AbilityType.Fireball, "Fireball", 2.4f),
         _ => null
     };
 
     public static Ability ForWeapon(Weapon weapon)
     {
-        if (weapon == null) return null;
+        if (weapon == null)
+            return null;
+
         return weapon.Ability switch
         {
-            AbilityType.Cleave => new Ability(AbilityType.Cleave, "Cleave", 2),
-            AbilityType.Snipe => new Ability(AbilityType.Snipe, "Snipe", 3),
-            AbilityType.Fireball => new Ability(AbilityType.Fireball, "Fireball", 3),
+            AbilityType.Cleave => new Ability(AbilityType.Cleave, "Cleave", 1.5f),
+            AbilityType.Snipe => new Ability(AbilityType.Snipe, "Snipe", 2.4f),
+            AbilityType.Fireball => new Ability(AbilityType.Fireball, "Fireball", 2.4f),
             _ => null
         };
     }

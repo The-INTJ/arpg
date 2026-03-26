@@ -27,6 +27,7 @@ public partial class PlayerController : CharacterBody3D, IDeveloperEffectProvide
     public int Hp { get => Stats.CurrentHp; set => Stats.CurrentHp = value; }
     public int AttackDamage => Stats.AttackDamage;
     public bool IsGrounded => IsOnFloor();
+    public Vector3 CombatAimDirection => _combatAimDirection;
 
     [Signal]
     public delegate void EdgeFallEventHandler(bool appliedDamage);
@@ -43,6 +44,7 @@ public partial class PlayerController : CharacterBody3D, IDeveloperEffectProvide
     private bool _wasGrounded;
     private bool _lastGodModeEnabled;
     private bool _lastPassThroughEnabled;
+    private Vector3 _combatAimDirection = Vector3.Forward;
     private CameraController _cameraController;
     private CollisionShape3D _playerCollision;
     private DeveloperToolsManager _developerTools;
@@ -214,6 +216,7 @@ public partial class PlayerController : CharacterBody3D, IDeveloperEffectProvide
 
         // Flip sprite based on camera-relative horizontal movement
         var facingVelocity = new Vector3(Velocity.X, 0, Velocity.Z);
+        UpdateCombatAimDirection(input.LengthSquared() > 0.001f ? input : facingVelocity);
         if (facingVelocity.LengthSquared() > 0.01f)
         {
             var cameraRight = new Vector3(Mathf.Cos(yaw), 0, -Mathf.Sin(yaw));
@@ -267,6 +270,9 @@ public partial class PlayerController : CharacterBody3D, IDeveloperEffectProvide
             groundedNow = true;
 
         var facingVelocity = new Vector3(Velocity.X, 0, Velocity.Z);
+        UpdateCombatAimDirection(movementDirection.LengthSquared() > 0.001f
+            ? new Vector3(movementDirection.X, 0, movementDirection.Z)
+            : facingVelocity);
         if (facingVelocity.LengthSquared() > 0.01f)
         {
             var cameraRight = new Vector3(Mathf.Cos(_cameraController.Yaw), 0, -Mathf.Sin(_cameraController.Yaw));
@@ -399,6 +405,24 @@ public partial class PlayerController : CharacterBody3D, IDeveloperEffectProvide
             .SetEase(Tween.EaseType.InOut);
     }
 
+    public void ShowAttackTelegraph(float range, float arcDegrees, bool isHeavy)
+    {
+        var telegraph = new MeleeAttackTelegraph();
+        telegraph.GlobalPosition = GlobalPosition + new Vector3(0, -0.20f, 0);
+        GetTree().CurrentScene.AddChild(telegraph);
+        telegraph.Play(
+            _combatAimDirection,
+            range,
+            arcDegrees,
+            isHeavy ? Palette.ItemArcane : Palette.ItemPower,
+            isHeavy ? 0.18f : 0.14f);
+    }
+
+    public Vector3 GetAttackAimPoint(float distance)
+    {
+        return GlobalPosition + _combatAimDirection * distance;
+    }
+
     public void SetMovementLocked(bool locked)
     {
         _movementLocked = locked;
@@ -481,6 +505,22 @@ public partial class PlayerController : CharacterBody3D, IDeveloperEffectProvide
         _sprite.Modulate = Colors.White;
         _weaponSprite.Scale = Vector3.One;
         _weaponSprite.RotationDegrees = Vector3.Zero;
+    }
+
+    private void UpdateCombatAimDirection(Vector3 preferredDirection)
+    {
+        Vector3 direction = preferredDirection;
+        direction.Y = 0.0f;
+
+        if (direction.LengthSquared() <= 0.001f)
+        {
+            Vector3 fallback = -_cameraController.CameraBasis.Z;
+            fallback.Y = 0.0f;
+            direction = fallback;
+        }
+
+        if (direction.LengthSquared() > 0.001f)
+            _combatAimDirection = direction.Normalized();
     }
 
     private void SyncDeveloperTraversalState()

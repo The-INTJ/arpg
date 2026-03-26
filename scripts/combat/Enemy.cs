@@ -4,13 +4,28 @@ using Godot;
 
 namespace ARPG;
 
-public partial class Enemy : StaticBody3D
+public partial class Enemy : CharacterBody3D
 {
+    private const float DefaultFloorSnapLength = 0.3f;
+    private const float GroundAcceleration = 18.0f;
+    private const float GroundDeceleration = 24.0f;
+    private const float GravityStrength = 18.0f;
+    private const float MaxVerticalDelta = 1.6f;
+    private const float TrackingVerticalDelta = 2.4f;
+
     private readonly List<MonsterEffectInstance> _monsterEffects = new();
     private readonly Dictionary<MonsterEffectInstance, Node3D> _effectBadges = new();
     private readonly Dictionary<MonsterEffectInstance, Color> _effectBadgeColors = new();
     private Node3D _effectBadgeAnchor;
     private Tween _visualTween;
+    private PlayerController _player;
+    private CombatManager _combatManager;
+    private EnemyCombatProfile _combatProfile = EnemyCombatProfile.CreateMeleeMvp();
+    private AttackWindupState _attackWindup = new(
+        EnemyCombatProfile.CreateMeleeMvp().AttackWindupSeconds,
+        EnemyCombatProfile.CreateMeleeMvp().AttackCommitWindowSeconds);
+    private float _attackRecoveryRemaining;
+    private bool _combatStarted;
 
     public int MaxHp = 11;
     public int Hp = 11;
@@ -26,12 +41,112 @@ public partial class Enemy : StaticBody3D
 
     public float HpPercent => MaxHp > 0 ? (float)Hp / MaxHp : 0f;
     public bool IsDead => Hp <= 0;
+    public float AttackRange => _combatProfile.AttackRange;
+    public float AttackIntervalSeconds => _combatProfile.AttackIntervalSeconds;
+    public bool IsPlayerInZone => _player != null && GameState.CurrentRoom == ZoneRoom;
     public IReadOnlyList<MonsterEffectInstance> MonsterEffects => _monsterEffects;
     public string DisplayName => IsBoss
         ? "Boss"
         : IsElite
             ? $"Elite {VariantName ?? "Enemy"}"
             : (VariantName ?? "Enemy");
+
+    public override void _Ready()
+    {
+        FloorSnapLength = DefaultFloorSnapLength;
+    }
+
+    public override void _PhysicsProcess(double delta)
+    {
+        float dt = (float)delta;
+        _attackRecoveryRemaining = Mathf.Max(0.0f, _attackRecoveryRemaining - dt);
+
+        if (_player == null || _combatManager == null || _player.Hp <= 0 || _combatManager.IsDefeated || IsDead)
+        {
+            MoveTowardVelocity(Vector3.Zero, dt);
+            return;
+        }
+
+        bool playerInTrackingZone = IsPlayerInTrackingZone();
+        if (!playerInTrackingZone)
+            _attackWindup.Reset();
+
+        bool playerInAttackRange = playerInTrackingZone && IsPlayerWithinAttackRange();
+
+        if (_attackWindup.IsActive)
+        {
+            bool attackResolved = _attackWindup.Advance(dt, playerInAttackRange, out _);
+            if (attackResolved)
+            {
+                EnsureCombatStarted();
+                _combatManager.ResolveEnemyAttack(this, playerInAttackRange);
+                _attackWindup.Reset();
+                _attackRecoveryRemaining = _combatProfile.RecoverySeconds;
+                playerInAttackRange = playerInTrackingZone && IsPlayerWithinAttackRange();
+            }
+        }
+        else if (playerInAttackRange && _attackRecoveryRemaining <= 0.0f)
+        {
+            EnsureCombatStarted();
+            _attackWindup.Start();
+        }
+
+        bool shouldHoldPosition = !playerInTrackingZone || playerInAttackRange || _attackWindup.IsActive;
+        Vector3 desiredVelocity = shouldHoldPosition
+            ? Vector3.Zero
+            : BuildChaseVelocity();
+        MoveTowardVelocity(desiredVelocity, dt);
+    }
+
+    public void ConfigureRealtimeCombat(PlayerController player, CombatManager combatManager, EnemyCombatProfile combatProfile = null)
+    {
+        _player = player;
+        _combatManager = combatManager;
+        SetCombatProfile(combatProfile ?? EnemyCombatProfile.CreateMeleeMvp());
+    }
+
+    public void SetCombatProfile(EnemyCombatProfile combatProfile)
+    {
+        _combatProfile = combatProfile ?? EnemyCombatProfile.CreateMeleeMvp();
+        _attackWindup = new AttackWindupState(
+            _combatProfile.AttackWindupSeconds,
+            _combatProfile.AttackCommitWindowSeconds);
+        _attackRecoveryRemaining = 0.0f;
+    }
+
+    public float GetHorizontalDistanceToPlayer()
+    {
+        if (_player == null)
+            return float.MaxValue;
+
+        Vector3 delta = _player.GlobalPosition - GlobalPosition;
+        return new Vector2(delta.X, delta.Z).Length();
+    }
+
+    public bool IsPlayerWithinAttackRange()
+    {
+        if (_player == null)
+            return false;
+
+        if (Mathf.Abs(GlobalPosition.Y - _player.GlobalPosition.Y) > MaxVerticalDelta)
+            return false;
+
+        return GetHorizontalDistanceToPlayer() <= AttackRange;
+    }
+
+    public bool IsPlayerInTrackingZone()
+    {
+        if (_player == null || !IsPlayerInZone)
+            return false;
+
+        if (Mathf.Abs(GlobalPosition.Y - _player.GlobalPosition.Y) > TrackingVerticalDelta)
+            return false;
+
+        if (GetHorizontalDistanceToPlayer() > SightRange)
+            return false;
+
+        return HasLineOfSightToPlayer();
+    }
 
     /// <summary>
     /// Scale this enemy's stats for the given room number (1-based).
@@ -93,7 +208,18 @@ public partial class Enemy : StaticBody3D
 
     public void Die()
     {
+        Velocity = Vector3.Zero;
+        _attackWindup.Reset();
         QueueFree();
+    }
+
+    public void EnsureCombatStarted()
+    {
+        if (_combatStarted)
+            return;
+
+        _combatStarted = true;
+        OnCombatStarted();
     }
 
     public void PlayAttackAnimation(Vector3 targetPosition)
@@ -248,7 +374,9 @@ public partial class Enemy : StaticBody3D
     /// </summary>
     public void ShowAggroIndicator()
     {
-        if (HasAggro) return;
+        if (HasAggro)
+            return;
+
         HasAggro = true;
 
         var label = new Label3D();
@@ -269,6 +397,55 @@ public partial class Enemy : StaticBody3D
         tween.TweenInterval(0.6f);
         tween.TweenProperty(label, "modulate:a", 0.0f, 0.3f);
         tween.TweenCallback(Callable.From(() => label.QueueFree()));
+    }
+
+    private void MoveTowardVelocity(Vector3 desiredHorizontalVelocity, float delta)
+    {
+        var horizontalVelocity = new Vector3(Velocity.X, 0, Velocity.Z);
+        float moveRate = desiredHorizontalVelocity.LengthSquared() > 0.001f
+            ? GroundAcceleration
+            : GroundDeceleration;
+        horizontalVelocity = horizontalVelocity.MoveToward(desiredHorizontalVelocity, moveRate * delta);
+
+        float verticalVelocity = !IsOnFloor()
+            ? Velocity.Y - GravityStrength * delta
+            : Velocity.Y < 0.0f
+                ? -0.01f
+                : Velocity.Y;
+
+        Velocity = new Vector3(horizontalVelocity.X, verticalVelocity, horizontalVelocity.Z);
+        MoveAndSlide();
+    }
+
+    private Vector3 BuildChaseVelocity()
+    {
+        Vector3 toPlayer = _player.GlobalPosition - GlobalPosition;
+        toPlayer.Y = 0;
+
+        float distanceToPlayer = toPlayer.Length();
+        float stopDistance = Mathf.Max(0.65f, AttackRange * 0.82f);
+        if (distanceToPlayer <= stopDistance || distanceToPlayer <= 0.01f)
+            return Vector3.Zero;
+
+        return toPlayer / distanceToPlayer * _combatProfile.MoveSpeed;
+    }
+
+    private bool HasLineOfSightToPlayer()
+    {
+        if (_player == null)
+            return false;
+
+        var spaceState = GetWorld3D().DirectSpaceState;
+        Vector3 origin = GlobalPosition + new Vector3(0, 0.35f, 0);
+        Vector3 target = _player.GlobalPosition + new Vector3(0, 0.65f, 0);
+
+        var query = PhysicsRayQueryParameters3D.Create(origin, target);
+        query.CollideWithAreas = false;
+        query.CollideWithBodies = true;
+        query.Exclude = new Godot.Collections.Array<Rid> { GetRid(), _player.GetRid() };
+
+        var result = spaceState.IntersectRay(query);
+        return result.Count == 0;
     }
 
     private void CleanupExpiredEffects()

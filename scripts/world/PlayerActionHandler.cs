@@ -4,7 +4,7 @@ namespace ARPG;
 
 /// <summary>
 /// Processes player input actions (attack, ability, item use) and translates
-/// them into CombatManager/system calls.
+/// them into real-time combat/system calls.
 /// </summary>
 public partial class PlayerActionHandler : Node
 {
@@ -12,12 +12,11 @@ public partial class PlayerActionHandler : Node
     private TurnManager _turnManager;
     private CombatManager _combatManager;
     private AggroSystem _aggroSystem;
-    private int _remainingCombatItemUses;
 
     [Signal]
     public delegate void StatusMessageEventHandler(string text);
 
-    public int RemainingCombatItemUses => _turnManager != null && _turnManager.IsPlayerTurn ? _remainingCombatItemUses : 0;
+    public int RemainingCombatItemUses => CombatItemUsesPerTurn;
     public int CombatItemUsesPerTurn => _player?.Stats?.ItemUsesPerTurn ?? 1;
 
     public void Init(
@@ -30,37 +29,33 @@ public partial class PlayerActionHandler : Node
         _turnManager = turnManager;
         _combatManager = combatManager;
         _aggroSystem = aggroSystem;
-        _turnManager.TurnChanged += OnTurnChanged;
-        ResetCombatItemUses();
     }
 
     public void OnAttackPressed()
     {
-        if (_turnManager.State == TurnState.Defeat) return;
+        if (_turnManager.State == TurnState.Defeat)
+            return;
 
-        if (_turnManager.IsExploring)
-        {
-            var enemy = _aggroSystem.FindNearestEnemy(_player.Stats.AttackRange);
-            if (enemy == null) return;
-
-            _aggroSystem.ClearAggro();
-            EmitSignal(SignalName.StatusMessage, "Combat!");
-            _combatManager.EnterCombat(enemy);
-        }
-        else if (_turnManager.IsPlayerTurn)
-        {
-            _combatManager.PlayerAttack();
-        }
+        if (!_combatManager.PlayerAttack() && !_combatManager.IsPlayerAttackReady)
+            EmitSignal(SignalName.StatusMessage, "Weapon recovering.");
     }
 
     public void OnAbilityPressed()
     {
-        if (_turnManager.State == TurnState.Defeat) return;
+        if (_turnManager.State == TurnState.Defeat)
+            return;
 
-        if (_turnManager.IsPlayerTurn)
+        var ability = _player.Ability;
+        if (ability == null)
+            return;
+
+        if (!ability.IsReady)
         {
-            _combatManager.PlayerAbility();
+            EmitSignal(SignalName.StatusMessage, $"{ability.Name} ready in {ability.CooldownRemainingSeconds:0.0}s.");
+            return;
         }
+
+        _combatManager.PlayerAbility();
     }
 
     public void OnItemSlotPressed(int slotIndex)
@@ -73,28 +68,19 @@ public partial class PlayerActionHandler : Node
         if (item == null)
             return;
 
-        if (_turnManager.InCombat && !_turnManager.IsPlayerTurn)
+        var target = item.RequiresCombatTarget
+            ? _aggroSystem.FindNearestEnemy(_player.Stats.AttackRange)
+            : null;
+        if (item.RequiresCombatTarget && target == null)
         {
-            EmitSignal(SignalName.StatusMessage, "Can't use items right now.");
+            EmitSignal(SignalName.StatusMessage, $"{item.Name} needs a melee target.");
             return;
         }
 
-        if (_turnManager.IsPlayerTurn && _remainingCombatItemUses <= 0)
-        {
-            EmitSignal(SignalName.StatusMessage, "No item uses left this turn.");
-            return;
-        }
-
-        if (item.RequiresCombatTarget && (!_turnManager.IsPlayerTurn || _combatManager.Target == null || !IsInstanceValid(_combatManager.Target)))
-        {
-            EmitSignal(SignalName.StatusMessage, $"{item.Name} needs a combat target.");
-            return;
-        }
-
-        UseItem(slotIndex, item);
+        UseItem(slotIndex, item, target);
     }
 
-    private void UseItem(int slotIndex, InventoryItem item)
+    private void UseItem(int slotIndex, InventoryItem item, Enemy target)
     {
         bool used = false;
         string summary = string.Empty;
@@ -147,44 +133,11 @@ public partial class PlayerActionHandler : Node
             return;
         }
 
-        bool isCombatItemUse = _turnManager.IsPlayerTurn;
-        bool endTurnAfterUse = true;
-        if (isCombatItemUse)
-            endTurnAfterUse = ConsumeCombatItemUse();
-
         _player.Stats.Inventory.RemoveAt(slotIndex);
-        string turnText = isCombatItemUse && !endTurnAfterUse
-            ? $" {_remainingCombatItemUses} item uses left."
-            : string.Empty;
-        EmitSignal(SignalName.StatusMessage, $"Used {item.Name}: {summary}.{turnText}");
+        EmitSignal(SignalName.StatusMessage, $"Used {item.Name}: {summary}.");
 
-        if (isCombatItemUse)
-        {
-            if (item.DirectDamage > 0)
-                _combatManager.PlayerUseDamageItem(item.DirectDamage, endTurnAfterUse);
-            else
-                _combatManager.PlayerUseUtilityItem(endTurnAfterUse);
-        }
-    }
-
-    private void OnTurnChanged(int newState)
-    {
-        TurnState state = (TurnState)newState;
-        if (state == TurnState.PlayerTurn || state == TurnState.Exploring)
-            ResetCombatItemUses();
-        else if (state == TurnState.Defeat)
-            _remainingCombatItemUses = 0;
-    }
-
-    private void ResetCombatItemUses()
-    {
-        _remainingCombatItemUses = CombatItemUsesPerTurn;
-    }
-
-    private bool ConsumeCombatItemUse()
-    {
-        _remainingCombatItemUses = Mathf.Max(0, _remainingCombatItemUses - 1);
-        return _remainingCombatItemUses <= 0;
+        if (item.DirectDamage > 0)
+            _combatManager.PlayerUseDamageItem(target, item.DirectDamage);
     }
 
     private static string AppendSummary(string summary, string addition)

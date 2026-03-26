@@ -13,7 +13,7 @@ public partial class PlayerStats
     private int _baseMaxHp = 30;
     private int _baseAttackDamage = 4;
     private float _baseMoveSpeed = 5.5f;
-    private float _baseAttackRange = 3.5f;
+    private float _baseAttackRange = 1.25f;
     private int _baseInventorySlots = 2;
     private int _baseItemUsesPerTurn = 1;
     private Weapon _weapon;

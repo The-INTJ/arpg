@@ -70,11 +70,6 @@ public partial class GameManager : Node3D, IDeveloperEffectProvider
         _aggroSystem = new AggroSystem();
         AddChild(_aggroSystem);
         _aggroSystem.Init(_player);
-        _aggroSystem.AggroTriggered += enemy =>
-        {
-            _hudUpdater.StatusText = "Combat!";
-            _combatManager.EnterCombat(enemy);
-        };
         _aggroSystem.AggroSpotted += (enemy, message) =>
         {
             _hudUpdater.StatusText = message;
@@ -220,6 +215,7 @@ public partial class GameManager : Node3D, IDeveloperEffectProvider
         {
             var enemy = EnemySpawner.Spawn(enemiesContainer, generatedMap.EnemySpawnPoints[i], encounter[i], room, profile);
             enemy.ZoneRoom = room;
+            enemy.ConfigureRealtimeCombat(_player, _combatManager);
         }
 
         SpawnCaveChest(zoneOrigin + generatedMap.CaveChestPosition, room);

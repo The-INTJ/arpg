@@ -8,6 +8,20 @@ public partial class PlayerInventory
     private readonly List<InventoryItem> _slots = new();
 
     public int Capacity => _slots.Count;
+    public int OccupiedSlotCount
+    {
+        get
+        {
+            int count = 0;
+            for (int i = 0; i < _slots.Count; i++)
+            {
+                if (_slots[i] != null)
+                    count++;
+            }
+
+            return count;
+        }
+    }
     public int MinimumRequiredCapacity => HighestOccupiedIndex() + 1;
 
     public PlayerInventory(int capacity)

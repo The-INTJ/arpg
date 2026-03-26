@@ -3,7 +3,7 @@ using Godot;
 namespace ARPG;
 
 /// <summary>
-/// Detects enemies in range and manages the aggro delay timer before combat starts.
+/// Tracks active-zone enemies for simple real-time combat targeting and alerting.
 /// </summary>
 public partial class AggroSystem : Node, IDeveloperEffectProvider
 {
@@ -12,10 +12,6 @@ public partial class AggroSystem : Node, IDeveloperEffectProvider
 
     private PlayerController _player;
     private DeveloperToolsManager _developerTools;
-    private Enemy _aggroEnemy;
-    private float _aggroTimer;
-    private const float AggroDelay = 0.6f;
-    private const float MaxVerticalDelta = 2.4f;
 
     [Signal]
     public delegate void AggroTriggeredEventHandler(Enemy enemy);
@@ -30,7 +26,11 @@ public partial class AggroSystem : Node, IDeveloperEffectProvider
 
     public void ClearAggro()
     {
-        _aggroEnemy = null;
+        foreach (var node in GetTree().GetNodesInGroup("enemies"))
+        {
+            if (node is Enemy enemy)
+                enemy.HasAggro = false;
+        }
     }
 
     public void RegisterDeveloperEffects(DeveloperToolsManager developerTools)
@@ -43,8 +43,8 @@ public partial class AggroSystem : Node, IDeveloperEffectProvider
             this,
             new DeveloperEffectDescriptor(
                 EncounterWatchEffectId,
-                "Encounter Watch",
-                "Scan nearby enemies during exploration and mark them as spotting the player.",
+                "Zone Awareness",
+                "Wake enemies and mark nearby threats when the player enters their room.",
                 DeveloperEffectKind.Toggle,
                 DeveloperEffectGroups.Encounter,
                 OwnerLabel: "Aggro",
@@ -53,8 +53,8 @@ public partial class AggroSystem : Node, IDeveloperEffectProvider
             this,
             new DeveloperEffectDescriptor(
                 EncounterCommitEffectId,
-                "Encounter Commit",
-                "Let a spotted enemy finish its timer and start combat.",
+                "Zone Alerts",
+                "Show the alert indicator when a room becomes hostile.",
                 DeveloperEffectKind.Toggle,
                 DeveloperEffectGroups.Encounter,
                 OwnerLabel: "Aggro",
@@ -63,101 +63,72 @@ public partial class AggroSystem : Node, IDeveloperEffectProvider
 
     public void Tick(float delta)
     {
-        if (_aggroEnemy != null)
-        {
-            if (!IsInstanceValid(_aggroEnemy))
-            {
-                _aggroEnemy = null;
-                return;
-            }
-
-            if (!IsEffectEnabled(EncounterCommitEffectId))
-                return;
-
-            _aggroTimer -= delta;
-            if (_aggroTimer <= 0)
-            {
-                var enemy = _aggroEnemy;
-                _aggroEnemy = null;
-                EmitSignal(SignalName.AggroTriggered, enemy);
-            }
-            return;
-        }
-
-        if (!IsEffectEnabled(EncounterWatchEffectId))
+        if (_player == null || !IsEffectEnabled(EncounterWatchEffectId))
             return;
 
+        Enemy firstSpottedEnemy = null;
         foreach (var node in GetTree().GetNodesInGroup("enemies"))
         {
-            if (node is Enemy enemy && !enemy.HasAggro)
+            if (node is not Enemy enemy || enemy.ZoneRoom != GameState.CurrentRoom || enemy.IsDead)
+                continue;
+
+            bool playerInTrackingZone = enemy.IsPlayerInTrackingZone();
+            if (!playerInTrackingZone)
             {
-                if (CanEngage(enemy, enemy.SightRange))
-                {
-                    enemy.ShowAggroIndicator();
-                    _aggroEnemy = enemy;
-                    _aggroTimer = AggroDelay;
-                    string message = enemy.IsBoss ? "Boss spotted!" : "Spotted!";
-                    EmitSignal(SignalName.AggroSpotted, enemy, message);
-                    return;
-                }
+                enemy.HasAggro = false;
+                continue;
             }
+
+            bool justSpotted = !enemy.HasAggro;
+            if (!justSpotted)
+                continue;
+
+            if (IsEffectEnabled(EncounterCommitEffectId))
+                enemy.ShowAggroIndicator();
+            else
+                enemy.HasAggro = true;
+
+            firstSpottedEnemy ??= enemy;
         }
+
+        if (firstSpottedEnemy == null)
+            return;
+
+        EmitSignal(
+            SignalName.AggroSpotted,
+            firstSpottedEnemy,
+            firstSpottedEnemy.IsBoss ? "Boss spotted." : "Spotted.");
     }
 
     public Enemy FindNearestEnemy(float range)
     {
+        if (_player == null)
+            return null;
+
         Enemy nearest = null;
         float nearestDist = float.MaxValue;
+        int activeZone = GameState.CurrentRoom;
 
         foreach (var node in GetTree().GetNodesInGroup("enemies"))
         {
-            if (node is Enemy enemy)
-            {
-                float dist = GetHorizontalDistance(enemy);
-                if (CanEngage(enemy, range) && dist < nearestDist)
-                {
-                    nearestDist = dist;
-                    nearest = enemy;
-                }
-            }
+            if (node is not Enemy enemy || enemy.ZoneRoom != activeZone || enemy.IsDead)
+                continue;
+
+            float dist = GetHorizontalDistance(enemy);
+            if (dist > range || dist >= nearestDist)
+                continue;
+
+            nearestDist = dist;
+            nearest = enemy;
         }
 
         return nearest;
-    }
-
-    private bool CanEngage(Enemy enemy, float horizontalRange)
-    {
-        if (enemy == null || !IsInstanceValid(enemy))
-            return false;
-
-        if (Mathf.Abs(enemy.GlobalPosition.Y - _player.GlobalPosition.Y) > MaxVerticalDelta)
-            return false;
-
-        if (GetHorizontalDistance(enemy) > horizontalRange)
-            return false;
-
-        return HasLineOfSight(enemy);
     }
 
     private float GetHorizontalDistance(Enemy enemy)
     {
         Vector3 delta = enemy.GlobalPosition - _player.GlobalPosition;
         return new Vector2(delta.X, delta.Z).Length();
-    }
-
-    private bool HasLineOfSight(Enemy enemy)
-    {
-        var spaceState = _player.GetWorld3D().DirectSpaceState;
-        Vector3 origin = _player.GlobalPosition + new Vector3(0, 0.65f, 0);
-        Vector3 target = enemy.GlobalPosition + new Vector3(0, 0.35f, 0);
-
-        var query = PhysicsRayQueryParameters3D.Create(origin, target);
-        query.CollideWithAreas = false;
-        query.CollideWithBodies = true;
-        query.Exclude = new Godot.Collections.Array<Rid> { _player.GetRid(), enemy.GetRid() };
-
-        var result = spaceState.IntersectRay(query);
-        return result.Count == 0;
     }
 
     private bool IsEffectEnabled(string effectId)

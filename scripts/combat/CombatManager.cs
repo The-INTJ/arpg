@@ -5,20 +5,21 @@ namespace ARPG;
 
 public partial class CombatManager : Node
 {
+    private const float ShakeIntensity = 0.08f;
+    private const float PlayerAttackCooldownSeconds = 0.32f;
+    private const float MaxHitVerticalDelta = 1.6f;
+    private const float PlayerAttackArcDegrees = 100.0f;
+    private const float PlayerAbilityArcDegrees = 120.0f;
+
     private PlayerController _player;
     private TurnManager _turnManager;
-    private Camera3D _camera;
     private Node3D _cameraRig;
-    private CameraController _cameraController;
     private PackedScene _damageNumberScene;
-
     private Enemy _target;
-    private Vector3 _cameraRestPosition;
     private float _shakeTimeLeft;
-    private const float ShakeIntensity = 0.08f;
-    private const float EnemyRetaliationDelay = 0.5f;
+    private float _playerAttackCooldownRemaining;
 
-    /// <summary>Where the last killed enemy stood — used for loot spawning.</summary>
+    /// <summary>Where the last killed enemy stood - used for loot spawning.</summary>
     public Vector3 LastKillPosition { get; private set; }
     public bool LastKillWasBoss { get; private set; }
     public bool LastKillWasElite { get; private set; }
@@ -31,100 +32,177 @@ public partial class CombatManager : Node
     [Signal]
     public delegate void CombatFeedbackEventHandler(string text);
 
-    public Enemy Target => _target;
+    public Enemy Target => _target != null && IsInstanceValid(_target) ? _target : null;
+    public bool IsDefeated => _turnManager?.State == TurnState.Defeat;
+    public bool IsPlayerAttackReady => _playerAttackCooldownRemaining <= 0.001f;
+    public float PlayerAttackCooldownRemaining => Mathf.Max(0.0f, _playerAttackCooldownRemaining);
 
     public void Init(PlayerController player, TurnManager turnManager, Camera3D camera)
     {
         _player = player;
         _turnManager = turnManager;
-        _camera = camera;
-        _cameraRig = camera.GetParent<Node3D>();
-        _cameraController = _cameraRig as CameraController;
+        _cameraRig = camera?.GetParent<Node3D>();
         _damageNumberScene = GD.Load<PackedScene>(Scenes.DamageNumber);
     }
 
-    public void EnterCombat(Enemy enemy)
+    public void SetFocusTarget(Enemy enemy)
     {
-        _target = enemy;
-        LastKillItemDrop = null;
-        LastKillRoom = 0;
-        _target.OnCombatStarted();
-        _turnManager.SetState(TurnState.Busy);
-        _player.SetMovementLocked(true);
-        AudioManager.Instance?.StartCombatMusic();
+        _target = enemy != null && IsInstanceValid(enemy) && !enemy.IsDead ? enemy : null;
+    }
 
-        // Snapshot current camera position before zoom (dynamic with orbit camera)
-        _cameraRestPosition = _camera.Position;
-        _cameraController?.SetCombatMode(true);
+    public bool PlayerAttack()
+    {
+        if (_player == null || _player.Hp <= 0 || IsDefeated || !IsPlayerAttackReady)
+            return false;
 
-        var tween = CreateTween();
-        var zoomedPos = _cameraRestPosition * 0.75f;
-        tween.TweenProperty(_camera, "position", zoomedPos, 0.3f)
-            .SetTrans(Tween.TransitionType.Quad)
-            .SetEase(Tween.EaseType.Out);
-        tween.TweenCallback(Callable.From(() =>
+        _playerAttackCooldownRemaining = PlayerAttackCooldownSeconds;
+        Vector3 aimPoint = _player.GetAttackAimPoint(_player.Stats.AttackRange);
+        _player.ShowAttackTelegraph(_player.Stats.AttackRange, PlayerAttackArcDegrees, isHeavy: false);
+
+        var enemy = FindBestEnemyInAttackVolume(_player.Stats.AttackRange, PlayerAttackArcDegrees);
+        _player.PlayAttackAnimation(enemy != null ? enemy.GlobalPosition : aimPoint, isHeavy: false);
+
+        if (enemy == null)
         {
-            _shakeTimeLeft = 0.2f;
-            _turnManager.SetState(TurnState.PlayerTurn);
-        }));
-    }
+            _target = null;
+            SpawnFloatingText(aimPoint + Vector3.Up * 0.6f, "Miss", Palette.TextDisabled);
+            EmitCombatFeedback("Whiff.");
+            return true;
+        }
 
-    public void PlayerAttack()
-    {
-        if (!_turnManager.IsPlayerTurn || _target == null) return;
+        enemy.EnsureCombatStarted();
+        _target = enemy;
+
         int damage = _player.Stats.ConsumePreparedAttackDamage(_player.AttackDamage, out string feedback);
-        _player.PlayAttackAnimation(_target.GlobalPosition, isHeavy: false);
-        ResolveDamageAction(damage, endTurnAfterAction: true, tickAbilityCooldown: true, extraFeedback: feedback);
+        ResolveDamageAgainstEnemy(enemy, damage, feedback);
+        return true;
     }
 
-    public void PlayerAbility()
+    public bool PlayerAbility()
     {
-        if (!_turnManager.IsPlayerTurn || _target == null) return;
+        if (_player == null || _player.Hp <= 0 || IsDefeated)
+            return false;
 
         var ability = _player.Ability;
-        if (ability == null || !ability.IsReady) return;
+        if (ability == null || !ability.IsReady)
+            return false;
+
+        ability.Use();
+        _playerAttackCooldownRemaining = PlayerAttackCooldownSeconds;
+        Vector3 aimPoint = _player.GetAttackAimPoint(_player.Stats.AttackRange);
+        _player.ShowAttackTelegraph(_player.Stats.AttackRange, PlayerAbilityArcDegrees, isHeavy: true);
+
+        var enemy = FindBestEnemyInAttackVolume(_player.Stats.AttackRange, PlayerAbilityArcDegrees);
+        _player.PlayAttackAnimation(enemy != null ? enemy.GlobalPosition : aimPoint, isHeavy: true);
+
+        if (enemy == null)
+        {
+            _target = null;
+            SpawnFloatingText(aimPoint + Vector3.Up * 0.6f, "Miss", Palette.TextDisabled);
+            EmitCombatFeedback($"{ability.Name} misses.");
+            return true;
+        }
+
+        enemy.EnsureCombatStarted();
+        _target = enemy;
 
         int damage = (int)(_player.AttackDamage * ability.DamageMultiplier);
-        ability.Use();
         damage = _player.Stats.ConsumePreparedAttackDamage(damage, out string feedback);
-        _player.PlayAttackAnimation(_target.GlobalPosition, isHeavy: true);
-        ResolveDamageAction(damage, endTurnAfterAction: true, tickAbilityCooldown: true, extraFeedback: feedback);
+        ResolveDamageAgainstEnemy(enemy, damage, feedback);
+        return true;
     }
 
-    public void PlayerUseDamageItem(int damage, bool endTurnAfterUse)
+    public bool PlayerUseDamageItem(Enemy enemy, int damage)
     {
-        if (!_turnManager.IsPlayerTurn || _target == null) return;
-        ResolveDamageAction(damage, endTurnAfterAction: endTurnAfterUse, tickAbilityCooldown: endTurnAfterUse);
+        if (!IsValidAttackTarget(enemy))
+            return false;
+
+        enemy.EnsureCombatStarted();
+        _target = enemy;
+        ResolveDamageAgainstEnemy(enemy, damage);
+        return true;
     }
 
-    public void PlayerUseUtilityItem(bool endTurnAfterUse)
+    public void ResolveEnemyAttack(Enemy enemy, bool playerStillInRangeAtImpact)
     {
-        if (!_turnManager.IsPlayerTurn || _target == null || !IsInstanceValid(_target)) return;
-
-        if (!endTurnAfterUse)
+        if (!IsValidEnemy(enemy) || _player == null || _player.Hp <= 0 || IsDefeated)
             return;
 
-        _player.Ability?.TickCooldown();
-        _turnManager.SetState(TurnState.Busy);
+        enemy.EnsureCombatStarted();
+        _target = enemy;
+        enemy.OnOwnerTurnStarted();
+        enemy.PlayAttackAnimation(_player.GlobalPosition);
 
-        var timer = GetTree().CreateTimer(EnemyRetaliationDelay);
-        timer.Timeout += OnEnemyRetaliate;
+        if (!playerStillInRangeAtImpact || !CanEnemyHitPlayer(enemy))
+        {
+            SpawnFloatingText(_player.GlobalPosition + Vector3.Up * 0.7f, "Miss", Palette.TextDisabled);
+            EmitCombatFeedback($"{enemy.DisplayName} misses.");
+            _shakeTimeLeft = 0.05f;
+            enemy.OnOwnerTurnEnded();
+            return;
+        }
+
+        var result = enemy.ResolveOutgoingDamage(_player);
+        if (result.Damage > 0)
+        {
+            _player.PlayHitReaction();
+            SpawnDamageNumber(_player.GlobalPosition + Vector3.Up * 0.7f, result.Damage, true);
+            AudioManager.Instance?.PlayPlayerHit();
+        }
+        if (result.HealingAmount > 0)
+            SpawnFloatingText(enemy.GlobalPosition + Vector3.Up * 0.6f, $"+{result.HealingAmount}", Palette.HealText);
+
+        EmitCombatFeedback(result.BuildFeedbackText());
+        _shakeTimeLeft = result.Damage > 0 ? 0.12f : 0.06f;
+        enemy.OnOwnerTurnEnded();
+
+        if (_player.Hp <= 0)
+            _turnManager?.SetState(TurnState.Defeat);
     }
 
-    private void ResolveDamageAction(int damage, bool endTurnAfterAction, bool tickAbilityCooldown, string extraFeedback = null)
+    public override void _Process(double delta)
     {
-        _turnManager.SetState(TurnState.Busy);
+        float dt = (float)delta;
+        _playerAttackCooldownRemaining = Mathf.Max(0.0f, _playerAttackCooldownRemaining - dt);
+        _player?.Ability?.TickCooldown(dt);
+
+        if (_target != null && (!IsInstanceValid(_target) || _target.IsDead))
+            _target = null;
+
+        if (_shakeTimeLeft > 0)
+        {
+            _shakeTimeLeft -= dt;
+            if (_cameraRig != null)
+            {
+                _cameraRig.Position = new Vector3(
+                    (float)GD.RandRange(-ShakeIntensity, ShakeIntensity),
+                    (float)GD.RandRange(-ShakeIntensity, ShakeIntensity),
+                    0);
+            }
+        }
+        else if (_cameraRig != null)
+        {
+            _cameraRig.Position = Vector3.Zero;
+        }
+    }
+
+    private void ResolveDamageAgainstEnemy(Enemy enemy, int damage, string extraFeedback = null)
+    {
+        if (!IsValidEnemy(enemy))
+            return;
+
         LastKillWasBoss = false;
         LastKillWasElite = false;
         LastKillItemDrop = null;
         LastKillRoom = 0;
 
-        var result = _target.ResolveIncomingDamage(damage, _player);
+        var result = enemy.ResolveIncomingDamage(damage, _player);
         GameState.RecordDamageDone(result.Damage);
-        SpawnDamageNumber(_target.GlobalPosition + Vector3.Up * 0.6f, result.Damage, false);
+
         if (result.Damage > 0)
         {
-            _target.PlayHitAnimation();
+            SpawnDamageNumber(enemy.GlobalPosition + Vector3.Up * 0.6f, result.Damage, false);
+            enemy.PlayHitAnimation();
             AudioManager.Instance?.PlayHit();
         }
 
@@ -132,123 +210,115 @@ public partial class CombatManager : Node
         {
             _player.PlayHitReaction();
             SpawnDamageNumber(_player.GlobalPosition + Vector3.Up * 0.7f, result.RetaliationDamage, true);
+            AudioManager.Instance?.PlayPlayerHit();
         }
 
         EmitCombatFeedback(CombineFeedback(extraFeedback, result.BuildFeedbackText()));
-        _shakeTimeLeft = result.Damage > 0 || result.RetaliationDamage > 0 ? 0.15f : 0.08f;
+        _shakeTimeLeft = result.Damage > 0 || result.RetaliationDamage > 0 ? 0.14f : 0.06f;
 
-        if (tickAbilityCooldown)
-            _player.Ability?.TickCooldown();
-
-        bool targetDied = _target.IsDead;
+        bool targetDied = enemy.IsDead;
         bool playerDied = _player.Hp <= 0;
 
         if (targetDied)
         {
-            if (!tickAbilityCooldown)
-                _player.Ability?.TickCooldown();
+            LastKillPosition = enemy.GlobalPosition;
+            LastKillWasBoss = enemy.IsBoss;
+            LastKillWasElite = enemy.IsElite;
+            LastKillItemDrop = enemy.ItemDrop;
+            LastKillRoom = enemy.ZoneRoom;
+            enemy.Die();
+            if (_target == enemy)
+                _target = null;
 
-            LastKillPosition = _target.GlobalPosition;
-            LastKillWasBoss = _target.IsBoss;
-            LastKillWasElite = _target.IsElite;
-            LastKillItemDrop = _target.ItemDrop;
-            LastKillRoom = _target.ZoneRoom;
-            _target.Die();
-            _target = null;
             EmitSignal(SignalName.CombatEnded);
-
-            if (playerDied)
-            {
-                _turnManager.SetState(TurnState.Defeat);
-                return;
-            }
-
-            ExitCombat();
-            return;
         }
 
         if (playerDied)
-        {
-            _turnManager.SetState(TurnState.Defeat);
-            return;
-        }
-
-        if (!endTurnAfterAction)
-        {
-            _turnManager.SetState(TurnState.PlayerTurn);
-            return;
-        }
-
-        var timer = GetTree().CreateTimer(EnemyRetaliationDelay);
-        timer.Timeout += OnEnemyRetaliate;
+            _turnManager?.SetState(TurnState.Defeat);
     }
 
-    private void OnEnemyRetaliate()
+    private bool IsValidEnemy(Enemy enemy)
     {
-        if (_target == null || !IsInstanceValid(_target)) return;
-
-        _turnManager.SetState(TurnState.EnemyTurn);
-        _target.OnOwnerTurnStarted();
-        _target.PlayAttackAnimation(_player.GlobalPosition);
-
-        var result = _target.ResolveOutgoingDamage(_player);
-        if (result.Damage > 0)
-        {
-            _player.PlayHitReaction();
-            SpawnDamageNumber(_player.GlobalPosition + Vector3.Up * 0.7f, result.Damage, true);
-        }
-        if (result.Damage > 0)
-            AudioManager.Instance?.PlayPlayerHit();
-        if (result.HealingAmount > 0)
-            SpawnFloatingText(_target.GlobalPosition + Vector3.Up * 0.6f, $"+{result.HealingAmount}", Palette.HealText);
-        EmitCombatFeedback(result.BuildFeedbackText());
-        _shakeTimeLeft = result.Damage > 0 ? 0.12f : 0.08f;
-        _target.OnOwnerTurnEnded();
-
-        if (_player.Hp <= 0)
-        {
-            _turnManager.SetState(TurnState.Defeat);
-            return;
-        }
-
-        _turnManager.SetState(TurnState.PlayerTurn);
+        return enemy != null && IsInstanceValid(enemy) && !enemy.IsDead;
     }
 
-    private void ExitCombat()
+    private bool IsValidAttackTarget(Enemy enemy)
     {
-        var tween = CreateTween();
-        var overshoot = _cameraRestPosition * 1.08f;
-        tween.TweenProperty(_camera, "position", overshoot, 0.25f)
-            .SetTrans(Tween.TransitionType.Quad)
-            .SetEase(Tween.EaseType.Out);
-        tween.TweenProperty(_camera, "position", _cameraRestPosition, 0.2f)
-            .SetTrans(Tween.TransitionType.Bounce)
-            .SetEase(Tween.EaseType.Out);
-        tween.TweenCallback(Callable.From(() =>
-        {
-            _cameraController?.SetCombatMode(false);
-            _cameraController?.RestoreCameraTransform();
-            _turnManager.SetState(TurnState.Exploring);
-            _player.SetMovementLocked(false);
-        }));
+        return IsValidEnemy(enemy) && CanPlayerHit(enemy) && _player != null && _player.Hp > 0 && !IsDefeated;
     }
 
-    public override void _Process(double delta)
+    private bool CanPlayerHit(Enemy enemy)
     {
-        if (_shakeTimeLeft > 0)
-        {
-            _shakeTimeLeft -= (float)delta;
-            var offset = new Vector3(
-                (float)GD.RandRange(-ShakeIntensity, ShakeIntensity),
-                (float)GD.RandRange(-ShakeIntensity, ShakeIntensity),
-                0
-            );
-            _cameraRig.Position = offset;
-        }
+        if (_player == null || !IsValidEnemy(enemy) || enemy.ZoneRoom != GameState.CurrentRoom)
+            return false;
+
+        if (Mathf.Abs(enemy.GlobalPosition.Y - _player.GlobalPosition.Y) > MaxHitVerticalDelta)
+            return false;
+
+        return GetHorizontalDistance(_player.GlobalPosition, enemy.GlobalPosition) <= _player.Stats.AttackRange;
+    }
+
+    private bool CanEnemyHitPlayer(Enemy enemy)
+    {
+        if (_player == null || !IsValidEnemy(enemy) || enemy.ZoneRoom != GameState.CurrentRoom)
+            return false;
+
+        if (Mathf.Abs(enemy.GlobalPosition.Y - _player.GlobalPosition.Y) > MaxHitVerticalDelta)
+            return false;
+
+        return GetHorizontalDistance(_player.GlobalPosition, enemy.GlobalPosition) <= enemy.AttackRange;
+    }
+
+    private Enemy FindBestEnemyInAttackVolume(float range, float arcDegrees)
+    {
+        if (_player == null)
+            return null;
+
+        Vector3 aimDirection = _player.CombatAimDirection;
+        aimDirection.Y = 0.0f;
+        if (aimDirection.LengthSquared() <= 0.001f)
+            aimDirection = Vector3.Forward;
         else
+            aimDirection = aimDirection.Normalized();
+
+        float minDot = Mathf.Cos(Mathf.DegToRad(arcDegrees * 0.5f));
+        Enemy bestEnemy = null;
+        float bestScore = float.MinValue;
+
+        foreach (var node in GetTree().GetNodesInGroup("enemies"))
         {
-            _cameraRig.Position = Vector3.Zero;
+            if (node is not Enemy enemy || !IsValidEnemy(enemy) || enemy.ZoneRoom != GameState.CurrentRoom)
+                continue;
+
+            if (Mathf.Abs(enemy.GlobalPosition.Y - _player.GlobalPosition.Y) > MaxHitVerticalDelta)
+                continue;
+
+            Vector3 toEnemy = enemy.GlobalPosition - _player.GlobalPosition;
+            toEnemy.Y = 0.0f;
+            float distance = toEnemy.Length();
+            if (distance > range)
+                continue;
+
+            Vector3 attackDirection = distance <= 0.001f ? aimDirection : toEnemy / distance;
+            float dot = aimDirection.Dot(attackDirection);
+            if (dot < minDot)
+                continue;
+
+            float score = dot * 100.0f - distance;
+            if (score <= bestScore)
+                continue;
+
+            bestScore = score;
+            bestEnemy = enemy;
         }
+
+        return bestEnemy;
+    }
+
+    private static float GetHorizontalDistance(Vector3 a, Vector3 b)
+    {
+        Vector3 delta = a - b;
+        return new Vector2(delta.X, delta.Z).Length();
     }
 
     private void SpawnDamageNumber(Vector3 worldPos, int amount, bool isPlayerDamage)
