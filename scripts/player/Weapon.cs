@@ -45,11 +45,11 @@ public partial class Weapon
             Modifier.Fixed(ModifierOp.FlatAdd, StatTarget.AttackDamage, 2),
             Modifier.Fixed(ModifierOp.FlatAdd, StatTarget.MaxHp, 3)),
 
-        Archetype.Archer => Create("Longbow", AbilityType.Snipe, BuildBowStrike(),
+        Archetype.Archer => Create("Longbow", AbilityType.Snipe, BuildBowShot(),
             Modifier.Fixed(ModifierOp.FlatAdd, StatTarget.AttackReach, 0.50f),
             Modifier.Fixed(ModifierOp.FlatAdd, StatTarget.AttackDamage, 1)),
 
-        Archetype.Mage => Create("Oak Staff", AbilityType.Fireball, BuildStaffStrike(),
+        Archetype.Mage => Create("Oak Staff", AbilityType.Fireball, BuildStaffBolt(),
             Modifier.Fixed(ModifierOp.FlatAdd, StatTarget.AttackDamage, 1),
             Modifier.Fixed(ModifierOp.PercentAdd, StatTarget.AttackDamage, 5)),
 
@@ -75,24 +75,26 @@ public partial class Weapon
             AttackTimeline.Create(0.08f, 0.04f, 0.20f));
     }
 
-    private static AttackDefinition BuildBowStrike()
+    private static AttackDefinition BuildBowShot()
     {
-        return AttackDefinition.CreateMelee(
+        return AttackDefinition.CreateProjectile(
             "bow_basic",
-            AttackVolumeDefinition.CreateBox(
-                new Vector3(0.7f, 0.9f, 1.1f),
-                new Vector3(0.0f, 0.0f, 0.8f)),
-            AttackTimeline.Create(0.10f, 0.04f, 0.18f));
+            AttackVolumeDefinition.CreateSphere(0.08f, Vector3.Zero),
+            AttackTimeline.Create(0.06f, 0.04f, 0.22f),
+            damageMultiplier: 1.0f,
+            projectileSpeed: 12.0f,
+            projectileVisualRadius: 0.03f);
     }
 
-    private static AttackDefinition BuildStaffStrike()
+    private static AttackDefinition BuildStaffBolt()
     {
-        return AttackDefinition.CreateMelee(
+        return AttackDefinition.CreateProjectile(
             "staff_basic",
-            AttackVolumeDefinition.CreateBox(
-                new Vector3(0.8f, 1.0f, 1.05f),
-                new Vector3(0.0f, 0.0f, 0.8f)),
-            AttackTimeline.Create(0.09f, 0.04f, 0.19f));
+            AttackVolumeDefinition.CreateSphere(0.10f, Vector3.Zero),
+            AttackTimeline.Create(0.07f, 0.04f, 0.24f),
+            damageMultiplier: 1.0f,
+            projectileSpeed: 10.0f,
+            projectileVisualRadius: 0.04f);
     }
 
     private static WeaponStatChannel[] CreateChannels()

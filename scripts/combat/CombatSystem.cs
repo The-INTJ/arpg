@@ -76,8 +76,12 @@ public partial class CombatSystem : Node
         if (_player == null || _player.Hp <= 0 || IsDefeated || !IsPlayerAttackReady || _player.Stats?.Weapon == null)
             return false;
 
+        var basicAttack = _player.Stats.Weapon.BasicAttack;
+        if (basicAttack.IsProjectile)
+            return FirePlayerBasicProjectile(basicAttack);
+
         return StartPlayerAttack(
-            _player.Stats.Weapon.BasicAttack,
+            basicAttack,
             rawDamage: _player.AttackDamage,
             missText: "Whiff.",
             extraFeedback: null,
@@ -239,6 +243,32 @@ public partial class CombatSystem : Node
 
         if (_target != null && (!IsInstanceValid(_target) || _target.IsDead))
             _target = null;
+    }
+
+    private bool FirePlayerBasicProjectile(AttackDefinition attack)
+    {
+        if (_player == null)
+            return false;
+
+        int damage = (int)Mathf.Round(_player.AttackDamage * attack.DamageMultiplier);
+        damage = _player.Stats.ConsumePreparedAttackDamage(damage, out string feedback);
+
+        Vector3 origin = _player.ProjectileOrigin;
+        Vector3 aimDirection = _player.CombatAimDirection;
+        var projectile = Projectile.CreatePlayerProjectile(
+            aimDirection,
+            damage,
+            _player,
+            this,
+            attack,
+            Palette.ItemPower);
+        GetTree().CurrentScene.AddChild(projectile);
+        projectile.GlobalPosition = origin;
+
+        _player.PlayAttackAnimation(_player.GetAttackAimPoint(2.0f), isHeavy: false);
+        _playerAttackCooldownRemaining = attack.Timeline.TotalSeconds;
+        EmitCombatFeedback(feedback);
+        return true;
     }
 
     private bool FirePlayerProjectile(Ability ability)
