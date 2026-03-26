@@ -1,136 +1,154 @@
 # Game Concept Document
 
-This document describes the long-term vision for the game. It defines the core philosophy, gameplay structure, and major systems we plan to build toward. It is intentionally conceptual rather than technical — implementation details live in code and CLAUDE.md.
+This document describes the long-term vision for the game. It defines the core philosophy, gameplay structure, and major systems we plan to build toward. It is intentionally conceptual rather than technical — implementation details live in code, `CLAUDE.md`, and `docs/ai/`.
+
+For the full architectural direction and AI agent guidance, see `docs/ai/direction.md`.
 
 ---
 
 ## High-Level Concept
 
-A tactical roguelike RPG built around Baldur's Gate–style turn-based combat, procedural exploration, and a player-driven modifier system that allows characters to evolve in unusual and sometimes broken ways.
+A real-time, exploration-first action RPG / roguelite set on a shattered planet of fractured floating islands. Players traverse a vertical world of broken landscapes, discovering routes, navigating danger, recovering power, and restoring the planet piece by piece — while building expressive combat loadouts through a universal modifier system.
 
-Players explore procedurally generated maps that occasionally contain handcrafted story encounters. Combat uses spatial positioning similar to Baldur's Gate, but character builds are created through generic stat modifiers rather than traditional items or skill trees.
+**The core fantasy is spatial curiosity and build expression:** players explore a fractured world where movement is the primary verb, combat is sparse but dangerous, and modifiers physically change how they interact with space.
 
-**The core fantasy is build experimentation:** players gradually assemble strange or powerful combinations by applying simple stat operators to combat variables.
-
-Runs reward experimentation and exploration. Speedrunning is possible but not required.
+The central question driving every moment: **"Where can I go?"**
 
 ---
 
 ## Design Pillars
 
-### 1. Build Experimentation (Primary Pillar)
+### 1. Traversal and Spatial Curiosity (Primary Pillar)
 
-The most important element of the game is player-created builds.
+The most important element is movement through the fractured world.
 
-Instead of finding predefined gear like "Sword of Fire" or "Boots of Speed," players find **modifiers** — simple operators:
+The world constantly presents visible possibilities: ledges, underhangs, caves, hidden drops, energy nodes, broken bridges, strange structures, and routes that may or may not be immediately accessible. Movement should feel good enough that simple traversal is fun.
+
+Traversal mechanics include:
+- Responsive ground movement with weight and momentum
+- Jump, dash, ledge grab
+- Dark energy platform creation (later)
+- Underside exploration and vertical route discovery
+- Gap-crossing as a core spatial challenge
+
+The player's thought loop should be: Where can I reach? What path is safest? What is hidden below this island? Do I risk this enemy or avoid it? What does this modifier enable now?
+
+### 2. Build Experimentation Through Modifiers
+
+Instead of finding predefined gear, players find **modifiers** — simple operators:
 
 - `+10%`
 - `×2`
 - `+1`
 - `−20%`
 
-Players apply these modifiers to any valid **combat variable**:
+Players apply these modifiers to **any valid stat target**:
 
-- damage
-- weapon reach
-- attack count
-- area of effect
-- movement speed
-- projectile count
-- ability cooldown
-- etc.
+- damage, weapon reach, attack count, area of effect
+- movement speed, dash distance, jump height
+- projectile count, projectile speed
+- ability cooldown, ability scale
+- traversal-affecting properties
+
+**Any modifier can affect any ability.** This is the flagship mechanic. Players produce strange and expressive builds that alter movement, spacing, scale, range, timing, and utility in ways they can feel physically in the world.
 
 This creates characters like:
+- Massive-reach melee fighters who swing through crowds
+- Multi-projectile archers covering wide areas
+- Speed-stacked explorers who can reach otherwise inaccessible routes
+- Heavy-damage glass cannons who must position carefully
 
-- extremely long-reach melee fighters
-- multi-projectile archers
-- massive area-of-effect spellcasters
-- extremely fast but fragile characters
+Builds are expected to sometimes become extremely powerful — that is part of the design. The interesting dimension is how efficiently and creatively a player reaches that power through exploration.
 
-Builds are expected to sometimes become extremely powerful or even broken — that is part of the design. The interesting challenge becomes *how fast or efficiently* a player can reach that power.
+### 3. Real-Time Combat That Supports Movement
 
-### 2. Tactical Combat (Baldur's Gate Style)
+Combat exists to shape and punctuate exploration, not replace it. Key characteristics:
 
-Turn-based tactical combat where spatial positioning matters.
+- **Real-time** with animation-driven timing
+- Positioning, spacing, and spatial awareness are central
+- Enemies are dangerous and consequential — not constant filler
+- The player often chooses whether to engage or avoid
+- Encounters happen in the same space as exploration — no mode swap
+- Hitbox/hurtbox model with wind-up, active frames, and recovery
 
-Key characteristics:
+Combat is not endless swarm-clearing. Individual enemies or small groups create real pressure. Elites are important and reliably rewarding. The world shapes combat: edges, gaps, verticality, and underhangs all matter.
 
-- Turn-based (not real-time)
-- Spatial positioning on the battlefield matters
-- Attack ranges and area-of-effect matter
-- Multiple enemies and allies may participate in encounters
+### 4. World Restoration and Hub Expansion
 
-Because combat is turn-based and spatially defined, modifiers that affect weapon size, reach, area, or positioning remain visually and mechanically meaningful. This also avoids problems common in real-time games where extreme speed builds could break AI or movement systems.
+The planet's core fractured, scattering fragments across the world. The player's meta-progression is restoring the planet:
 
-### 3. Exploration and Procedural Maps
+- **Excursions** are focused on movement, exploration, combat, and fragment pursuit
+- **Hub returns** are where story, NPC interaction, upgrades, and slower reflection happen
+- As fragments are returned, the hub grows: NPCs appear, services unlock, the world visibly heals
+- Restored areas alter traversal and open new routes
 
-Each level is procedurally generated, but procedural systems may insert handcrafted content.
+Players discover NPCs in the fractured world during exploration. Those NPCs later appear in or expand the hub, providing new functionality and narrative depth.
 
-Maps contain:
+### 5. Optional Narrative Depth
 
-- combat encounters
-- exploration paths
-- occasional story locations
-- rewards / modifier drops
-- optional encounters
+Story enriches the experience without slowing the core loop:
 
-Procedural generation includes slots where handcrafted story snippets can appear. Over time, player choices in story events may influence future generation — narrowing or expanding what kinds of events appear later.
-
-### 4. Light Story and World Interaction
-
-The game contains story elements and NPC interactions, but story is not the primary focus.
-
-Story moments function similarly to those in games like Magicka:
-
-- players encounter NPCs
-- dialogue occurs
-- small events may unfold
-- players may influence outcomes
-
-These encounters may provide rewards (modifiers, items, information). The goal is to create a sense that the player is traveling through a world, not simply clearing combat arenas.
-
-### 5. Player-Controlled Pace
-
-Unlike games like Risk of Rain, the game does **not** force players to move quickly.
-
-Players may choose to:
-
-- explore more thoroughly
-- grind for additional modifiers
-- build extremely powerful characters before progressing
-
-Skilled players can pursue fast runs by advancing with fewer upgrades. This creates two valid playstyles:
-
-- **Optimization runs** — slow, build-heavy, exhaustive exploration
-- **Speed runs** — fast, skill-focused, minimal upgrades
+- Players who want deep engagement find a lot of story, lore, and NPC interaction in the hub
+- Players who want faster runs or cleaner mechanical play are fully supported
+- No mandatory mid-run story interruptions
+- Story moments function like discoveries — found, not forced
 
 ### 6. Multiplayer (Core Consideration)
 
-Multiplayer is a core design consideration from day one, not an afterthought.
-
-The turn-based combat system is inherently compatible with multiplayer. Players should be able to:
-
-- join the same run together
-- participate in the same encounters
-- fight alongside each other in turn-based battles
-- explore cooperatively
-
-Design decisions should account for multiplayer from the start — data structures, turn order, combat flow, and exploration should all be built with the assumption that multiple players will participate. This doesn't mean every feature must ship with multiplayer immediately, but nothing should be designed in a way that makes multiplayer painful to add later.
+Multiplayer is a core design consideration from day one. Data structures, combat flow, and exploration should all be built with the assumption that multiple players may participate. This doesn't mean every feature ships with multiplayer immediately, but nothing should be designed in a way that makes multiplayer painful to add later.
 
 ---
 
 ## Core Loop
 
-1. Explore a procedural map
-2. Encounter enemies or story events
-3. Fight turn-based battles
-4. Collect modifiers and rewards
-5. Apply modifiers to shape the character build
-6. Progress deeper into the world
-7. Fight bosses
-8. Continue until the run ends
+1. Depart hub into a fractured region
+2. Explore islands — discover routes, energy nodes, secrets, NPCs
+3. Navigate dangerous enemies — fight, avoid, or outmaneuver
+4. Collect modifiers and apply them to shape the build
+5. Pursue the region's fragment objective
+6. Return to hub with fragment and discoveries
+7. Hub grows: NPCs arrive, services unlock, world repairs
+8. Venture deeper into new regions
 
-Each run produces different builds and experiences because modifier placement is controlled by the player.
+Each run produces different builds and exploration experiences.
+
+---
+
+## Reward Structure
+
+Exploration first, risk-taking second, farming last:
+
+- **Energy nodes and world pickups** — primary traversal/progression fuel (~60%)
+- **Elite drops** — reliable high-value combat rewards (~25%)
+- **Hidden chests/caves/ruins** — exploration rewards
+- **NPC discoveries** — long-term hub/world rewards
+- **Common enemy drops** — supplemental, not dominant (~15%)
+
+---
+
+## Health, Recovery, and Risk
+
+Health does not automatically regenerate. This creates meaningful tension:
+
+- Limited potion system
+- Modest restoration at key milestones (fragments, thresholds)
+- Possible modifiers/builds that alter sustain
+- Skilled exploration reduces risk indirectly
+
+Too little recovery makes exploration miserable. Too much makes enemies irrelevant. The balance should reward smart play and efficient pathing.
+
+---
+
+## Boss Encounters
+
+Bosses are important build and mastery checks. They test:
+
+- Movement mastery and dodge timing
+- Reading telegraphs
+- Ability synergy
+- Positioning in vertical or fractured spaces
+
+Balance should not require grinding. Extra fighting can make bosses easier, but never mandatory. A player who explored intelligently and played well should be able to succeed.
 
 ---
 
@@ -143,79 +161,17 @@ Players begin a run by selecting an **archetype**:
 - Mage
 - (additional archetypes later)
 
-Each archetype starts with:
-
-- a weapon
-- basic stats
-- possibly a small set of abilities
-
-Over the course of a run, modifiers applied to the character dramatically change how that archetype plays. A fighter could become a long-range melee fighter, a rapid multi-hit attacker, or a large-area sweeping damage dealer.
+Each archetype starts with a weapon, basic stats, and possibly a starting ability. Over the course of a run, modifiers dramatically change how that archetype plays.
 
 ---
 
-## Modifier System (Central Mechanic)
+## What This Game Is NOT
 
-Modifiers are simple operators rather than predefined upgrades.
-
-Examples:
-
-| Operator | Example |
-|----------|---------|
-| Add flat  | `+2` |
-| Add percent | `+10%` |
-| Multiply | `×1.5` |
-| Subtract percent | `−25%` |
-
-When a player obtains a modifier, they decide:
-
-1. **Which stat** it affects (damage, reach, attack count, etc.)
-2. **Which target** it applies to (the character, a weapon, an ability, etc.)
-
-Modifiers can be stored and applied later, allowing players to plan builds strategically.
-
----
-
-## Enemy and Reward System
-
-Enemies can drop:
-
-- modifiers
-- items
-- story progression triggers
-
-Rewards also come from:
-
-- exploration (chests, hidden areas)
-- NPC encounters
-- story events
-- boss fights
-
-Higher difficulty encounters may offer better modifier rewards.
-
----
-
-## Boss Encounters
-
-Bosses are important progression milestones. Possible structures:
-
-- bosses appearing after several levels
-- bosses at the end of each level
-- optional bosses encountered during exploration
-
-Boss fights test the player's current build. Boss rewards may include powerful modifiers or unique rewards.
-
----
-
-## Procedural Story Integration (Long-Term)
-
-In the long term, the game world may track how players interact with story encounters. These interactions could influence:
-
-- which story events appear later
-- which factions appear
-- what rewards become available
-- how the world evolves during the run
-
-This allows procedural generation to feel responsive to player actions.
+- **Not a wave-clearer** — progression should not revolve around killing large numbers of enemies
+- **Not a mob-farming loop** — exploration, not enemy density, drives rewards
+- **Not a timer-pressured escalation game** — the player controls the pace
+- **Not a turn-based tactics game** — combat is real-time and movement-continuous
+- **Not two separate games** — exploration and combat share the same space and systems
 
 ---
 
@@ -223,8 +179,11 @@ This allows procedural generation to feel responsive to player actions.
 
 The design intentionally emphasizes:
 
+- **Spatial curiosity** — the world invites exploration through visible possibility
 - **Player creativity** — builds emerge from player decisions, not predefined gear
-- **Emergent builds** — a small number of variables + flexible modifiers = unexpected combinations
-- **Strategic experimentation** — players discover surprising synergies and develop their own playstyles
+- **Tangible build expression** — modifiers change how the game physically feels, not just numbers
+- **Meaningful danger** — enemies are threats, not loot faucets
+- **World investment** — restoring the planet makes the player care about the space
+- **Movement as the primary verb** — every system supports or rewards moving through the world
 
-Instead of designing hundreds of predefined abilities or items, the game focuses on a smaller number of variables and flexible modifiers that players combine in unexpected ways.
+The litmus test for every system: **Does this make the player more excited to move through the world, discover routes, and feel their build physically changing how they interact with space?**

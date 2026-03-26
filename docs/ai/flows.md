@@ -1,5 +1,7 @@
 # Existing Flows
 
+> **Direction change:** These flows describe the current turn-based prototype. The project is redirecting to real-time exploration-first design. Flows marked **(DEPRECATED)** will be replaced. See `direction.md` and `architecture-plan.md` for the new direction.
+
 ## Boot And New Run
 
 1. `MainMenu` loads `ArchetypeSelect`.
@@ -38,7 +40,7 @@
    - a short timer counts down
    - combat begins if the enemy is still valid
 
-## Combat Flow
+## Combat Flow **(DEPRECATED — replacing with real-time combat)**
 
 Current combat is still a one-player versus one-enemy exchange:
 
@@ -127,7 +129,7 @@ Loot interaction flow:
 4. `GameManager` handles that state change, clears combat UI, and loads `GameOverScreen`.
 5. `VictoryScreen` and `GameOverScreen` both reset the run before starting again.
 
-## Current Flow Constraints
+## Current Flow Constraints **(all deprecated assumptions)**
 
 These flows all still assume:
 

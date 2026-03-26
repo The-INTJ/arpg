@@ -1,5 +1,7 @@
 # Existing Architecture
 
+> **Direction change:** This document describes the current codebase as-built. The project is redirecting from turn-based to real-time exploration-first design. See `direction.md` for the new direction and `current-state-assessment.md` for what's reusable. Systems marked with **(DEPRECATED)** below should not be extended.
+
 ## High-Level Shape
 
 The project is still a Godot-first vertical slice centered on one main gameplay scene:
@@ -75,12 +77,12 @@ GameManager
 - `VictoryScreen` and `GameOverScreen` restart or exit runs.
 - `GameState` is the run bridge between scenes.
 
-### Exploration And Combat
+### Exploration And Combat **(DEPRECATED turn-based flow)**
 
-- `GameManager` owns exploration checks, aggro scanning, HUD refresh, input forwarding, item hotkeys, kill tracking, and pickup spawning.
-- `TurnManager` stores a minimal state machine: exploring, player turn, enemy turn, busy, victory, defeat.
-- `CombatManager` owns combat entry/exit camera motion, damage application, retaliation timing, floating damage numbers, and simple item-action turn handoff.
-- `Enemy` is still a simple data-and-reaction node, not a real AI system.
+- `GameManager` owns exploration checks, aggro scanning, HUD refresh, input forwarding, item hotkeys, kill tracking, and pickup spawning. *(Needs splitting — see `architecture-plan.md`)*
+- `TurnManager` stores a minimal state machine: exploring, player turn, enemy turn, busy, victory, defeat. **(DEPRECATED — turn-based states are dead ends)**
+- `CombatManager` owns combat entry/exit camera motion, damage application, retaliation timing, floating damage numbers, and simple item-action turn handoff. **(DEPRECATED — camera/damage numbers are reusable, turn alternation is not)**
+- `Enemy` is still a simple data-and-reaction node, not a real AI system. *(Stats model and visual root are reusable; needs real-time AI state machine)*
 
 ### Player Build, Loot, And Inventory
 
@@ -138,4 +140,4 @@ This is still a hybrid of:
 - shared static run state
 - thin data models for build math and item definitions
 
-That architecture is still viable for the slice, but `GameManager`, `PlayerStats`, and `CombatManager` are the main places where cross-system pressure is accumulating.
+That architecture was viable for the turn-based slice. Under the new real-time direction, `CombatManager` and `TurnManager` are deprecated, `GameManager` needs splitting, and the world/room system needs rethinking for open exploration. See `architecture-plan.md` for the target architecture.
