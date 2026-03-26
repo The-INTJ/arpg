@@ -89,6 +89,10 @@ public partial class CombatManager : Node
 
         ability.Use();
         _playerAttackCooldownRemaining = PlayerAttackCooldownSeconds;
+
+        if (ability.IsRanged)
+            return PlayerFireProjectile(ability);
+
         Vector3 aimPoint = _player.GetAttackAimPoint(_player.Stats.AttackRange);
         _player.ShowAttackTelegraph(_player.Stats.AttackRange, PlayerAbilityArcDegrees, isHeavy: true);
 
@@ -110,6 +114,105 @@ public partial class CombatManager : Node
         damage = _player.Stats.ConsumePreparedAttackDamage(damage, out string feedback);
         ResolveDamageAgainstEnemy(enemy, damage, feedback);
         return true;
+    }
+
+    private bool PlayerFireProjectile(Ability ability)
+    {
+        int damage = (int)(_player.AttackDamage * ability.DamageMultiplier);
+        damage = _player.Stats.ConsumePreparedAttackDamage(damage, out string feedback);
+
+        Vector3 aimDirection = _player.CombatAimDirection;
+        Vector3 origin = _player.GlobalPosition + new Vector3(0, 0.3f, 0);
+
+        Color color = ability.Type == AbilityType.Fireball ? Palette.ItemBomb : Palette.ItemPower;
+
+        var projectile = Projectile.CreatePlayerProjectile(
+            aimDirection, ability.ProjectileSpeed, damage,
+            _player, this,
+            ability.ProjectileVisualRadius, color);
+        GetTree().CurrentScene.AddChild(projectile);
+        projectile.GlobalPosition = origin;
+
+        _player.PlayAttackAnimation(_player.GetAttackAimPoint(2.0f), isHeavy: true);
+        EmitCombatFeedback(CombineFeedback(feedback, $"{ability.Name} fired."));
+        return true;
+    }
+
+    public void EnemyFireProjectile(Enemy enemy, PlayerController target)
+    {
+        if (!IsValidEnemy(enemy) || target == null || target.Hp <= 0 || IsDefeated)
+            return;
+
+        enemy.EnsureCombatStarted();
+        _target = enemy;
+        enemy.OnOwnerTurnStarted();
+
+        Vector3 origin = enemy.GlobalPosition + new Vector3(0, 0.35f, 0);
+        Vector3 targetPoint = target.GlobalPosition + new Vector3(0, 0.3f, 0);
+        Vector3 direction = (targetPoint - origin).Normalized();
+
+        enemy.PlayAttackAnimation(target.GlobalPosition);
+
+        var projectile = Projectile.CreateEnemyProjectile(
+            direction, enemy.CombatProfile.ProjectileSpeed,
+            enemy, this,
+            0.05f, Palette.EnemyGlow);
+        GetTree().CurrentScene.AddChild(projectile);
+        projectile.GlobalPosition = origin;
+
+        enemy.OnOwnerTurnEnded();
+    }
+
+    public void ResolveProjectileHitEnemy(Enemy enemy, int damage)
+    {
+        if (!IsValidEnemy(enemy))
+            return;
+
+        enemy.EnsureCombatStarted();
+        _target = enemy;
+        ResolveDamageAgainstEnemy(enemy, damage);
+    }
+
+    public void ResolveProjectileHitPlayer(Enemy source)
+    {
+        if (_player == null || _player.Hp <= 0 || IsDefeated)
+            return;
+
+        if (source != null && IsInstanceValid(source) && !source.IsDead)
+        {
+            var result = source.ResolveOutgoingDamage(_player);
+            if (result.Damage > 0)
+            {
+                _player.PlayHitReaction();
+                SpawnDamageNumber(_player.GlobalPosition + Vector3.Up * 0.7f, result.Damage, true);
+                AudioManager.Instance?.PlayPlayerHit();
+            }
+            if (result.HealingAmount > 0)
+                SpawnFloatingText(source.GlobalPosition + Vector3.Up * 0.6f, $"+{result.HealingAmount}", Palette.HealText);
+
+            EmitCombatFeedback(result.BuildFeedbackText());
+            _shakeTimeLeft = result.Damage > 0 ? 0.10f : 0.04f;
+
+            if (_player.Hp <= 0)
+                _turnManager?.SetState(TurnState.Defeat);
+        }
+        else
+        {
+            // Source enemy died or was freed before projectile landed — apply raw damage
+            int rawDamage = 2;
+            int finalDamage = _player.Stats.ResolveIncomingDamage(rawDamage, out _);
+            if (finalDamage > 0)
+            {
+                _player.Hp = Mathf.Max(0, _player.Hp - finalDamage);
+                _player.PlayHitReaction();
+                SpawnDamageNumber(_player.GlobalPosition + Vector3.Up * 0.7f, finalDamage, true);
+                AudioManager.Instance?.PlayPlayerHit();
+            }
+            _shakeTimeLeft = 0.06f;
+
+            if (_player.Hp <= 0)
+                _turnManager?.SetState(TurnState.Defeat);
+        }
     }
 
     public bool PlayerUseDamageItem(Enemy enemy, int damage)

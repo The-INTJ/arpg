@@ -18,7 +18,7 @@ public static class EnemySpawner
                 EnemySpawnPlan.Normal(forcedVariant: SpriteFactory.SlimeVariant),
                 EnemySpawnPlan.Normal(),
                 EnemySpawnPlan.Normal(),
-                EnemySpawnPlan.Normal(),
+                EnemySpawnPlan.Ranged(),
                 EnemySpawnPlan.Elite(InventoryItem.CreateEnemyDrop(room)),
             },
             2 => new[]
@@ -26,18 +26,18 @@ public static class EnemySpawner
                 EnemySpawnPlan.Normal(forcedVariant: SpriteFactory.SlimeVariant),
                 EnemySpawnPlan.Normal(),
                 EnemySpawnPlan.Normal(),
-                EnemySpawnPlan.Normal(),
+                EnemySpawnPlan.Ranged(),
+                EnemySpawnPlan.Ranged(),
                 EnemySpawnPlan.Elite(InventoryItem.CreateEnemyDrop(room)),
                 EnemySpawnPlan.Elite(InventoryItem.CreateEnemyDrop(room)),
-                EnemySpawnPlan.Normal(),
             },
             3 => new[]
             {
                 EnemySpawnPlan.Boss(InventoryItem.CreateEnemyDrop(room, fromBoss: true)),
                 EnemySpawnPlan.Elite(InventoryItem.CreateEnemyDrop(room), forcedVariant: SpriteFactory.SlimeVariant),
                 EnemySpawnPlan.Elite(InventoryItem.CreateEnemyDrop(room)),
-                EnemySpawnPlan.Normal(),
-                EnemySpawnPlan.Normal(),
+                EnemySpawnPlan.Ranged(),
+                EnemySpawnPlan.Ranged(),
                 EnemySpawnPlan.Normal(),
                 EnemySpawnPlan.Normal(),
                 EnemySpawnPlan.Normal(),
@@ -47,7 +47,7 @@ public static class EnemySpawner
                 EnemySpawnPlan.Normal(forcedVariant: SpriteFactory.SlimeVariant),
                 EnemySpawnPlan.Normal(),
                 EnemySpawnPlan.Normal(),
-                EnemySpawnPlan.Normal(),
+                EnemySpawnPlan.Ranged(),
                 EnemySpawnPlan.Elite(InventoryItem.CreateEnemyDrop(room)),
             },
         };
@@ -105,6 +105,9 @@ public static class EnemySpawner
         enemy.AddChild(shape);
 
         container.AddChild(enemy);
+
+        if (plan.IsRanged)
+            enemy.SetCombatProfile(EnemyCombatProfile.CreateRangedMvp());
 
         var effectPlan = MonsterEffectGenerator.Generate(new MonsterEffectRollContext(
             room,
