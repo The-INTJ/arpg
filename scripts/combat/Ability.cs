@@ -20,6 +20,22 @@ public partial class Ability
     public bool IsReady => CooldownRemainingSeconds <= 0.001f;
     public int TurnsRemaining => (int)Math.Ceiling(CooldownRemainingSeconds);
 
+    public bool IsRanged => Type is AbilityType.Snipe or AbilityType.Fireball;
+
+    public float ProjectileSpeed => Type switch
+    {
+        AbilityType.Snipe => 14.0f,
+        AbilityType.Fireball => 9.0f,
+        _ => 0.0f,
+    };
+
+    public float ProjectileVisualRadius => Type switch
+    {
+        AbilityType.Fireball => 0.08f,
+        AbilityType.Snipe => 0.04f,
+        _ => 0.05f,
+    };
+
     private Ability(AbilityType type, string name, float cooldownSeconds)
     {
         Type = type;

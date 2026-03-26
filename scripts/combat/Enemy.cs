@@ -43,6 +43,7 @@ public partial class Enemy : CharacterBody3D
     public bool IsDead => Hp <= 0;
     public float AttackRange => _combatProfile.AttackRange;
     public float AttackIntervalSeconds => _combatProfile.AttackIntervalSeconds;
+    public EnemyCombatProfile CombatProfile => _combatProfile;
     public bool IsPlayerInZone => _player != null && GameState.CurrentRoom == ZoneRoom;
     public IReadOnlyList<MonsterEffectInstance> MonsterEffects => _monsterEffects;
     public string DisplayName => IsBoss
@@ -79,7 +80,10 @@ public partial class Enemy : CharacterBody3D
             if (attackResolved)
             {
                 EnsureCombatStarted();
-                _combatManager.ResolveEnemyAttack(this, playerInAttackRange);
+                if (_combatProfile.IsRanged)
+                    _combatManager.EnemyFireProjectile(this, _player);
+                else
+                    _combatManager.ResolveEnemyAttack(this, playerInAttackRange);
                 _attackWindup.Reset();
                 _attackRecoveryRemaining = _combatProfile.RecoverySeconds;
                 playerInAttackRange = playerInTrackingZone && IsPlayerWithinAttackRange();
@@ -102,7 +106,8 @@ public partial class Enemy : CharacterBody3D
     {
         _player = player;
         _combatManager = combatManager;
-        SetCombatProfile(combatProfile ?? EnemyCombatProfile.CreateMeleeMvp());
+        if (combatProfile != null)
+            SetCombatProfile(combatProfile);
     }
 
     public void SetCombatProfile(EnemyCombatProfile combatProfile)

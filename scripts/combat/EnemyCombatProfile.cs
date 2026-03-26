@@ -9,6 +9,8 @@ public partial class EnemyCombatProfile
     public float AttackRange { get; }
     public float AttackWindupSeconds { get; }
     public float AttackCommitWindowSeconds { get; }
+    public bool IsRanged { get; }
+    public float ProjectileSpeed { get; }
 
     public float RecoverySeconds => Math.Max(0.05f, AttackIntervalSeconds - AttackWindupSeconds);
 
@@ -17,7 +19,9 @@ public partial class EnemyCombatProfile
         float attackIntervalSeconds,
         float attackRange,
         float attackWindupSeconds,
-        float attackCommitWindowSeconds)
+        float attackCommitWindowSeconds,
+        bool isRanged = false,
+        float projectileSpeed = 0.0f)
     {
         MoveSpeed = Math.Max(0.1f, moveSpeed);
         AttackIntervalSeconds = Math.Max(0.1f, attackIntervalSeconds);
@@ -27,6 +31,8 @@ public partial class EnemyCombatProfile
             attackCommitWindowSeconds,
             0.01f,
             AttackWindupSeconds);
+        IsRanged = isRanged;
+        ProjectileSpeed = isRanged ? Math.Max(1.0f, projectileSpeed) : 0.0f;
     }
 
     public static EnemyCombatProfile CreateMeleeMvp()
@@ -37,5 +43,17 @@ public partial class EnemyCombatProfile
             attackRange: 1.15f,
             attackWindupSeconds: 0.45f,
             attackCommitWindowSeconds: 0.2f);
+    }
+
+    public static EnemyCombatProfile CreateRangedMvp()
+    {
+        return new EnemyCombatProfile(
+            moveSpeed: 2.2f,
+            attackIntervalSeconds: 1.6f,
+            attackRange: 7.0f,
+            attackWindupSeconds: 0.6f,
+            attackCommitWindowSeconds: 0.3f,
+            isRanged: true,
+            projectileSpeed: 8.0f);
     }
 }
