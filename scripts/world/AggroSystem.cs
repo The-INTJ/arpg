@@ -100,37 +100,6 @@ public partial class AggroSystem : Node, IDeveloperEffectProvider
             firstSpottedEnemy.IsBoss ? "Boss spotted." : "Spotted.");
     }
 
-    public Enemy FindNearestEnemy(float range)
-    {
-        if (_player == null)
-            return null;
-
-        Enemy nearest = null;
-        float nearestDist = float.MaxValue;
-        int activeZone = GameState.CurrentRoom;
-
-        foreach (var node in GetTree().GetNodesInGroup("enemies"))
-        {
-            if (node is not Enemy enemy || enemy.ZoneRoom != activeZone || enemy.IsDead)
-                continue;
-
-            float dist = GetHorizontalDistance(enemy);
-            if (dist > range || dist >= nearestDist)
-                continue;
-
-            nearestDist = dist;
-            nearest = enemy;
-        }
-
-        return nearest;
-    }
-
-    private float GetHorizontalDistance(Enemy enemy)
-    {
-        Vector3 delta = enemy.GlobalPosition - _player.GlobalPosition;
-        return new Vector2(delta.X, delta.Z).Length();
-    }
-
     private bool IsEffectEnabled(string effectId)
     {
         return _developerTools?.IsEffectEnabled(this, effectId) ?? true;

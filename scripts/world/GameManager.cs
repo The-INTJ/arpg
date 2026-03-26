@@ -22,7 +22,8 @@ public partial class GameManager : Node3D, IDeveloperEffectProvider
 
     private PlayerController _player;
     private TurnManager _turnManager;
-    private CombatManager _combatManager;
+    private CombatManager _combatPresentation;
+    private CombatSystem _combatSystem;
     private AggroSystem _aggroSystem;
     private DeveloperToolsManager _developerTools;
     private GameHudUpdater _hudUpdater;
@@ -63,11 +64,15 @@ public partial class GameManager : Node3D, IDeveloperEffectProvider
         AddChild(_turnManager);
         _turnManager.TurnChanged += OnTurnChanged;
 
-        _combatManager = new CombatManager();
-        AddChild(_combatManager);
-        _combatManager.Init(_player, _turnManager, camera);
-        _combatManager.CombatEnded += OnCombatEnded;
-        _combatManager.CombatFeedback += text => _hudUpdater.StatusText = text;
+        _combatPresentation = new CombatManager();
+        AddChild(_combatPresentation);
+        _combatPresentation.Init(_player, _turnManager, camera);
+
+        _combatSystem = new CombatSystem();
+        AddChild(_combatSystem);
+        _combatSystem.Init(_player, _turnManager, _combatPresentation);
+        _combatSystem.CombatEnded += OnCombatEnded;
+        _combatSystem.CombatFeedback += text => _hudUpdater.StatusText = text;
 
         _aggroSystem = new AggroSystem();
         AddChild(_aggroSystem);
@@ -80,7 +85,7 @@ public partial class GameManager : Node3D, IDeveloperEffectProvider
 
         _actionHandler = new PlayerActionHandler();
         AddChild(_actionHandler);
-        _actionHandler.Init(_player, _turnManager, _combatManager, _aggroSystem);
+        _actionHandler.Init(_player, _turnManager, _combatSystem, _aggroSystem);
         _actionHandler.StatusMessage += text => _hudUpdater.StatusText = text;
 
         var attackButton = GetNode<Button>("CanvasLayer/AttackButton");
@@ -114,7 +119,7 @@ public partial class GameManager : Node3D, IDeveloperEffectProvider
 
         _hudUpdater = new GameHudUpdater();
         AddChild(_hudUpdater);
-        _hudUpdater.Init(_player, _turnManager, _combatManager, _aggroSystem, _actionHandler, camera, canvas,
+        _hudUpdater.Init(_player, _turnManager, _combatSystem, _aggroSystem, _actionHandler, camera, canvas,
             hpLabel, statsLabel, darkEnergyLabel, darkEnergyBar, statusLabel, attackButton, abilityButton,
             enemyHp, itemBarHBox, () => _zoneBridges?[_activeZoneRoom]?.IsBuilt ?? false);
 
@@ -238,7 +243,7 @@ public partial class GameManager : Node3D, IDeveloperEffectProvider
         {
             var enemy = EnemySpawner.Spawn(enemiesContainer, generatedMap.EnemySpawnPoints[i], encounter[i], room, profile);
             enemy.ZoneRoom = room;
-            enemy.ConfigureRealtimeCombat(_player, _combatManager);
+            enemy.ConfigureRealtimeCombat(_player, _combatSystem);
         }
 
         SpawnCaveChest(zoneOrigin + generatedMap.CaveChestPosition, room);
@@ -366,9 +371,9 @@ public partial class GameManager : Node3D, IDeveloperEffectProvider
 
     private void OnCombatEnded()
     {
-        int room = Mathf.Clamp(_combatManager.LastKillRoom, 1, GameState.TotalRooms);
-        bool wasBoss = _combatManager.LastKillWasBoss;
-        bool wasElite = _combatManager.LastKillWasElite;
+        int room = Mathf.Clamp(_combatSystem.LastKillRoom, 1, GameState.TotalRooms);
+        bool wasBoss = _combatSystem.LastKillWasBoss;
+        bool wasElite = _combatSystem.LastKillWasElite;
         int energy = DarkEnergy.EnergyForKill(wasBoss, wasElite);
         bool thresholdWasMet = IsBridgeEnergySatisfied(room);
         _zoneEnergy[room].Add(energy);
@@ -397,10 +402,10 @@ public partial class GameManager : Node3D, IDeveloperEffectProvider
             return;
         }
 
-        SpawnLoot(_combatManager.LastKillPosition);
-        var droppedItem = _combatManager.LastKillItemDrop;
+        SpawnLoot(_combatSystem.LastKillPosition);
+        var droppedItem = _combatSystem.LastKillItemDrop;
         if (droppedItem != null)
-            SpawnInventoryItem(_combatManager.LastKillPosition + new Vector3(0.75f, 0, 0.4f), droppedItem);
+            SpawnInventoryItem(_combatSystem.LastKillPosition + new Vector3(0.75f, 0, 0.4f), droppedItem);
 
         bool thresholdIsMet = IsBridgeEnergySatisfied(room);
         if (room < GameState.TotalRooms && !thresholdWasMet && thresholdIsMet)

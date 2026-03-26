@@ -17,6 +17,7 @@ public static partial class Scenes
 	public const string CaveChest = PropRoot + "CaveChest.tscn";
 	public const string CavePocketSlice = WorldSliceRoot + "CavePocketSlice.tscn";
 	public const string DamageNumber = CombatRoot + "DamageNumber.tscn";
+	public const string EnemyBase = ActorRoot + "EnemyBase.tscn";
 	public const string Game = Root + "Game.tscn";
 	public const string ItemPickup = PickupRoot + "ItemPickup.tscn";
 	public const string ItemSlot = UiRoot + "ItemSlot.tscn";

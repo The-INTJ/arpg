@@ -132,6 +132,14 @@ item_slot_7={
 ]
 }
 
+[layer_names]
+
+3d_physics/layer_1="WorldBodies"
+3d_physics/layer_2="ActorBodies"
+3d_physics/layer_3="CombatHurtboxes"
+3d_physics/layer_4="Projectiles"
+3d_physics/layer_5="Interactables"
+
 [physics]
 
 3d/physics_engine="Jolt Physics"

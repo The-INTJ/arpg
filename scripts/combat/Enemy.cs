@@ -4,7 +4,7 @@ using Godot;
 
 namespace ARPG;
 
-public partial class Enemy : CharacterBody3D
+public partial class Enemy : CharacterBody3D, ICombatant
 {
     private const float DefaultFloorSnapLength = 0.3f;
     private const float GroundAcceleration = 18.0f;
@@ -19,13 +19,16 @@ public partial class Enemy : CharacterBody3D
     private Node3D _effectBadgeAnchor;
     private Tween _visualTween;
     private PlayerController _player;
-    private CombatManager _combatManager;
+    private CombatSystem _combatSystem;
     private EnemyCombatProfile _combatProfile = EnemyCombatProfile.CreateMeleeMvp();
     private AttackWindupState _attackWindup = new(
         EnemyCombatProfile.CreateMeleeMvp().AttackWindupSeconds,
         EnemyCombatProfile.CreateMeleeMvp().AttackCommitWindowSeconds);
     private float _attackRecoveryRemaining;
     private bool _combatStarted;
+    private CombatHurtbox _combatHurtbox;
+    private Marker3D _attackOriginMarker;
+    private Marker3D _projectileOriginMarker;
 
     public int MaxHp = 11;
     public int Hp = 11;
@@ -41,11 +44,17 @@ public partial class Enemy : CharacterBody3D
 
     public float HpPercent => MaxHp > 0 ? (float)Hp / MaxHp : 0f;
     public bool IsDead => Hp <= 0;
-    public float AttackRange => _combatProfile.AttackRange;
+    public float AttackReach => _combatProfile.AttackReach;
     public float AttackIntervalSeconds => _combatProfile.AttackIntervalSeconds;
     public EnemyCombatProfile CombatProfile => _combatProfile;
     public bool IsPlayerInZone => _player != null && GameState.CurrentRoom == ZoneRoom;
     public IReadOnlyList<MonsterEffectInstance> MonsterEffects => _monsterEffects;
+    public CombatTeam CombatTeam => CombatTeam.Enemy;
+    public bool IsCombatAlive => !IsDead;
+    public Node3D CombatNode => this;
+    public CombatHurtbox Hurtbox => _combatHurtbox;
+    public Vector3 AttackOrigin => _attackOriginMarker?.GlobalPosition ?? GlobalPosition + new Vector3(0, 0.35f, 0);
+    public Vector3 ProjectileOrigin => _projectileOriginMarker?.GlobalPosition ?? AttackOrigin;
     public string DisplayName => IsBoss
         ? "Boss"
         : IsElite
@@ -55,6 +64,11 @@ public partial class Enemy : CharacterBody3D
     public override void _Ready()
     {
         FloorSnapLength = DefaultFloorSnapLength;
+        _combatHurtbox = GetNode<CombatHurtbox>("CombatHurtbox");
+        _attackOriginMarker = GetNode<Marker3D>("AttackOrigin");
+        _projectileOriginMarker = GetNode<Marker3D>("ProjectileOrigin");
+        CombatLayers.ConfigureActorBody(this);
+        _combatHurtbox.BindOwner(this);
     }
 
     public override void _PhysicsProcess(double delta)
@@ -62,7 +76,7 @@ public partial class Enemy : CharacterBody3D
         float dt = (float)delta;
         _attackRecoveryRemaining = Mathf.Max(0.0f, _attackRecoveryRemaining - dt);
 
-        if (_player == null || _combatManager == null || _player.Hp <= 0 || _combatManager.IsDefeated || IsDead)
+        if (_player == null || _combatSystem == null || _player.Hp <= 0 || _combatSystem.IsDefeated || IsDead)
         {
             MoveTowardVelocity(Vector3.Zero, dt);
             return;
@@ -81,9 +95,9 @@ public partial class Enemy : CharacterBody3D
             {
                 EnsureCombatStarted();
                 if (_combatProfile.IsRanged)
-                    _combatManager.EnemyFireProjectile(this, _player);
+                    _combatSystem.EnemyFireProjectile(this, _player);
                 else
-                    _combatManager.ResolveEnemyAttack(this, playerInAttackRange);
+                    _combatSystem.ResolveEnemyAttack(this, playerInAttackRange);
                 _attackWindup.Reset();
                 _attackRecoveryRemaining = _combatProfile.RecoverySeconds;
                 playerInAttackRange = playerInTrackingZone && IsPlayerWithinAttackRange();
@@ -102,10 +116,10 @@ public partial class Enemy : CharacterBody3D
         MoveTowardVelocity(desiredVelocity, dt);
     }
 
-    public void ConfigureRealtimeCombat(PlayerController player, CombatManager combatManager, EnemyCombatProfile combatProfile = null)
+    public void ConfigureRealtimeCombat(PlayerController player, CombatSystem combatSystem, EnemyCombatProfile combatProfile = null)
     {
         _player = player;
-        _combatManager = combatManager;
+        _combatSystem = combatSystem;
         if (combatProfile != null)
             SetCombatProfile(combatProfile);
     }
@@ -130,13 +144,13 @@ public partial class Enemy : CharacterBody3D
 
     public bool IsPlayerWithinAttackRange()
     {
-        if (_player == null)
+        if (_player == null || _combatSystem == null)
             return false;
 
         if (Mathf.Abs(GlobalPosition.Y - _player.GlobalPosition.Y) > MaxVerticalDelta)
             return false;
 
-        return GetHorizontalDistanceToPlayer() <= AttackRange;
+        return _combatSystem.CanEnemyAttackConnect(this);
     }
 
     public bool IsPlayerInTrackingZone()
@@ -428,7 +442,7 @@ public partial class Enemy : CharacterBody3D
         toPlayer.Y = 0;
 
         float distanceToPlayer = toPlayer.Length();
-        float stopDistance = Mathf.Max(0.65f, AttackRange * 0.82f);
+        float stopDistance = _combatSystem?.GetEnemyPreferredStopDistance(this) ?? Mathf.Max(0.65f, AttackReach);
         if (distanceToPlayer <= stopDistance || distanceToPlayer <= 0.01f)
             return Vector3.Zero;
 

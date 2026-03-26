@@ -11,7 +11,7 @@ public partial class GameHudUpdater : Node
 {
     private PlayerController _player;
     private TurnManager _turnManager;
-    private CombatManager _combatManager;
+    private CombatSystem _combatSystem;
     private AggroSystem _aggroSystem;
     private PlayerActionHandler _actionHandler;
     private Camera3D _camera;
@@ -48,7 +48,7 @@ public partial class GameHudUpdater : Node
     public void Init(
         PlayerController player,
         TurnManager turnManager,
-        CombatManager combatManager,
+        CombatSystem combatSystem,
         AggroSystem aggroSystem,
         PlayerActionHandler actionHandler,
         Camera3D camera,
@@ -66,7 +66,7 @@ public partial class GameHudUpdater : Node
     {
         _player = player;
         _turnManager = turnManager;
-        _combatManager = combatManager;
+        _combatSystem = combatSystem;
         _aggroSystem = aggroSystem;
         _actionHandler = actionHandler;
         _camera = camera;
@@ -146,7 +146,7 @@ public partial class GameHudUpdater : Node
         var s = _player.Stats;
         _hpLabel.Text = $"HP: {s.CurrentHp} / {s.MaxHp}";
         string inventoryText = $"{s.Inventory.OccupiedSlotCount}/{s.Inventory.Capacity}";
-        _statsLabel.Text = $"ATK: {s.AttackDamage}  |  SPD: {s.MoveSpeed:0.#}  |  Range: {s.AttackRange:0.##}  |  Bag: {inventoryText}";
+        _statsLabel.Text = $"ATK: {s.AttackDamage}  |  SPD: {s.MoveSpeed:0.#}  |  Reach: {s.AttackReach:0.##}  |  Size: {s.AttackSize:0.##}  |  Bag: {inventoryText}";
         int spendable = darkEnergy.Spendable(_isActiveBridgeBuilt());
         _darkEnergyLabel.Text = _buildModeActive
             ? $"Dark Energy: {darkEnergy.Current}/{darkEnergy.Threshold}  (+{spendable} spendable)"
@@ -245,10 +245,10 @@ public partial class GameHudUpdater : Node
     {
         var viewport = GetViewport().GetVisibleRect().Size;
         _attackButton.Visible = true;
-        _attackButton.Disabled = !_combatManager.IsPlayerAttackReady;
-        _attackButton.Text = _combatManager.IsPlayerAttackReady
+        _attackButton.Disabled = !_combatSystem.IsPlayerAttackReady;
+        _attackButton.Text = _combatSystem.IsPlayerAttackReady
             ? $"Attack ({GameKeys.DisplayName(GameKeys.Attack)})"
-            : $"Attack ({_combatManager.PlayerAttackCooldownRemaining:0.0}s)";
+            : $"Attack ({_combatSystem.PlayerAttackCooldownRemaining:0.0}s)";
         _attackButton.Position = new Vector2(
             viewport.X * 0.5f - _attackButton.Size.X - 14.0f,
             viewport.Y * 0.78f);
@@ -270,7 +270,7 @@ public partial class GameHudUpdater : Node
             _abilityButton.Visible = false;
         }
 
-        var target = _combatManager.Target ?? _aggroSystem.FindNearestEnemy(_player.Stats.AttackRange);
+        var target = _combatSystem.Target ?? _combatSystem.PreviewPrimaryTarget();
         if (target == null)
         {
             _enemyHpDisplay.Visible = false;

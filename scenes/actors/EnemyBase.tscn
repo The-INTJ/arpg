@@ -1,0 +1,32 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/combat/Enemy.cs" id="1_enemy"]
+[ext_resource type="Script" path="res://scripts/combat/CombatHurtbox.cs" id="2_hurtbox"]
+
+[sub_resource type="BoxShape3D" id="1_body_shape"]
+size = Vector3(0.3, 0.5, 0.3)
+
+[sub_resource type="BoxShape3D" id="2_hurtbox_shape"]
+size = Vector3(0.28, 0.48, 0.28)
+
+[node name="Enemy" type="CharacterBody3D"]
+script = ExtResource("1_enemy")
+
+[node name="BodyCollision" type="CollisionShape3D" parent="."]
+position = Vector3(0, 0.25, 0)
+shape = SubResource("1_body_shape")
+
+[node name="VisualRoot" type="Node3D" parent="."]
+
+[node name="AttackOrigin" type="Marker3D" parent="."]
+position = Vector3(0, 0.3, 0.12)
+
+[node name="ProjectileOrigin" type="Marker3D" parent="."]
+position = Vector3(0, 0.34, 0.10)
+
+[node name="CombatHurtbox" type="Area3D" parent="."]
+script = ExtResource("2_hurtbox")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="CombatHurtbox"]
+position = Vector3(0, 0.25, 0)
+shape = SubResource("2_hurtbox_shape")

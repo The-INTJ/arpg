@@ -18,7 +18,8 @@ public partial class Projectile : Node3D
     private CharacterBody3D _ownerBody;
     private Enemy _sourceEnemy;
     private bool _isPlayerProjectile;
-    private CombatManager _combatManager;
+    private CombatSystem _combatSystem;
+    private AttackDefinition _attack;
     private MeshInstance3D _mesh;
     private bool _resolved;
 
@@ -27,20 +28,25 @@ public partial class Projectile : Node3D
     /// (so stat buffs are consumed correctly).
     /// </summary>
     public static Projectile CreatePlayerProjectile(
-        Vector3 direction, float speed, int damage,
-        PlayerController owner, CombatManager combatManager,
-        float visualRadius, Color color, float lifetime = DefaultLifetime)
+        Vector3 direction,
+        int damage,
+        PlayerController owner,
+        CombatSystem combatSystem,
+        AttackDefinition attack,
+        Color color,
+        float lifetime = DefaultLifetime)
     {
         var proj = new Projectile();
         proj._direction = direction.Normalized();
-        proj._speed = speed;
+        proj._speed = attack.ProjectileSpeed;
         proj._damage = damage;
         proj._lifetime = lifetime;
         proj._ownerBody = owner;
         proj._sourceEnemy = null;
         proj._isPlayerProjectile = true;
-        proj._combatManager = combatManager;
-        proj.BuildVisual(visualRadius, color);
+        proj._combatSystem = combatSystem;
+        proj._attack = attack;
+        proj.BuildVisual(attack.ProjectileVisualRadius, color);
         return proj;
     }
 
@@ -49,20 +55,25 @@ public partial class Projectile : Node3D
     /// through the full monster-effect pipeline.
     /// </summary>
     public static Projectile CreateEnemyProjectile(
-        Vector3 direction, float speed,
-        Enemy source, CombatManager combatManager,
-        float visualRadius, Color color, float lifetime = DefaultLifetime)
+        Vector3 direction,
+        int damage,
+        Enemy source,
+        CombatSystem combatSystem,
+        AttackDefinition attack,
+        Color color,
+        float lifetime = DefaultLifetime)
     {
         var proj = new Projectile();
         proj._direction = direction.Normalized();
-        proj._speed = speed;
-        proj._damage = source.AttackDamage;
+        proj._speed = attack.ProjectileSpeed;
+        proj._damage = damage;
         proj._lifetime = lifetime;
         proj._ownerBody = source;
         proj._sourceEnemy = source;
         proj._isPlayerProjectile = false;
-        proj._combatManager = combatManager;
-        proj.BuildVisual(visualRadius, color);
+        proj._combatSystem = combatSystem;
+        proj._attack = attack;
+        proj.BuildVisual(attack.ProjectileVisualRadius, color);
         return proj;
     }
 
@@ -83,44 +94,74 @@ public partial class Projectile : Node3D
         Vector3 from = GlobalPosition;
         Vector3 to = from + movement;
 
-        var spaceState = GetWorld3D().DirectSpaceState;
-        var query = PhysicsRayQueryParameters3D.Create(from, to);
-        query.CollideWithAreas = false;
-        query.CollideWithBodies = true;
-
-        var exclude = new Godot.Collections.Array<Rid>();
-        if (_ownerBody != null && IsInstanceValid(_ownerBody))
-            exclude.Add(_ownerBody.GetRid());
-        query.Exclude = exclude;
-
-        var result = spaceState.IntersectRay(query);
-        if (result.Count > 0)
+        var hurtboxHit = IntersectHurtbox(from, to);
+        var blockerHit = IntersectWorldBlocker(from, to);
+        if (hurtboxHit.Count > 0 && (blockerHit.Count == 0 || HitDistance(from, hurtboxHit) <= HitDistance(from, blockerHit)))
         {
-            GlobalPosition = result["position"].AsVector3();
-            OnHit(result["collider"].As<Node3D>());
+            GlobalPosition = hurtboxHit["position"].AsVector3();
+            OnHitHurtbox(hurtboxHit["collider"].AsGodotObject() as CombatHurtbox);
+            return;
+        }
+
+        if (blockerHit.Count > 0)
+        {
+            GlobalPosition = blockerHit["position"].AsVector3();
+            QueueFree();
             return;
         }
 
         GlobalPosition = to;
     }
 
-    private void OnHit(Node3D body)
+    private Godot.Collections.Dictionary IntersectHurtbox(Vector3 from, Vector3 to)
     {
-        if (_resolved)
+        var query = PhysicsRayQueryParameters3D.Create(from, to);
+        query.CollideWithAreas = true;
+        query.CollideWithBodies = false;
+        query.CollisionMask = CombatLayers.CombatHurtboxes;
+        query.Exclude = BuildExcludeList();
+        return GetWorld3D().DirectSpaceState.IntersectRay(query);
+    }
+
+    private Godot.Collections.Dictionary IntersectWorldBlocker(Vector3 from, Vector3 to)
+    {
+        var query = PhysicsRayQueryParameters3D.Create(from, to);
+        query.CollideWithAreas = false;
+        query.CollideWithBodies = true;
+        query.CollisionMask = CombatLayers.WorldBodies;
+        query.Exclude = BuildExcludeList();
+        return GetWorld3D().DirectSpaceState.IntersectRay(query);
+    }
+
+    private Godot.Collections.Array<Rid> BuildExcludeList()
+    {
+        var exclude = new Godot.Collections.Array<Rid>();
+        if (_ownerBody != null && IsInstanceValid(_ownerBody))
+            exclude.Add(_ownerBody.GetRid());
+
+        if (_ownerBody is ICombatant combatant && combatant.Hurtbox != null && IsInstanceValid(combatant.Hurtbox))
+            exclude.Add(combatant.Hurtbox.GetRid());
+
+        return exclude;
+    }
+
+    private void OnHitHurtbox(CombatHurtbox hurtbox)
+    {
+        if (_resolved || hurtbox == null)
             return;
 
         _resolved = true;
-
-        if (_isPlayerProjectile && body is Enemy enemy && !enemy.IsDead)
-        {
-            _combatManager?.ResolveProjectileHitEnemy(enemy, _damage);
-        }
-        else if (!_isPlayerProjectile && body is PlayerController)
-        {
-            _combatManager?.ResolveProjectileHitPlayer(_sourceEnemy);
-        }
+        if (_isPlayerProjectile)
+            _combatSystem?.ResolveProjectileHitEnemy(hurtbox, _damage);
+        else
+            _combatSystem?.ResolveProjectileHitPlayer(hurtbox, _sourceEnemy, _damage);
 
         QueueFree();
+    }
+
+    private static float HitDistance(Vector3 from, Godot.Collections.Dictionary hit)
+    {
+        return hit.Count == 0 ? float.MaxValue : from.DistanceTo(hit["position"].AsVector3());
     }
 
     private void BuildVisual(float radius, Color color)

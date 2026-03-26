@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Godot;
 
 namespace ARPG;
 
@@ -13,12 +14,14 @@ public partial class Weapon
 
     public string Name { get; }
     public AbilityType Ability { get; }
+    public AttackDefinition BasicAttack { get; }
     public IReadOnlyList<WeaponStatChannel> Channels => _channels;
 
-    public Weapon(string name, AbilityType ability)
+    public Weapon(string name, AbilityType ability, AttackDefinition basicAttack)
     {
         Name = name;
         Ability = ability;
+        BasicAttack = basicAttack;
         _channels = CreateChannels();
 
         foreach (var channel in _channels)
@@ -38,28 +41,58 @@ public partial class Weapon
 
     public static Weapon ForArchetype(Archetype archetype) => archetype switch
     {
-        Archetype.Fighter => Create("Iron Sword", AbilityType.Cleave,
+        Archetype.Fighter => Create("Iron Sword", AbilityType.Cleave, BuildSwordAttack(),
             Modifier.Fixed(ModifierOp.FlatAdd, StatTarget.AttackDamage, 2),
             Modifier.Fixed(ModifierOp.FlatAdd, StatTarget.MaxHp, 3)),
 
-        Archetype.Archer => Create("Longbow", AbilityType.Snipe,
-            Modifier.Fixed(ModifierOp.FlatAdd, StatTarget.AttackRange, 0.50f),
+        Archetype.Archer => Create("Longbow", AbilityType.Snipe, BuildBowStrike(),
+            Modifier.Fixed(ModifierOp.FlatAdd, StatTarget.AttackReach, 0.50f),
             Modifier.Fixed(ModifierOp.FlatAdd, StatTarget.AttackDamage, 1)),
 
-        Archetype.Mage => Create("Oak Staff", AbilityType.Fireball,
+        Archetype.Mage => Create("Oak Staff", AbilityType.Fireball, BuildStaffStrike(),
             Modifier.Fixed(ModifierOp.FlatAdd, StatTarget.AttackDamage, 1),
             Modifier.Fixed(ModifierOp.PercentAdd, StatTarget.AttackDamage, 5)),
 
-        _ => Create("Fists", AbilityType.None)
+        _ => Create("Fists", AbilityType.None, BuildSwordAttack())
     };
 
-    private static Weapon Create(string name, AbilityType ability, params Modifier[] modifiers)
+    private static Weapon Create(string name, AbilityType ability, AttackDefinition basicAttack, params Modifier[] modifiers)
     {
-        var weapon = new Weapon(name, ability);
+        var weapon = new Weapon(name, ability, basicAttack);
         foreach (var modifier in modifiers)
             weapon.AddStartingModifier(modifier);
 
         return weapon;
+    }
+
+    private static AttackDefinition BuildSwordAttack()
+    {
+        return AttackDefinition.CreateMelee(
+            "sword_basic",
+            AttackVolumeDefinition.CreateBox(
+                new Vector3(0.9f, 1.0f, 1.0f),
+                new Vector3(0.0f, 0.0f, 0.75f)),
+            AttackTimeline.Create(0.08f, 0.04f, 0.20f));
+    }
+
+    private static AttackDefinition BuildBowStrike()
+    {
+        return AttackDefinition.CreateMelee(
+            "bow_basic",
+            AttackVolumeDefinition.CreateBox(
+                new Vector3(0.7f, 0.9f, 1.1f),
+                new Vector3(0.0f, 0.0f, 0.8f)),
+            AttackTimeline.Create(0.10f, 0.04f, 0.18f));
+    }
+
+    private static AttackDefinition BuildStaffStrike()
+    {
+        return AttackDefinition.CreateMelee(
+            "staff_basic",
+            AttackVolumeDefinition.CreateBox(
+                new Vector3(0.8f, 1.0f, 1.05f),
+                new Vector3(0.0f, 0.0f, 0.8f)),
+            AttackTimeline.Create(0.09f, 0.04f, 0.19f));
     }
 
     private static WeaponStatChannel[] CreateChannels()

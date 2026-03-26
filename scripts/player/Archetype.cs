@@ -13,7 +13,8 @@ public static class ArchetypeData
         MaxHp: 40,
         AttackDamage: 5,
         MoveSpeed: 5.0f,
-        AttackRange: 1.55f,
+        AttackReach: 1.55f,
+        AttackSize: 1.0f,
         JumpHeight: 1.9f,
         JumpCount: 1);
 
@@ -21,7 +22,8 @@ public static class ArchetypeData
         MaxHp: 24,
         AttackDamage: 3,
         MoveSpeed: 6.0f,
-        AttackRange: 1.75f,
+        AttackReach: 1.75f,
+        AttackSize: 1.0f,
         JumpHeight: 1.9f,
         JumpCount: 1);
 
@@ -29,7 +31,8 @@ public static class ArchetypeData
         MaxHp: 20,
         AttackDamage: 6,
         MoveSpeed: 4.5f,
-        AttackRange: 1.65f,
+        AttackReach: 1.65f,
+        AttackSize: 1.0f,
         JumpHeight: 1.9f,
         JumpCount: 1);
 
@@ -54,9 +57,9 @@ public static class ArchetypeData
 
     public static string Description(Archetype a) => a switch
     {
-        Archetype.Fighter => "Tough and reliable.\nHP: 40  ATK: 5  SPD: 5.0  Range: 1.55\nAbility: Cleave (double hit)",
-        Archetype.Archer => "Fast and evasive.\nHP: 24  ATK: 3  SPD: 6.0  Range: 1.75\nAbility: Snipe (3x damage)",
-        Archetype.Mage => "Fragile but devastating.\nHP: 20  ATK: 6  SPD: 4.5  Range: 1.65\nAbility: Fireball (2.5x damage)",
+        Archetype.Fighter => "Tough and reliable.\nHP: 40  ATK: 5  SPD: 5.0  Reach: 1.55\nAbility: Cleave (double hit)",
+        Archetype.Archer => "Fast and evasive.\nHP: 24  ATK: 3  SPD: 6.0  Reach: 1.75\nAbility: Snipe (3x damage)",
+        Archetype.Mage => "Fragile but devastating.\nHP: 20  ATK: 6  SPD: 4.5  Reach: 1.65\nAbility: Fireball (2.5x damage)",
         _ => ""
     };
 }

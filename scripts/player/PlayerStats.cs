@@ -39,7 +39,8 @@ public partial class PlayerStats
     public int MaxHp => (int)GetEffectiveStatValue(StatTarget.MaxHp);
     public int AttackDamage => (int)GetEffectiveStatValue(StatTarget.AttackDamage);
     public float MoveSpeed => GetEffectiveStatValue(StatTarget.MoveSpeed);
-    public float AttackRange => GetEffectiveStatValue(StatTarget.AttackRange);
+    public float AttackReach => GetEffectiveStatValue(StatTarget.AttackReach);
+    public float AttackSize => GetEffectiveStatValue(StatTarget.AttackSize);
     public float JumpHeight => GetEffectiveStatValue(StatTarget.JumpHeight);
     public float JumpCount => GetEffectiveStatValue(StatTarget.JumpCount);
     public int DesiredInventorySlotCount => ClampInventorySlots((int)GetEffectiveStatValue(StatTarget.InventorySlots));
@@ -197,7 +198,8 @@ public partial class PlayerStats
         StatTarget.MaxHp => _baseStats.MaxHp,
         StatTarget.AttackDamage => _baseStats.AttackDamage,
         StatTarget.MoveSpeed => _baseStats.MoveSpeed,
-        StatTarget.AttackRange => _baseStats.AttackRange,
+        StatTarget.AttackReach => _baseStats.AttackReach,
+        StatTarget.AttackSize => _baseStats.AttackSize,
         StatTarget.JumpHeight => _baseStats.JumpHeight,
         StatTarget.JumpCount => _baseStats.JumpCount,
         StatTarget.InventorySlots => _baseStats.InventorySlots,

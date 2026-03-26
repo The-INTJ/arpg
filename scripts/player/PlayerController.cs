@@ -3,7 +3,7 @@ using Godot;
 
 namespace ARPG;
 
-public partial class PlayerController : CharacterBody3D, IDeveloperEffectProvider
+public partial class PlayerController : CharacterBody3D, IDeveloperEffectProvider, ICombatant
 {
     private const float GodFlightSpeedMultiplier = 2.4f;
     private const float GodFlightVeryFastMultiplier = 8.0f;
@@ -16,6 +16,13 @@ public partial class PlayerController : CharacterBody3D, IDeveloperEffectProvide
     public int AttackDamage => Stats.AttackDamage;
     public bool IsGrounded => IsOnFloor();
     public Vector3 CombatAimDirection => _combatAimDirection;
+    public CombatTeam CombatTeam => CombatTeam.Player;
+    public int ZoneRoom => GameState.CurrentRoom;
+    public bool IsCombatAlive => Hp > 0;
+    public Node3D CombatNode => this;
+    public CombatHurtbox Hurtbox => _combatHurtbox;
+    public Vector3 AttackOrigin => _attackOriginMarker?.GlobalPosition ?? GlobalPosition + new Vector3(0, 0.35f, 0);
+    public Vector3 ProjectileOrigin => _projectileOriginMarker?.GlobalPosition ?? AttackOrigin;
 
     private float _regenAccumulator;
     private float _presentationTime;
@@ -33,9 +40,12 @@ public partial class PlayerController : CharacterBody3D, IDeveloperEffectProvide
     private Vector3 _combatAimDirection = Vector3.Forward;
     private CameraController _cameraController;
     private CollisionShape3D _playerCollision;
+    private CombatHurtbox _combatHurtbox;
     private DeveloperToolsManager _developerTools;
     private Node3D _visualRoot;
     private Node3D _bobRoot;
+    private Marker3D _attackOriginMarker;
+    private Marker3D _projectileOriginMarker;
     private Sprite3D _sprite;
     private Node3D _weaponPivot;
     private Sprite3D _weaponSprite;
@@ -91,6 +101,11 @@ public partial class PlayerController : CharacterBody3D, IDeveloperEffectProvide
 
         _cameraController = GetNode<CameraController>("CameraRig");
         _playerCollision = GetNode<CollisionShape3D>("PlayerCollision");
+        _combatHurtbox = GetNode<CombatHurtbox>("CombatHurtbox");
+        _attackOriginMarker = GetNode<Marker3D>("AttackOrigin");
+        _projectileOriginMarker = GetNode<Marker3D>("ProjectileOrigin");
+        CombatLayers.ConfigureActorBody(this);
+        _combatHurtbox.BindOwner(this);
         ResetAvailableJumps();
     }
 
@@ -303,15 +318,16 @@ public partial class PlayerController : CharacterBody3D, IDeveloperEffectProvide
             .SetEase(Tween.EaseType.InOut);
     }
 
-    public void ShowAttackTelegraph(float range, float arcDegrees, bool isHeavy)
+    public void ShowAttackTelegraph(AttackDefinition attack, float attackReach, float attackSize, bool isHeavy)
     {
         var telegraph = new MeleeAttackTelegraph();
         telegraph.GlobalPosition = GlobalPosition + new Vector3(0, -0.20f, 0);
         GetTree().CurrentScene.AddChild(telegraph);
         telegraph.Play(
+            attack.Volume,
             _combatAimDirection,
-            range,
-            arcDegrees,
+            attackReach,
+            attackSize,
             isHeavy ? Palette.ItemArcane : Palette.ItemPower,
             isHeavy ? 0.18f : 0.14f);
     }

@@ -9,6 +9,7 @@
 [ext_resource type="Script" uid="uid://crwgl38eka6td" path="res://scripts/world/CameraController.cs" id="8_cc"]
 [ext_resource type="Theme" uid="uid://c5ekn6wb3wjor" path="res://assets/HeroesOfTheAges_MainTheme.tres" id="9_theme"]
 [ext_resource type="Environment" uid="uid://b832ykxndumen" path="res://assets/environments/splintered_world.tres" id="10_env"]
+[ext_resource type="Script" path="res://scripts/combat/CombatHurtbox.cs" id="11_hurt"]
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_floor"]
 size = Vector2(100, 100)
@@ -22,6 +23,9 @@ height = 0.5
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_player"]
 radius = 0.15
 height = 0.5
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_player_hurtbox"]
+size = Vector3(0.3, 0.5, 0.3)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hpbar_bg"]
 bg_color = Color(0.2, 0.15, 0.12, 1)
@@ -73,6 +77,19 @@ mesh = SubResource("CapsuleMesh_player")
 [node name="PlayerCollision" type="CollisionShape3D" parent="World/Player" unique_id=1444593501]
 shape = SubResource("CapsuleShape3D_player")
 
+[node name="AttackOrigin" type="Marker3D" parent="World/Player"]
+position = Vector3(0, 0.35, 0.18)
+
+[node name="ProjectileOrigin" type="Marker3D" parent="World/Player"]
+position = Vector3(0, 0.35, 0.16)
+
+[node name="CombatHurtbox" type="Area3D" parent="World/Player"]
+script = ExtResource("11_hurt")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="World/Player/CombatHurtbox"]
+position = Vector3(0, 0.25, 0)
+shape = SubResource("BoxShape3D_player_hurtbox")
+
 [node name="CameraRig" type="Node3D" parent="World/Player" unique_id=1987213441]
 script = ExtResource("8_cc")
 
@@ -100,7 +117,7 @@ text = "HP: 15 / 15"
 
 [node name="StatsLabel" type="Label" parent="CanvasLayer/HUD" unique_id=1244182988]
 layout_mode = 2
-text = "ATK: 5  |  SPD: 5.0  |  Range: 3.5"
+text = "ATK: 5  |  SPD: 5.0  |  Reach: 1.5  |  Size: 1.0"
 
 [node name="DarkEnergyLabel" type="Label" parent="CanvasLayer/HUD" unique_id=1892232334]
 layout_mode = 2

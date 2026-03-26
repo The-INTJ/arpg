@@ -10,7 +10,7 @@ public partial class PlayerActionHandler : Node
 {
     private PlayerController _player;
     private TurnManager _turnManager;
-    private CombatManager _combatManager;
+    private CombatSystem _combatSystem;
     private AggroSystem _aggroSystem;
 
     [Signal]
@@ -22,12 +22,12 @@ public partial class PlayerActionHandler : Node
     public void Init(
         PlayerController player,
         TurnManager turnManager,
-        CombatManager combatManager,
+        CombatSystem combatSystem,
         AggroSystem aggroSystem)
     {
         _player = player;
         _turnManager = turnManager;
-        _combatManager = combatManager;
+        _combatSystem = combatSystem;
         _aggroSystem = aggroSystem;
     }
 
@@ -36,7 +36,7 @@ public partial class PlayerActionHandler : Node
         if (_turnManager.State == TurnState.Defeat)
             return;
 
-        if (!_combatManager.PlayerAttack() && !_combatManager.IsPlayerAttackReady)
+        if (!_combatSystem.PlayerAttack() && !_combatSystem.IsPlayerAttackReady)
             EmitSignal(SignalName.StatusMessage, "Weapon recovering.");
     }
 
@@ -55,7 +55,7 @@ public partial class PlayerActionHandler : Node
             return;
         }
 
-        _combatManager.PlayerAbility();
+        _combatSystem.PlayerAbility();
     }
 
     public void OnItemSlotPressed(int slotIndex)
@@ -69,7 +69,7 @@ public partial class PlayerActionHandler : Node
             return;
 
         var target = item.RequiresCombatTarget
-            ? _aggroSystem.FindNearestEnemy(_player.Stats.AttackRange)
+            ? _combatSystem.PreviewPrimaryTarget()
             : null;
         if (item.RequiresCombatTarget && target == null)
         {
@@ -137,7 +137,7 @@ public partial class PlayerActionHandler : Node
         EmitSignal(SignalName.StatusMessage, $"Used {item.Name}: {summary}.");
 
         if (item.DirectDamage > 0)
-            _combatManager.PlayerUseDamageItem(target, item.DirectDamage);
+            _combatSystem.PlayerUseDamageItem(target, item.DirectDamage);
     }
 
     private static string AppendSummary(string summary, string addition)

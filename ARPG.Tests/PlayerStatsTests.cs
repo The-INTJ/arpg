@@ -50,6 +50,35 @@ public partial class PlayerStatsTests
         Assert.Contains(StatTarget.JumpCount, percentModifier.Effects.Single().AllowedTargets);
     }
 
+    [Fact]
+    public void AttackReachAndAttackSizeApplyModifiersAndRespectMinimums()
+    {
+        var stats = new PlayerStats();
+        stats.SetBaseStats(PlayerBaseStats.Default);
+
+        Apply(stats, Modifier.Fixed(ModifierOp.FlatAdd, StatTarget.AttackReach, 0.75f));
+        Apply(stats, Modifier.Fixed(ModifierOp.PercentAdd, StatTarget.AttackSize, 50.0f));
+
+        Assert.Equal(2.0f, stats.AttackReach, 3);
+        Assert.Equal(1.5f, stats.AttackSize, 3);
+
+        Apply(stats, Modifier.Fixed(ModifierOp.FlatAdd, StatTarget.AttackSize, -50.0f));
+
+        Assert.Equal(StatTargetInfo.GetMetadata(StatTarget.AttackSize).MinimumValue, stats.AttackSize, 3);
+    }
+
+    [Fact]
+    public void FlexibleModifiersIncludeAttackReachAndAttackSize()
+    {
+        var flatModifier = Modifier.Flexible(ModifierOp.FlatAdd, 1.0f);
+        var percentModifier = Modifier.Flexible(ModifierOp.PercentAdd, 15.0f);
+
+        Assert.Contains(StatTarget.AttackReach, flatModifier.Effects.Single().AllowedTargets);
+        Assert.Contains(StatTarget.AttackSize, flatModifier.Effects.Single().AllowedTargets);
+        Assert.Contains(StatTarget.AttackReach, percentModifier.Effects.Single().AllowedTargets);
+        Assert.Contains(StatTarget.AttackSize, percentModifier.Effects.Single().AllowedTargets);
+    }
+
     private static void Apply(PlayerStats stats, Modifier modifier)
     {
         foreach (var effect in modifier.CreateAppliedEffectsFromFixedTargets())

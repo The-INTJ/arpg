@@ -13,7 +13,13 @@ public partial class MeleeAttackTelegraph : Node3D
         AddChild(_meshInstance);
     }
 
-    public void Play(Vector3 direction, float range, float arcDegrees, Color color, float durationSeconds)
+    public void Play(
+        AttackVolumeDefinition volume,
+        Vector3 direction,
+        float attackReach,
+        float attackSize,
+        Color color,
+        float durationSeconds)
     {
         if (_meshInstance == null)
         {
@@ -26,17 +32,10 @@ public partial class MeleeAttackTelegraph : Node3D
             }
         }
 
-        Vector3 flatDirection = direction;
-        flatDirection.Y = 0.0f;
-        if (flatDirection.LengthSquared() <= 0.001f)
-            flatDirection = Vector3.Forward;
-        else
-            flatDirection = flatDirection.Normalized();
+        Transform = volume.BuildTransform(Vector3.Zero, direction, attackReach, attackSize);
+        Position += new Vector3(0, 0.04f, 0);
 
-        Rotation = new Vector3(0, Mathf.Atan2(flatDirection.X, flatDirection.Z), 0);
-        Position = new Vector3(0, 0.04f, 0);
-
-        _meshInstance.Mesh = BuildSectorMesh(range, arcDegrees, 14);
+        _meshInstance.Mesh = BuildVolumeMesh(volume, attackReach, attackSize);
         _meshInstance.MaterialOverride = BuildMaterial(color);
         _meshInstance.Transparency = 0.0f;
 
@@ -52,24 +51,58 @@ public partial class MeleeAttackTelegraph : Node3D
         tween.TweenCallback(Callable.From(QueueFree));
     }
 
-    private static ArrayMesh BuildSectorMesh(float range, float arcDegrees, int segments)
+    private static Mesh BuildVolumeMesh(AttackVolumeDefinition volume, float attackReach, float attackSize)
+    {
+        Vector3 size = volume.ResolveSize(attackReach, attackSize);
+        return volume.Shape switch
+        {
+            AttackVolumeShape.Box => BuildQuadMesh(size.X, size.Z),
+            AttackVolumeShape.Sphere => BuildCircleMesh(Mathf.Max(size.X, size.Z) * 0.5f, 18),
+            AttackVolumeShape.Capsule => BuildCircleMesh(Mathf.Max(size.X, size.Z) * 0.5f, 18),
+            AttackVolumeShape.Cylinder => BuildCircleMesh(Mathf.Max(size.X, size.Z) * 0.5f, 18),
+            _ => BuildQuadMesh(size.X, size.Z),
+        };
+    }
+
+    private static ArrayMesh BuildQuadMesh(float width, float depth)
     {
         var surfaceTool = new SurfaceTool();
         surfaceTool.Begin(Mesh.PrimitiveType.Triangles);
+        Vector3 normal = Vector3.Up;
+        Vector3 a = new(-width * 0.5f, 0, -depth * 0.5f);
+        Vector3 b = new(width * 0.5f, 0, -depth * 0.5f);
+        Vector3 c = new(width * 0.5f, 0, depth * 0.5f);
+        Vector3 d = new(-width * 0.5f, 0, depth * 0.5f);
 
-        float halfArcRadians = Mathf.DegToRad(arcDegrees * 0.5f);
+        surfaceTool.SetNormal(normal);
+        surfaceTool.AddVertex(a);
+        surfaceTool.SetNormal(normal);
+        surfaceTool.AddVertex(b);
+        surfaceTool.SetNormal(normal);
+        surfaceTool.AddVertex(c);
+
+        surfaceTool.SetNormal(normal);
+        surfaceTool.AddVertex(a);
+        surfaceTool.SetNormal(normal);
+        surfaceTool.AddVertex(c);
+        surfaceTool.SetNormal(normal);
+        surfaceTool.AddVertex(d);
+        return surfaceTool.Commit();
+    }
+
+    private static ArrayMesh BuildCircleMesh(float radius, int segments)
+    {
+        var surfaceTool = new SurfaceTool();
+        surfaceTool.Begin(Mesh.PrimitiveType.Triangles);
         Vector3 center = Vector3.Zero;
         Vector3 normal = Vector3.Up;
 
         for (int i = 0; i < segments; i++)
         {
-            float t0 = i / (float)segments;
-            float t1 = (i + 1) / (float)segments;
-            float angle0 = Mathf.Lerp(-halfArcRadians, halfArcRadians, t0);
-            float angle1 = Mathf.Lerp(-halfArcRadians, halfArcRadians, t1);
-
-            Vector3 edge0 = new(Mathf.Sin(angle0) * range, 0, Mathf.Cos(angle0) * range);
-            Vector3 edge1 = new(Mathf.Sin(angle1) * range, 0, Mathf.Cos(angle1) * range);
+            float angle0 = Mathf.Tau * i / segments;
+            float angle1 = Mathf.Tau * (i + 1) / segments;
+            Vector3 edge0 = new(Mathf.Sin(angle0) * radius, 0, Mathf.Cos(angle0) * radius);
+            Vector3 edge1 = new(Mathf.Sin(angle1) * radius, 0, Mathf.Cos(angle1) * radius);
 
             surfaceTool.SetNormal(normal);
             surfaceTool.AddVertex(center);
