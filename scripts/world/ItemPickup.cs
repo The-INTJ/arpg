@@ -75,6 +75,8 @@ public partial class ItemPickup : Area3D
             .SetTrans(Tween.TransitionType.Sine)
             .SetEase(Tween.EaseType.InOut);
 
+        CollisionLayer = CombatLayers.Interactables;
+        CollisionMask = CombatLayers.ActorBodies;
         Monitoring = true;
         BodyEntered += OnBodyEntered;
         BodyExited += OnBodyExited;
