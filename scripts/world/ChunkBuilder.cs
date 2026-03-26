@@ -10,14 +10,20 @@ public static class ChunkBuilder
 {
 	private const float DefaultThickness = 15f;
 	private static PackedScene _islandMainSliceScene;
+	private static PackedScene _islandTunnelSliceScene;
 
 	/// <summary>
 	/// Adds floating island geometry to the given parent node.
 	/// Width/depth match the playable floor area. Thickness is how deep the chunk hangs below Y=0.
 	/// </summary>
-	public static void BuildChunk(Node3D parent, float width, float depth, float thickness = DefaultThickness)
+	public static void BuildChunk(
+		Node3D parent,
+		float width,
+		float depth,
+		float thickness = DefaultThickness,
+		ChunkIslandStyle islandStyle = ChunkIslandStyle.Main)
 	{
-		if (TryPlaceIslandSlice(parent, width, depth, thickness))
+		if (TryPlaceIslandSlice(parent, islandStyle))
 			return;
 
 		float halfW = width / 2f;
@@ -35,21 +41,25 @@ public static class ChunkBuilder
 		AddTrimStrip(parent, new Vector3(halfW, trimH / 2f, 0), new Vector3(trimW, trimH, depth + trimW));
 	}
 
-	private static bool TryPlaceIslandSlice(Node3D parent, float width, float depth, float thickness)
+	private static bool TryPlaceIslandSlice(Node3D parent, ChunkIslandStyle islandStyle)
 	{
-		var scene = LoadIslandMainSlice();
+		var scene = LoadIslandSlice(islandStyle) ?? LoadIslandSlice(ChunkIslandStyle.Main);
 		if (scene == null)
 			return false;
 
 		var slice = scene.Instantiate<IslandMainSlice>();
-		slice.Name = "IslandMainSlice";
+		slice.Name = islandStyle == ChunkIslandStyle.Tunnel ? "IslandTunnelSlice" : "IslandMainSlice";
 		parent.AddChild(slice);
 		return true;
 	}
 
-	private static PackedScene LoadIslandMainSlice()
+	private static PackedScene LoadIslandSlice(ChunkIslandStyle islandStyle)
 	{
-		return _islandMainSliceScene ??= GD.Load<PackedScene>(Scenes.IslandMainSlice);
+		return islandStyle switch
+		{
+			ChunkIslandStyle.Tunnel => _islandTunnelSliceScene ??= GD.Load<PackedScene>(Scenes.IslandTunnelSlice),
+			_ => _islandMainSliceScene ??= GD.Load<PackedScene>(Scenes.IslandMainSlice),
+		};
 	}
 
 	private static void AddBottomCap(Node3D parent, float width, float depth, float yPos)

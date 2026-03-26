@@ -226,6 +226,9 @@ public partial class GameManager : Node3D, IDeveloperEffectProvider
         var mapGen = new MapGenerator();
         mapGen.Name = "MapGenerator";
         zoneRoot.AddChild(mapGen);
+        mapGen.IslandStyle = room == GameState.TotalRooms
+            ? ChunkIslandStyle.Tunnel
+            : ChunkIslandStyle.Main;
         var generatedMap = mapGen.Generate();
 
         var profile = MonsterEffectRoomProfiles.ForRoom(room);

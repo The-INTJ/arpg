@@ -22,6 +22,8 @@ public partial class MapGenerator : Node3D
     private static PackedScene _roundTreeSliceScene;
     private readonly List<SurfaceRect> _spawnSurfaces = new();
 
+    public ChunkIslandStyle IslandStyle { get; set; } = ChunkIslandStyle.Main;
+
     public GeneratedMapResult Generate()
     {
         ClearGeneratedGeometry();
@@ -41,7 +43,7 @@ public partial class MapGenerator : Node3D
         var shell = new Node3D();
         shell.Name = "ChunkShell";
         AddChild(shell);
-        ChunkBuilder.BuildChunk(shell, ChunkWidth, ChunkDepth, ChunkThickness);
+        ChunkBuilder.BuildChunk(shell, ChunkWidth, ChunkDepth, ChunkThickness, IslandStyle);
     }
 
     private GeneratedMapResult BuildRidgeLayout(int caveSide)

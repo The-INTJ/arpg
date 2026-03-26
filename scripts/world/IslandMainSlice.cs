@@ -11,6 +11,9 @@ public partial class IslandMainSlice : Node3D
     [Export]
     public bool ApplyFallbackTerrainMaterial { get; set; } = true;
 
+    [Export]
+    public bool AlignVisualTopToGround { get; set; }
+
     public override void _Ready()
     {
         RefreshTerrain();
@@ -27,6 +30,9 @@ public partial class IslandMainSlice : Node3D
         if (!terrainBody.IsInGroup(WorldGroups.CameraBlockers))
             terrainBody.AddToGroup(WorldGroups.CameraBlockers);
 
+        if (AlignVisualTopToGround)
+            AlignVisualRootToGround(visualRoot);
+
         if (ApplyFallbackTerrainMaterial)
             ApplyFallbackMaterialRecursive(visualRoot);
 
@@ -34,6 +40,14 @@ public partial class IslandMainSlice : Node3D
         // Keep the collision node itself untransformed so the collider matches the mesh exactly.
         collision.Transform = Transform3D.Identity;
         collision.Shape = BuildCollisionShape(visualRoot);
+    }
+
+    private static void AlignVisualRootToGround(Node3D visualRoot)
+    {
+        if (!TryGetTopY(visualRoot, Transform3D.Identity, out float topY) || Mathf.IsZeroApprox(topY))
+            return;
+
+        visualRoot.Position -= Vector3.Up * topY;
     }
 
     private static Shape3D BuildCollisionShape(Node3D visualRoot)
@@ -46,6 +60,55 @@ public partial class IslandMainSlice : Node3D
         var shape = new ConcavePolygonShape3D();
         shape.Data = faces.ToArray();
         return shape;
+    }
+
+    private static bool TryGetTopY(Node node, Transform3D parentTransform, out float topY)
+    {
+        bool found = false;
+        topY = 0.0f;
+        AppendTopY(node, parentTransform, ref found, ref topY);
+        return found;
+    }
+
+    private static void AppendTopY(Node node, Transform3D parentTransform, ref bool found, ref float topY)
+    {
+        Transform3D currentTransform = parentTransform;
+        if (node is Node3D node3D)
+            currentTransform = parentTransform * node3D.Transform;
+
+        if (node is MeshInstance3D meshInstance && meshInstance.Mesh != null)
+            AppendMeshTopY(meshInstance.Mesh.GetAabb(), currentTransform, ref found, ref topY);
+
+        foreach (Node child in node.GetChildren())
+            AppendTopY(child, currentTransform, ref found, ref topY);
+    }
+
+    private static void AppendMeshTopY(Aabb localBounds, Transform3D transform, ref bool found, ref float topY)
+    {
+        foreach (Vector3 corner in EnumerateAabbCorners(localBounds))
+        {
+            float y = (transform * corner).Y;
+            if (!found || y > topY)
+            {
+                topY = y;
+                found = true;
+            }
+        }
+    }
+
+    private static IEnumerable<Vector3> EnumerateAabbCorners(Aabb localBounds)
+    {
+        Vector3 origin = localBounds.Position;
+        Vector3 size = localBounds.Size;
+
+        yield return origin;
+        yield return origin + new Vector3(size.X, 0, 0);
+        yield return origin + new Vector3(0, size.Y, 0);
+        yield return origin + new Vector3(0, 0, size.Z);
+        yield return origin + new Vector3(size.X, size.Y, 0);
+        yield return origin + new Vector3(size.X, 0, size.Z);
+        yield return origin + new Vector3(0, size.Y, size.Z);
+        yield return origin + size;
     }
 
     private static void AppendCollisionFaces(Node node, Transform3D parentTransform, List<Vector3> faces)

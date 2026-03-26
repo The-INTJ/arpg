@@ -1,0 +1,18 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/world/IslandMainSlice.cs" id="1_slice"]
+[ext_resource type="PackedScene" path="res://assets/models/environment/Island_StyleVariant-with-tunnel.glb" id="2_mesh"]
+
+[node name="IslandTunnelSlice" type="Node3D"]
+script = ExtResource("1_slice")
+AlignVisualTopToGround = true
+
+[node name="TerrainBody" type="StaticBody3D" parent="."]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="TerrainBody"]
+
+[node name="VisualRoot" type="Node3D" parent="TerrainBody"]
+transform = Transform3D(5.4477596, 0, 0, 0, 0.8903669, 0, 0, 0, 5.5687346, 0.24296235, -9.077053, 0.00825292)
+
+[node name="ImportedMeshRoot" parent="TerrainBody/VisualRoot" instance=ExtResource("2_mesh")]
+transform = Transform3D(1, 0, 0, 0, 5.82, 0, 0, 0, 1, 0, -47.692192, 0)
