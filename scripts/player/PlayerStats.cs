@@ -9,13 +9,7 @@ namespace ARPG;
 /// </summary>
 public partial class PlayerStats
 {
-    // Base values set by archetype.
-    private int _baseMaxHp = 30;
-    private int _baseAttackDamage = 4;
-    private float _baseMoveSpeed = 5.5f;
-    private float _baseAttackRange = 1.25f;
-    private int _baseInventorySlots = 2;
-    private int _baseItemUsesPerTurn = 1;
+    private PlayerBaseStats _baseStats = PlayerBaseStats.Default;
     private Weapon _weapon;
     private int _pendingWardCharges;
     private int _pendingAttackBonusDamage;
@@ -46,6 +40,8 @@ public partial class PlayerStats
     public int AttackDamage => (int)GetEffectiveStatValue(StatTarget.AttackDamage);
     public float MoveSpeed => GetEffectiveStatValue(StatTarget.MoveSpeed);
     public float AttackRange => GetEffectiveStatValue(StatTarget.AttackRange);
+    public float JumpHeight => GetEffectiveStatValue(StatTarget.JumpHeight);
+    public int JumpCount => (int)GetEffectiveStatValue(StatTarget.JumpCount);
     public int DesiredInventorySlotCount => ClampInventorySlots((int)GetEffectiveStatValue(StatTarget.InventorySlots));
     public float RawItemUsesPerTurn => GetEffectiveStatValue(StatTarget.ItemUsesPerTurn);
     public int ItemUsesPerTurn => ClampItemUsesPerTurn((int)RawItemUsesPerTurn);
@@ -63,23 +59,15 @@ public partial class PlayerStats
 
     public PlayerStats()
     {
-        CurrentHp = _baseMaxHp;
+        CurrentHp = _baseStats.MaxHp;
         SyncInventoryCapacity();
     }
 
-    public void SetBaseStats(int maxHp, int attackDamage, float moveSpeed, float attackRange)
+    public void SetBaseStats(PlayerBaseStats baseStats)
     {
         int oldMaxHp = MaxHp;
-        _baseMaxHp = maxHp;
-        _baseAttackDamage = attackDamage;
-        _baseMoveSpeed = moveSpeed;
-        _baseAttackRange = attackRange;
+        _baseStats = baseStats;
         AdjustCurrentHpForMaxChange(oldMaxHp);
-    }
-
-    public void SetBaseInventorySlots(int inventorySlots)
-    {
-        _baseInventorySlots = Math.Max(1, inventorySlots);
         SyncInventoryCapacity();
     }
 
@@ -206,12 +194,14 @@ public partial class PlayerStats
 
     private float GetBase(StatTarget target) => target switch
     {
-        StatTarget.MaxHp => _baseMaxHp,
-        StatTarget.AttackDamage => _baseAttackDamage,
-        StatTarget.MoveSpeed => _baseMoveSpeed,
-        StatTarget.AttackRange => _baseAttackRange,
-        StatTarget.InventorySlots => _baseInventorySlots,
-        StatTarget.ItemUsesPerTurn => _baseItemUsesPerTurn,
+        StatTarget.MaxHp => _baseStats.MaxHp,
+        StatTarget.AttackDamage => _baseStats.AttackDamage,
+        StatTarget.MoveSpeed => _baseStats.MoveSpeed,
+        StatTarget.AttackRange => _baseStats.AttackRange,
+        StatTarget.JumpHeight => _baseStats.JumpHeight,
+        StatTarget.JumpCount => _baseStats.JumpCount,
+        StatTarget.InventorySlots => _baseStats.InventorySlots,
+        StatTarget.ItemUsesPerTurn => _baseStats.ItemUsesPerTurn,
         _ => 0
     };
 
@@ -295,6 +285,6 @@ public partial class PlayerStats
         result *= (1 + percentAdd / 100f);
         result *= multiply;
         result *= (1 - percentReduce / 100f);
-        return Math.Max(1, result);
+        return StatTargetInfo.ClampValue(target, result);
     }
 }

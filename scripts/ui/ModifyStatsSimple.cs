@@ -11,14 +11,16 @@ namespace ARPG;
 public partial class ModifyStatsSimple : Control
 {
 	private static readonly PackedScene BackpackRowScene = GD.Load<PackedScene>(Scenes.BackpackItemRow);
+	private static readonly PackedScene StatChannelRowScene = GD.Load<PackedScene>(Scenes.StatChannelRow);
 
 	private PlayerStats _stats;
 	private Label _weaponTitle;
 	private Label _selectedModifierLabel;
-	private Button[] _channelButtons = new Button[StatTargetInfo.All.Length];
 	private Label _youStatsLabel;
+	private VBoxContainer _channelList;
 	private VBoxContainer _backpackList;
 	private Label _backpackEmptyLabel;
+	private readonly Dictionary<StatTarget, StatChannelRow> _channelRows = new();
 
 	private PanelContainer _confirmPanel;
 	private Label _confirmLabel;
@@ -56,36 +58,19 @@ public partial class ModifyStatsSimple : Control
 		MouseFilter = MouseFilterEnum.Stop;
 
 		_weaponTitle = GetNode<Label>("MarginContainer/RootVBox/MainHBox/LeftVBox/WeaponPanel/WeaponVBox/WeaponTitle");
+		_channelList = GetNode<VBoxContainer>("MarginContainer/RootVBox/MainHBox/LeftVBox/WeaponPanel/WeaponVBox/ScrollContainer/StatChannelList");
 		_selectedModifierLabel = GetNode<Label>("MarginContainer/RootVBox/MainHBox/RightVBox/SelectedPanel/SelectedVBox/SelectedModifierLabel");
 		_youStatsLabel = GetNode<Label>("MarginContainer/RootVBox/MainHBox/RightVBox/YouPanel/YouVBox/YouStatsLabel");
 		_backpackList = GetNode<VBoxContainer>("MarginContainer/RootVBox/MainHBox/LeftVBox/BackpackPanel/BackpackVBox/ScrollContainer/BackpackList");
 		_backpackEmptyLabel = GetNode<Label>("MarginContainer/RootVBox/MainHBox/LeftVBox/BackpackPanel/BackpackVBox/ScrollContainer/BackpackList/BackpackEmptyLabel");
 		_confirmPanel = GetNode<PanelContainer>("ConfirmPanel");
 		_confirmLabel = GetNode<Label>("ConfirmPanel/ConfirmLabel");
-
-		_channelButtons = new[]
-		{
-			BindChannelButton("MarginContainer/RootVBox/MainHBox/LeftVBox/WeaponPanel/WeaponVBox/MaxHpButton", StatTarget.MaxHp),
-			BindChannelButton("MarginContainer/RootVBox/MainHBox/LeftVBox/WeaponPanel/WeaponVBox/AttackDamageButton", StatTarget.AttackDamage),
-			BindChannelButton("MarginContainer/RootVBox/MainHBox/LeftVBox/WeaponPanel/WeaponVBox/MoveSpeedButton", StatTarget.MoveSpeed),
-			BindChannelButton("MarginContainer/RootVBox/MainHBox/LeftVBox/WeaponPanel/WeaponVBox/AttackRangeButton", StatTarget.AttackRange),
-			BindChannelButton("MarginContainer/RootVBox/MainHBox/LeftVBox/WeaponPanel/WeaponVBox/InventorySlotsButton", StatTarget.InventorySlots),
-			BindChannelButton("MarginContainer/RootVBox/MainHBox/LeftVBox/WeaponPanel/WeaponVBox/ItemUsesButton", StatTarget.ItemUsesPerTurn),
-		};
+		BuildChannelRows();
 
 		// Footer text uses runtime key display names
 		var footer = GetNode<Label>("MarginContainer/RootVBox/Footer");
 		footer.Text = $"Esc Close  |  ({GameKeys.DisplayName(GameKeys.Ability)}) Reset picks / clear selection";
 	}
-
-	private Button BindChannelButton(string path, StatTarget target)
-	{
-		var button = GetNode<Button>(path);
-		button.Alignment = HorizontalAlignment.Left;
-		button.Pressed += () => OnChannelPressed(target);
-		return button;
-	}
-
 
 	public override void _UnhandledInput(InputEvent @event)
 	{
@@ -147,10 +132,10 @@ public partial class ModifyStatsSimple : Control
 	{
 		var assignedEffects = _selectionPlan?.BuildAssignedEffects() ?? System.Array.Empty<AppliedModifierEffect>();
 
-		for (int i = 0; i < StatTargetInfo.All.Length; i++)
+		foreach (var metadata in StatTargetInfo.Ordered)
 		{
-			StatTarget target = StatTargetInfo.All[i];
-			var button = _channelButtons[i];
+			StatTarget target = metadata.Target;
+			var row = _channelRows[target];
 			var channel = _stats.GetWeaponChannel(target);
 
 			bool hasSelection = _selectionPlan != null;
@@ -167,14 +152,13 @@ public partial class ModifyStatsSimple : Control
 			if (hasSelection && hasPreviewForTarget)
 				text += $"\nAfter mod: {StatTargetInfo.FormatStatValueWithProgress(target, _stats.PreviewStatWithEffects(target, previewEffects))}";
 
-			button.Text = text;
-			button.TooltipText = canAssignNext
+			string tooltip = canAssignNext
 				? $"Assign {_selectionPlan.GetNextEffect().ShortLabel} to {StatTargetInfo.DisplayName(target)}."
 				: hasSelection
 					? "This row is not selectable for the next pending effect."
 					: "Select a backpack modifier first.";
 
-			ModifyStatsTheme.ApplyChannelButtonTheme(button, canAssignNext, hasSelection, hasPreviewForTarget);
+			row.Populate(target, text, tooltip, canAssignNext, hasSelection, hasPreviewForTarget, OnChannelPressed);
 		}
 	}
 
@@ -216,13 +200,20 @@ public partial class ModifyStatsSimple : Control
 
 	private void RefreshStatsPanel()
 	{
-		_youStatsLabel.Text =
-			$"HP:     {_stats.CurrentHp} / {StatTargetInfo.FormatStatValueWithProgress(StatTarget.MaxHp, _stats.GetEffectiveStatValue(StatTarget.MaxHp))}\n" +
-			$"ATK:    {StatTargetInfo.FormatStatValueWithProgress(StatTarget.AttackDamage, _stats.GetEffectiveStatValue(StatTarget.AttackDamage))}\n" +
-			$"SPD:    {_stats.MoveSpeed:0.#}\n" +
-			$"Range:  {_stats.AttackRange:0.#}\n" +
-			$"Slots:  {StatTargetInfo.FormatStatValueWithProgress(StatTarget.InventorySlots, _stats.GetEffectiveStatValue(StatTarget.InventorySlots))}\n" +
-			$"Items:  {StatTargetInfo.FormatStatValueWithProgress(StatTarget.ItemUsesPerTurn, _stats.GetEffectiveStatValue(StatTarget.ItemUsesPerTurn))}";
+		var lines = new List<string>
+		{
+			$"Current HP: {_stats.CurrentHp} / {StatTargetInfo.FormatStatValueWithProgress(StatTarget.MaxHp, _stats.GetEffectiveStatValue(StatTarget.MaxHp))}"
+		};
+
+		foreach (var metadata in StatTargetInfo.Ordered)
+		{
+			if (metadata.Target == StatTarget.MaxHp)
+				continue;
+
+			lines.Add($"{StatTargetInfo.DisplayName(metadata.Target)}: {StatTargetInfo.FormatStatValueWithProgress(metadata.Target, _stats.GetEffectiveStatValue(metadata.Target))}");
+		}
+
+		_youStatsLabel.Text = string.Join("\n", lines);
 	}
 
 	private void RefreshBackpack()
@@ -282,8 +273,9 @@ public partial class ModifyStatsSimple : Control
 		var pendingEffects = _pendingPlan.BuildAppliedEffects();
 		var lines = new List<string> { "Apply Modifier", string.Empty };
 
-		foreach (var target in StatTargetInfo.All)
+		foreach (var metadata in StatTargetInfo.Ordered)
 		{
+			StatTarget target = metadata.Target;
 			if (!pendingEffects.Any(effect => effect.Target == target))
 				continue;
 
@@ -306,13 +298,24 @@ public partial class ModifyStatsSimple : Control
 	private string BuildStatPreview(IReadOnlyList<AppliedModifierEffect> pendingEffects)
 	{
 		int afterMaxHp = (int)_stats.PreviewStatWithEffects(StatTarget.MaxHp, pendingEffects);
-		return
-			$"HP: {_stats.CurrentHp} / {_stats.MaxHp} -> {_stats.PreviewCurrentHpWithEffects(pendingEffects)} / {afterMaxHp}\n" +
-			$"ATK: {StatTargetInfo.FormatStatValueWithProgress(StatTarget.AttackDamage, _stats.GetEffectiveStatValue(StatTarget.AttackDamage))} -> {StatTargetInfo.FormatStatValueWithProgress(StatTarget.AttackDamage, _stats.PreviewStatWithEffects(StatTarget.AttackDamage, pendingEffects))}\n" +
-			$"SPD: {_stats.MoveSpeed:0.#} -> {StatTargetInfo.FormatStatValue(StatTarget.MoveSpeed, _stats.PreviewStatWithEffects(StatTarget.MoveSpeed, pendingEffects))}\n" +
-			$"Range: {_stats.AttackRange:0.#} -> {StatTargetInfo.FormatStatValue(StatTarget.AttackRange, _stats.PreviewStatWithEffects(StatTarget.AttackRange, pendingEffects))}\n" +
-			$"Slots: {StatTargetInfo.FormatStatValueWithProgress(StatTarget.InventorySlots, _stats.GetEffectiveStatValue(StatTarget.InventorySlots))} -> {StatTargetInfo.FormatStatValueWithProgress(StatTarget.InventorySlots, _stats.PreviewStatWithEffects(StatTarget.InventorySlots, pendingEffects))}\n" +
-			$"Items: {StatTargetInfo.FormatStatValueWithProgress(StatTarget.ItemUsesPerTurn, _stats.GetEffectiveStatValue(StatTarget.ItemUsesPerTurn))} -> {StatTargetInfo.FormatStatValueWithProgress(StatTarget.ItemUsesPerTurn, _stats.PreviewStatWithEffects(StatTarget.ItemUsesPerTurn, pendingEffects))}";
+		var lines = new List<string>
+		{
+			$"HP: {_stats.CurrentHp} / {_stats.MaxHp} -> {_stats.PreviewCurrentHpWithEffects(pendingEffects)} / {afterMaxHp}"
+		};
+
+		foreach (var metadata in StatTargetInfo.Ordered)
+		{
+			StatTarget target = metadata.Target;
+			if (target == StatTarget.MaxHp)
+				continue;
+
+			lines.Add(
+				$"{StatTargetInfo.DisplayName(target)}: " +
+				$"{StatTargetInfo.FormatStatValueWithProgress(target, _stats.GetEffectiveStatValue(target))} -> " +
+				$"{StatTargetInfo.FormatStatValueWithProgress(target, _stats.PreviewStatWithEffects(target, pendingEffects))}");
+		}
+
+		return string.Join("\n", lines);
 	}
 
 	private void ConfirmApply()
@@ -336,6 +339,16 @@ public partial class ModifyStatsSimple : Control
 		_pendingPlan = null;
 		_confirmPanel.Visible = false;
 		Refresh();
+	}
+
+	private void BuildChannelRows()
+	{
+		foreach (var metadata in StatTargetInfo.Ordered)
+		{
+			var row = StatChannelRowScene.Instantiate<StatChannelRow>();
+			_channelList.AddChild(row);
+			_channelRows[metadata.Target] = row;
+		}
 	}
 
 }

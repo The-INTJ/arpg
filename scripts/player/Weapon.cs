@@ -43,7 +43,7 @@ public partial class Weapon
             Modifier.Fixed(ModifierOp.FlatAdd, StatTarget.MaxHp, 3)),
 
         Archetype.Archer => Create("Longbow", AbilityType.Snipe,
-            Modifier.Fixed(ModifierOp.FlatAdd, StatTarget.AttackRange, 0.35f),
+            Modifier.Fixed(ModifierOp.FlatAdd, StatTarget.AttackRange, 0.50f),
             Modifier.Fixed(ModifierOp.FlatAdd, StatTarget.AttackDamage, 1)),
 
         Archetype.Mage => Create("Oak Staff", AbilityType.Fireball,

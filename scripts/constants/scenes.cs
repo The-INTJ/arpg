@@ -29,6 +29,7 @@ public static partial class Scenes
 	public const string PauseScreen = UiRoot + "PauseScreen.tscn";
 	public const string DeveloperEffectGroupPanel = UiDevRoot + "DeveloperEffectGroupPanel.tscn";
 	public const string DeveloperEffectRow = UiDevRoot + "DeveloperEffectRow.tscn";
+	public const string StatChannelRow = UiComponentRoot + "StatChannelRow.tscn";
 	public const string PineTreeSlice = WorldSliceRoot + "PineTreeSlice.tscn";
 	public const string PlatformRampSlice = WorldSliceRoot + "PlatformRampSlice.tscn";
 	public const string RoundTreeSlice = WorldSliceRoot + "RoundTreeSlice.tscn";

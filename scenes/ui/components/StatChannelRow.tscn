@@ -1,0 +1,10 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/StatChannelRow.cs" id="1_script"]
+
+[node name="StatChannelRow" type="Button"]
+custom_minimum_size = Vector2(0, 92)
+size_flags_horizontal = 3
+alignment = 0
+focus_mode = 0
+script = ExtResource("1_script")

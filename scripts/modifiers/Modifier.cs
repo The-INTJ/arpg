@@ -18,6 +18,8 @@ public enum StatTarget
     AttackDamage,
     MoveSpeed,
     AttackRange,
+    JumpHeight,
+    JumpCount,
     InventorySlots,
     ItemUsesPerTurn
 }
@@ -47,7 +49,7 @@ public partial class Modifier
 
     public static Modifier Flexible(ModifierOp op, float value)
     {
-        return new Modifier(new ModifierEffect(op, value, StatTargetInfo.All));
+        return new Modifier(new ModifierEffect(op, value, StatTargetInfo.FlexibleTargetsFor(op)));
     }
 
     public AppliedModifierEffect[] CreateAppliedEffectsFromFixedTargets()

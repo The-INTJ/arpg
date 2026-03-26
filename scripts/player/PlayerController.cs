@@ -5,18 +5,6 @@ namespace ARPG;
 
 public partial class PlayerController : CharacterBody3D, IDeveloperEffectProvider
 {
-    public const string ZoneBoundsGuardEffectId = "zone_bounds_guard";
-    public const string VoidFallPenaltyEffectId = "void_fall_penalty";
-
-    private const float DefaultFloorSnapLength = 0.45f;
-    private const float GroundAcceleration = 28.0f;
-    private const float GroundDeceleration = 34.0f;
-    private const float AirAcceleration = 11.0f;
-    private const float AirDeceleration = 8.0f;
-    private const float GravityStrength = 18.0f;
-    private const float JumpVelocity = 7.0f;
-    private const float CoyoteTime = 0.12f;
-    private const float VoidFallGracePeriod = 1.0f;
     private const float GodFlightSpeedMultiplier = 2.4f;
     private const float GodFlightVeryFastMultiplier = 8.0f;
     private static readonly Vector3 BobRootBasePosition = new(0, 0.25f, 0);
@@ -29,17 +17,15 @@ public partial class PlayerController : CharacterBody3D, IDeveloperEffectProvide
     public bool IsGrounded => IsOnFloor();
     public Vector3 CombatAimDirection => _combatAimDirection;
 
-    [Signal]
-    public delegate void EdgeFallEventHandler(bool appliedDamage);
-
-    private float _voidFallTimer;
     private float _regenAccumulator;
     private float _presentationTime;
     private float _coyoteTimer;
+    private float _jumpBufferTimer;
     private float _landingImpact;
     private float _presentationLean;
     private float _weaponLagTilt;
     private double _godModeElapsed;
+    private int _remainingJumps;
     private bool _movementLocked;
     private bool _wasGrounded;
     private bool _lastGodModeEnabled;
@@ -54,17 +40,12 @@ public partial class PlayerController : CharacterBody3D, IDeveloperEffectProvide
     private Node3D _weaponPivot;
     private Sprite3D _weaponSprite;
     private Tween _visualTween;
-    private Aabb[] _zoneBounds = Array.Empty<Aabb>();
-    private Vector3 _lastGroundedPosition;
-    private bool _hasLastGroundedPosition;
     private readonly ForwardDoubleTapDetector _forwardBurstDetector = new();
 
     public override void _Ready()
     {
-        FloorSnapLength = DefaultFloorSnapLength;
+        FloorSnapLength = PlayerTraversalFeel.DefaultFloorSnapLength;
         _wasGrounded = true;
-        _lastGroundedPosition = GlobalPosition;
-        _hasLastGroundedPosition = true;
 
         // Reuse persistent stats across rooms, or create fresh for room 1
         if (GameState.PersistentStats != null)
@@ -110,6 +91,7 @@ public partial class PlayerController : CharacterBody3D, IDeveloperEffectProvide
 
         _cameraController = GetNode<CameraController>("CameraRig");
         _playerCollision = GetNode<CollisionShape3D>("PlayerCollision");
+        ResetAvailableJumps();
     }
 
     public override void _PhysicsProcess(double delta)
@@ -132,26 +114,6 @@ public partial class PlayerController : CharacterBody3D, IDeveloperEffectProvide
             return;
 
         _developerTools = developerTools;
-        _developerTools?.RegisterEffect(
-            this,
-            new DeveloperEffectDescriptor(
-                ZoneBoundsGuardEffectId,
-                "Zone Bounds Guard",
-                "Track when the player leaves the active map bounds and start boundary recovery.",
-                DeveloperEffectKind.Toggle,
-                DeveloperEffectGroups.Boundary,
-                OwnerLabel: "Player",
-                Order: 10));
-        _developerTools?.RegisterEffect(
-            this,
-            new DeveloperEffectDescriptor(
-                VoidFallPenaltyEffectId,
-                "Void Fall Penalty",
-                "Apply the HP loss when boundary recovery snaps the player back.",
-                DeveloperEffectKind.Toggle,
-                DeveloperEffectGroups.Boundary,
-                OwnerLabel: "Player",
-                Order: 20));
     }
 
     private PlayerTraversalMode CurrentTraversalMode => _developerTools?.GodMode.Enabled == true && _developerTools.GodMode.FlightEnabled
@@ -161,6 +123,8 @@ public partial class PlayerController : CharacterBody3D, IDeveloperEffectProvide
     private void RunGroundedPhysics(double delta)
     {
         float dt = (float)delta;
+        bool jumpPressed = !_movementLocked && Input.IsActionJustPressed(GameKeys.Jump);
+        bool jumpHeld = !_movementLocked && Input.IsActionPressed(GameKeys.Jump);
 
         // Gather raw input
         var raw = Vector3.Zero;
@@ -182,26 +146,32 @@ public partial class PlayerController : CharacterBody3D, IDeveloperEffectProvide
             speed *= Stats.SprintMultiplier;
 
         bool grounded = IsOnFloor();
-        _coyoteTimer = grounded ? CoyoteTime : Mathf.Max(0.0f, _coyoteTimer - dt);
+        _coyoteTimer = grounded ? PlayerTraversalFeel.CoyoteTime : Mathf.Max(0.0f, _coyoteTimer - dt);
+        _jumpBufferTimer = jumpPressed ? PlayerTraversalFeel.JumpBufferTime : Mathf.Max(0.0f, _jumpBufferTimer - dt);
 
-        if (!_movementLocked && Input.IsActionJustPressed(GameKeys.Jump) && _coyoteTimer > 0.0f)
-        {
-            Velocity = new Vector3(Velocity.X, JumpVelocity, Velocity.Z);
-            _coyoteTimer = 0.0f;
-            grounded = false;
-        }
+        if (grounded)
+            ResetAvailableJumps();
+        else
+            _remainingJumps = Math.Min(_remainingJumps, Stats.JumpCount);
 
         var horizontalVelocity = new Vector3(Velocity.X, 0, Velocity.Z);
-        var targetHorizontalVelocity = input * speed * (grounded ? 1.0f : 0.58f);
-        float moveRate = targetHorizontalVelocity.LengthSquared() > 0.0f
-            ? (grounded ? GroundAcceleration : AirAcceleration)
-            : (grounded ? GroundDeceleration : AirDeceleration);
+        var targetHorizontalVelocity = input * speed * (grounded ? 1.0f : PlayerTraversalFeel.AirControlSpeedFactor);
+        float moveRate = PlayerTraversalFeel.GetHorizontalMoveRate(horizontalVelocity, targetHorizontalVelocity, grounded);
         horizontalVelocity = horizontalVelocity.MoveToward(targetHorizontalVelocity, moveRate * dt);
 
         float verticalVelocityBeforeMove = Velocity.Y;
 
+        if (TryConsumeBufferedJump(grounded))
+        {
+            grounded = false;
+            verticalVelocityBeforeMove = Velocity.Y;
+        }
+
         if (!grounded)
-            Velocity = new Vector3(horizontalVelocity.X, Velocity.Y - GravityStrength * dt, horizontalVelocity.Z);
+        {
+            float gravity = PlayerTraversalFeel.GetVerticalGravity(Velocity.Y, jumpHeld);
+            Velocity = new Vector3(horizontalVelocity.X, Velocity.Y - gravity * dt, horizontalVelocity.Z);
+        }
         else if (Velocity.Y < 0.0f)
             Velocity = new Vector3(horizontalVelocity.X, -0.01f, horizontalVelocity.Z);
         else
@@ -209,10 +179,7 @@ public partial class PlayerController : CharacterBody3D, IDeveloperEffectProvide
 
         MoveAndSlide();
 
-        // Outside a zone is only dangerous if the player actually spends time falling.
         bool groundedNow = IsOnFloor();
-        if (UpdateVoidFallRecovery(dt, groundedNow))
-            groundedNow = true;
 
         // Flip sprite based on camera-relative horizontal movement
         var facingVelocity = new Vector3(Velocity.X, 0, Velocity.Z);
@@ -225,6 +192,9 @@ public partial class PlayerController : CharacterBody3D, IDeveloperEffectProvide
 
         if (!_wasGrounded && groundedNow)
             _landingImpact = Mathf.Clamp(Mathf.Abs(verticalVelocityBeforeMove) * 0.08f + 0.2f, 0.2f, 1.0f);
+
+        if (groundedNow)
+            ResetAvailableJumps();
 
         _wasGrounded = groundedNow;
         UpdatePresentation(dt, facingVelocity, input, speed, groundedNow);
@@ -266,8 +236,6 @@ public partial class PlayerController : CharacterBody3D, IDeveloperEffectProvide
             MoveAndSlide();
 
         bool groundedNow = IsOnFloor();
-        if (UpdateVoidFallRecovery(dt, groundedNow))
-            groundedNow = true;
 
         var facingVelocity = new Vector3(Velocity.X, 0, Velocity.Z);
         UpdateCombatAimDirection(movementDirection.LengthSquared() > 0.001f
@@ -282,74 +250,6 @@ public partial class PlayerController : CharacterBody3D, IDeveloperEffectProvide
         var presentationInput = new Vector3(movementDirection.X, 0, movementDirection.Z);
         UpdatePresentation(dt, facingVelocity, presentationInput, speed, groundedNow);
         _wasGrounded = groundedNow;
-    }
-
-    public void SetZoneBounds(Aabb[] zoneBounds)
-    {
-        _zoneBounds = zoneBounds ?? Array.Empty<Aabb>();
-    }
-
-    private bool UpdateVoidFallRecovery(float delta, bool grounded)
-    {
-        if (!IsEffectEnabled(ZoneBoundsGuardEffectId))
-        {
-            _voidFallTimer = 0.0f;
-            return false;
-        }
-
-        if (grounded)
-        {
-            _lastGroundedPosition = GlobalPosition;
-            _hasLastGroundedPosition = true;
-            _voidFallTimer = 0.0f;
-            return false;
-        }
-
-        if (IsInsideZoneBounds(GlobalPosition))
-        {
-            _voidFallTimer = 0.0f;
-            return false;
-        }
-
-        if (Velocity.Y >= -0.05f)
-        {
-            _voidFallTimer = 0.0f;
-            return false;
-        }
-
-        _voidFallTimer += delta;
-        if (_voidFallTimer < VoidFallGracePeriod)
-            return false;
-
-        RecoverFromVoidFall();
-        return true;
-    }
-
-    private bool IsInsideZoneBounds(Vector3 worldPosition)
-    {
-        for (int i = 0; i < _zoneBounds.Length; i++)
-        {
-            if (_zoneBounds[i].HasPoint(worldPosition))
-                return true;
-        }
-
-        return false;
-    }
-
-    private void RecoverFromVoidFall()
-    {
-        bool applyPenalty = IsEffectEnabled(VoidFallPenaltyEffectId);
-        if (applyPenalty)
-            Hp = Mathf.Max(0, Hp - 5);
-
-        Velocity = Vector3.Zero;
-        _voidFallTimer = 0.0f;
-        _coyoteTimer = 0.0f;
-
-        if (_hasLastGroundedPosition)
-            GlobalPosition = _lastGroundedPosition + new Vector3(0, 0.1f, 0);
-
-        EmitSignal(SignalName.EdgeFall, applyPenalty);
     }
 
     public void TickRegen(float delta)
@@ -429,6 +329,9 @@ public partial class PlayerController : CharacterBody3D, IDeveloperEffectProvide
         if (locked)
         {
             Velocity = Vector3.Zero;
+            _coyoteTimer = 0.0f;
+            _jumpBufferTimer = 0.0f;
+            ResetAvailableJumps();
             _forwardBurstDetector.Reset();
             _developerTools?.GodMode.SetVeryFastBurstActive(false);
         }
@@ -532,7 +435,7 @@ public partial class PlayerController : CharacterBody3D, IDeveloperEffectProvide
 
         _lastGodModeEnabled = godModeEnabled;
         _lastPassThroughEnabled = passThroughEnabled;
-        FloorSnapLength = godModeEnabled ? 0.0f : DefaultFloorSnapLength;
+        FloorSnapLength = godModeEnabled ? 0.0f : PlayerTraversalFeel.DefaultFloorSnapLength;
         if (_playerCollision != null)
             _playerCollision.Disabled = passThroughEnabled;
 
@@ -544,8 +447,24 @@ public partial class PlayerController : CharacterBody3D, IDeveloperEffectProvide
         }
     }
 
-    private bool IsEffectEnabled(string effectId)
+    private void ResetAvailableJumps()
     {
-        return _developerTools?.IsEffectEnabled(this, effectId) ?? true;
+        _remainingJumps = Math.Max(1, Stats?.JumpCount ?? 1);
+    }
+
+    private bool TryConsumeBufferedJump(bool grounded)
+    {
+        if (_jumpBufferTimer <= 0.0f)
+            return false;
+
+        bool canUseGroundJump = grounded || _coyoteTimer > 0.0f;
+        if (!canUseGroundJump && _remainingJumps <= 0)
+            return false;
+
+        Velocity = new Vector3(Velocity.X, PlayerTraversalFeel.ComputeJumpVelocity(Stats.JumpHeight), Velocity.Z);
+        _jumpBufferTimer = 0.0f;
+        _coyoteTimer = 0.0f;
+        _remainingJumps = Math.Max(0, _remainingJumps - 1);
+        return true;
     }
 }

@@ -143,10 +143,6 @@ public partial class GameManager : Node3D, IDeveloperEffectProvider
             _hudUpdater.SetBuildModeActive(active, _buildMode.SelectedTemplate);
         };
 
-        _player.EdgeFall += appliedDamage => _hudUpdater.StatusText = appliedDamage
-            ? "Fell into the abyss! -5 HP"
-            : "Boundary recovery triggered.";
-
         _modifyScreen = GetNode<ModifyStatsSimple>("CanvasLayer/ModifyStatsSimple");
         _pauseScreen = GetNode<PauseScreen>("CanvasLayer/PauseScreen");
         _pauseScreen.ViewStatsRequested += () => _modifyScreen.Open(_player.Stats);
@@ -170,7 +166,6 @@ public partial class GameManager : Node3D, IDeveloperEffectProvider
         RefreshBridgeReadiness();
 
         _player.GlobalPosition = ZoneOrigins[0] + PlayerSpawnOffset;
-        _player.SetZoneBounds(BuildZoneBoundsArray());
         GameState.DarkEnergyCarryOver = 0;
         SetActiveZone(1, force: true);
 
@@ -266,15 +261,6 @@ public partial class GameManager : Node3D, IDeveloperEffectProvider
         return new Aabb(
             zoneOrigin + new Vector3(-MapGenerator.PlayWidth * 0.5f, -ZoneBoundsPadding.Y, -MapGenerator.PlayDepth * 0.5f),
             new Vector3(MapGenerator.PlayWidth, ZoneBoundsPadding.Y * 2.0f, MapGenerator.PlayDepth));
-    }
-
-    private Aabb[] BuildZoneBoundsArray()
-    {
-        var bounds = new Aabb[GameState.TotalRooms];
-        for (int room = 1; room <= GameState.TotalRooms; room++)
-            bounds[room - 1] = _zoneBounds[room];
-
-        return bounds;
     }
 
     private int FindZoneForPosition(Vector3 worldPosition)
